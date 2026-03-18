@@ -52,6 +52,22 @@ export default function StrataPage() {
   }
 
   const withExtraction = dreams.filter((d) => d.extraction)
+
+  // Symbol of the Week: most frequent symbol from the last 7 days
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
+  const recentDreams = withExtraction.filter((d) => d.date >= sevenDaysAgo)
+  const symbolMap: Record<string, { count: number; meaning: string; category: string }> = {}
+  for (const d of recentDreams) {
+    for (const s of d.extraction!.symbols || []) {
+      if (!symbolMap[s.name]) {
+        symbolMap[s.name] = { count: 0, meaning: s.meaning, category: s.category }
+      }
+      symbolMap[s.name].count++
+    }
+  }
+  const topWeekSymbol = Object.entries(symbolMap)
+    .sort((a, b) => b[1].count - a[1].count)[0] ?? null
+
   const avgLucidity =
     withExtraction.length > 0
       ? (withExtraction.reduce((s, d) => s + (d.extraction!.lucidity || 0), 0) / withExtraction.length).toFixed(1)
@@ -109,6 +125,43 @@ export default function StrataPage() {
             <StatCard label="Dreams" value={String(withExtraction.length)} />
             {avgLucidity && <StatCard label="Avg Lucidity" value={`${avgLucidity}/3`} />}
             {topEmotion && <StatCard label="Top Emotion" value={topEmotion.name} small />}
+          </div>
+        )}
+
+        {/* Symbol of the Week */}
+        {topWeekSymbol && (
+          <div
+            className="rounded-2xl p-5 space-y-3"
+            style={{ background: 'rgba(15,15,26,0.7)', border: '1px solid var(--border)' }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
+                Symbol of the Week
+              </div>
+              <span
+                className="text-xs px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(167,139,250,0.1)', color: 'var(--violet)', fontFamily: 'monospace' }}
+              >
+                {topWeekSymbol[1].category}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <div
+                className="text-xl font-medium"
+                style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}
+              >
+                {topWeekSymbol[0]}
+              </div>
+              <div className="text-xs" style={{ color: 'var(--muted)', fontFamily: 'monospace' }}>
+                appeared {topWeekSymbol[1].count} time{topWeekSymbol[1].count !== 1 ? 's' : ''} this week
+              </div>
+            </div>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}
+            >
+              {topWeekSymbol[1].meaning}
+            </p>
           </div>
         )}
 

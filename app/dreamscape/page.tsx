@@ -53,19 +53,25 @@ function StoryTab() {
         const { done, value } = await reader.read()
         if (done) break
         buf += dec.decode(value, { stream: true })
-        const lines = buf.split('\n')
-        buf = lines.pop() ?? ''
 
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            // event type captured on next data line
-          } else if (line.startsWith('data: ')) {
-            try {
-              const payload = JSON.parse(line.slice(6))
-              if (payload.message) setStatus(payload.message)
-              if (payload.text) setStoryText(payload.text)
-            } catch { /* skip */ }
+        const events = buf.split('\n\n')
+        buf = events.pop() ?? ''
+
+        for (const event of events) {
+          if (!event.trim()) continue
+          const lines = event.split('\n')
+          let eventType = ''
+          let dataLine = ''
+          for (const line of lines) {
+            if (line.startsWith('event:')) eventType = line.slice(6).trim()
+            if (line.startsWith('data:')) dataLine = line.slice(5).trim()
           }
+          if (!dataLine) continue
+          try {
+            const payload = JSON.parse(dataLine)
+            if (eventType === 'status' && payload.message) setStatus(payload.message)
+            if (eventType === 'story' && payload.text) setStoryText(payload.text)
+          } catch { /* skip */ }
         }
       }
     } catch (e: unknown) {

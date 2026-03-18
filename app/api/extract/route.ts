@@ -84,7 +84,12 @@ Analyze this dream and return a JSON object matching EXACTLY this schema (no ext
   },
   "recommendations": [
     { "action": string (specific, doable), "timing": string, "why": string }
-  ]
+  ],
+  "goetic_resonance": {
+    "spirit": string (name of ONE of the 72 Goetic spirits whose domains/nature most resonates with this dream's imagery, themes, or emotional landscape — e.g. "Dantalion", "Phenex", "Paimon"),
+    "reason": string (one sentence explaining the specific resonance between this dream and the spirit's nature — be precise about which imagery or theme connects),
+    "barbarous": string (the spirit's traditional invocation words/barbarous name variants — 3-5 words, space-separated, ALL CAPS)
+  }
 }
 
 Guidelines:
@@ -93,6 +98,7 @@ Guidelines:
 - Recommendations should be actionable within the next week, grounded in dream content
 - Astro transit note should connect the specific dream imagery to the current sky
 - natal_aspects: ${birthData ? `Natal Sun in ${birthData.date}, note any resonances with current transits` : 'return empty array []'}
+- goetic_resonance: Choose thoughtfully from the 72 Goetic spirits based on the dream's actual imagery and themes. Examples: transformation/rebirth → Phenex; music/arts/knowledge → Paimon; reading minds/changing hearts → Dantalion; fire/cunning → Aim; invisibility/multiplicity → Bael; love/passion → Sitri or Asmodeus; finding lost things → Vassago; thunder/storms/secrets → Furfur
 
 Return only valid JSON. No preamble, no explanation, no markdown.`
 

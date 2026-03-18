@@ -25,7 +25,7 @@ const LUCIDITY_LABEL: Record<number, string> = {
   3: 'Fully lucid',
 }
 
-const SECTION_ORDER = ['interpretation', 'symbols', 'emotions', 'themes', 'characters', 'setting', 'astro', 'recommendations']
+const SECTION_ORDER = ['interpretation', 'symbols', 'emotions', 'themes', 'characters', 'setting', 'astro', 'recommendations', 'goetic']
 
 export default function ExtractionDisplay({ extraction, natal }: ExtractionDisplayProps) {
   const [visible, setVisible] = useState<Set<string>>(new Set())
@@ -221,6 +221,61 @@ export default function ExtractionDisplay({ extraction, natal }: ExtractionDispl
       {show('recommendations') && extraction.recommendations?.length > 0 && (
         <div className="animate-slide-up">
           <RecommendationCards recommendations={extraction.recommendations} />
+        </div>
+      )}
+
+      {/* Goetic Resonance */}
+      {show('goetic') && extraction.goetic_resonance && (
+        <div
+          className="animate-slide-up rounded-xl p-5 space-y-3"
+          style={{
+            background: 'rgba(10,5,20,0.8)',
+            border: '1px solid rgba(139,92,246,0.25)',
+            boxShadow: 'inset 0 0 40px rgba(139,92,246,0.04)',
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono uppercase tracking-widest" style={{ color: 'rgba(139,92,246,0.7)' }}>
+              Goetic Resonance
+            </span>
+          </div>
+
+          <div className="flex items-start gap-4">
+            <div
+              className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg"
+              style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}
+            >
+              ⬡
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-base font-medium mb-1" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
+                {extraction.goetic_resonance.spirit}
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                {extraction.goetic_resonance.reason}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="rounded-lg px-4 py-3 text-center"
+            style={{ background: 'rgba(5,2,15,0.6)', border: '1px solid rgba(139,92,246,0.15)' }}
+          >
+            <div className="text-xs font-mono mb-1.5" style={{ color: 'rgba(139,92,246,0.5)', letterSpacing: '0.15em' }}>
+              BARBAROUS WORDS OF INVOCATION
+            </div>
+            <div
+              className="text-sm tracking-widest"
+              style={{
+                color: 'rgba(200,180,255,0.9)',
+                fontFamily: 'Georgia, serif',
+                letterSpacing: '0.25em',
+                fontStyle: 'italic',
+              }}
+            >
+              {extraction.goetic_resonance.barbarous}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -16,6 +16,11 @@ export interface DreamExtraction {
     natal_aspects: string[]
   }
   recommendations: { action: string; timing: string; why: string }[]
+  goetic_resonance?: {
+    spirit: string    // e.g. "Dantalion"
+    reason: string    // 1 sentence: why this spirit resonates with this dream
+    barbarous: string // the invocation words
+  }
 }
 
 export interface DreamLog {

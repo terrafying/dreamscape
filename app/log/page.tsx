@@ -12,6 +12,23 @@ import ProviderSettings from '@/components/ProviderSettings'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
+function computeStreak(dreams: DreamLog[]): number {
+  const dates = [...new Set(dreams.map((d) => d.date))].sort().reverse()
+  if (!dates.length) return 0
+  const today = new Date().toISOString().split('T')[0]
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  if (dates[0] !== today && dates[0] !== yesterday) return 0
+  let streak = 1
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(dates[i - 1])
+    const curr = new Date(dates[i])
+    const diff = (prev.getTime() - curr.getTime()) / 86400000
+    if (Math.round(diff) === 1) streak++
+    else break
+  }
+  return streak
+}
+
 export default function LogPage() {
   const [transcript, setTranscript] = useState('')
   const [status, setStatus] = useState<Status>('idle')
@@ -23,6 +40,7 @@ export default function LogPage() {
   const [dreams, setDreams] = useState<DreamLog[]>([])
   const [provider, setProvider] = useState<LLMProvider>('anthropic')
   const [model, setModel] = useState<string | undefined>(undefined)
+  const [streak, setStreak] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -31,7 +49,10 @@ export default function LogPage() {
       const dismissed = localStorage.getItem('dreamscape_birth_dismissed')
       if (!bd && !dismissed) setShowBirthModal(true)
     })
-    getDreams().then(setDreams)
+    getDreams().then((d) => {
+      setDreams(d)
+      setStreak(computeStreak(d))
+    })
   }, [])
 
   const natal = birthData ? getNatalPlacements(birthData) : null
@@ -106,7 +127,9 @@ export default function LogPage() {
             const log: DreamLog = { id, date: today, transcript, extraction: ext, createdAt: Date.now() }
             await saveDream(log)
             setSavedId(id)
-            setDreams(await getDreams())
+            const updated = await getDreams()
+            setDreams(updated)
+            setStreak(computeStreak(updated))
           } else if (eventType === 'error') {
             setStatus('error')
             setStatusMessage(data.message)
@@ -140,14 +163,29 @@ export default function LogPage() {
 
       <div className="max-w-xl mx-auto px-4 pt-8 pb-4 space-y-6">
         {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-medium tracking-tight" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
-            Dream Log
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            {birthData && <span style={{ color: 'var(--violet)' }}>{' · '}✦ {birthData.location}</span>}
-          </p>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-medium tracking-tight" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
+              Dream Log
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {birthData && <span style={{ color: 'var(--violet)' }}>{' · '}✦ {birthData.location}</span>}
+            </p>
+          </div>
+          {streak > 0 && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm flex-shrink-0"
+              style={{
+                background: 'rgba(167,139,250,0.1)',
+                border: '1px solid rgba(167,139,250,0.3)',
+                color: 'var(--violet)',
+                fontFamily: 'monospace',
+              }}
+            >
+              ◈ {streak} day{streak !== 1 ? 's' : ''} streak
+            </div>
+          )}
         </div>
 
         {/* Input or result */}

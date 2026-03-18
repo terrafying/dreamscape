@@ -7,8 +7,8 @@ const tabs = [
   { href: '/log', label: 'Log', icon: '✦' },
   { href: '/strata', label: 'Strata', icon: '◈' },
   { href: '/letters', label: 'Letters', icon: '◇' },
-  { href: '/dreamscape', label: 'Stories', icon: '◉' },
-  { href: '/puzzle', label: 'Puzzle', icon: '⬡' },
+  { href: '/dreamscape', label: 'Sleep', icon: '◉' },
+  { href: '/invoke', label: 'Invoke', icon: '⬡' },
 ]
 
 export default function Nav() {
