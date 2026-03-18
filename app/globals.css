@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #07070f;
+  --violet: #a78bfa;
+  --indigo: #818cf8;
+  --gold: #fbbf24;
+  --text: #e2e8f0;
+  --muted: #475569;
+  --surface: #0f0f1a;
+  --border: #1e1e2e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2d2d42;
+  border-radius: 4px;
+}
+
+/* Dream text areas */
+textarea {
+  field-sizing: content;
+  min-height: 120px;
+}
+
+/* Recharts overrides */
+.recharts-wrapper,
+.recharts-surface {
+  overflow: visible;
+}
+
+/* Prose for dream letters */
+.dream-letter {
+  font-family: Georgia, ui-serif, serif;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+}
+
+/* Stagger animation utility */
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 500ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 600ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 700ms; }
