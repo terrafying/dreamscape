@@ -26,6 +26,7 @@ export default function JournalPage() {
   const [statusMessage, setStatusMessage] = useState('')
   const [extraction, setExtraction] = useState<JournalExtraction | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
+  const [sourceProvider, setSourceProvider] = useState<string | null>(null)
   const [journals, setJournals] = useState<JournalLog[]>([])
   const [birthData, setBirthData] = useState<BirthData | null>(null)
   const [provider, setProvider] = useState<LLMProvider>('anthropic')
@@ -104,6 +105,8 @@ export default function JournalPage() {
 
           if (eventType === 'status') {
             setStatusMessage(data.message)
+          } else if (eventType === 'source') {
+            setSourceProvider(data.provider)
           } else if (eventType === 'extraction') {
             const ext = data.data as JournalExtraction
             setExtraction(ext)
@@ -234,6 +237,11 @@ export default function JournalPage() {
               <span className="text-xs font-mono uppercase tracking-wider" style={{ color: accent }}>
                 Journal Insight
               </span>
+              {sourceProvider && (
+                <span className="text-[10px] px-1.5 rounded ml-2" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)' }}>
+                  {sourceProvider}
+                </span>
+              )}
               {savedId && <span className="text-xs" style={{ color: 'var(--muted)' }}>· saved</span>}
             </div>
             <button

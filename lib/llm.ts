@@ -16,44 +16,55 @@ function anthropicClient() {
   return _client
 }
 
-export async function callLLM(prompt: string, opts: LLMOptions = {}): Promise<string> {
+export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): Promise<{ text: string; source: string }> {
   const { provider = 'anthropic', model, maxTokens = 2000, json = false } = opts
 
   try {
     if (provider === 'ollama') {
       const m = model || process.env.OLLAMA_MODEL || 'qwen2.5:32b'
-      return await callOllama(prompt, m, maxTokens, json)
+      return { text: await callOllama(prompt, m, maxTokens, json), source: `ollama:${m}` }
     }
     if (provider === 'openai') {
-      return await callOpenAI(prompt, model || process.env.OPENAI_MODEL || 'gpt-4o-mini', maxTokens)
+      const m = model || process.env.OPENAI_MODEL || 'gpt-4o-mini'
+      return { text: await callOpenAI(prompt, m, maxTokens), source: `openai:${m}` }
     }
     if (provider === 'openrouter') {
-      return await callOpenRouter(prompt, model || process.env.OPENROUTER_MODEL || 'openrouter/free', maxTokens)
+      const m = model || process.env.OPENROUTER_MODEL || 'openrouter/free'
+      const text = await callOpenRouter(prompt, m, maxTokens)
+      return { text, source: `openrouter:${m}` }
     }
 
     // Anthropic default
+    const m = model || 'claude-3-haiku-20240307'
     const response = await anthropicClient().messages.create({
-      model: model || 'claude-3-haiku-20240307',
+      model: m,
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     })
-    return response.content[0].type === 'text' ? response.content[0].text : ''
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    return { text, source: `anthropic:${m}` }
   } catch (err: any) {
     const msg = String(err?.message || err)
     // Fallbacks on quota/unauthorized
     if (/Rate limit|insufficient|quota|Unauthorized|401|429/i.test(msg)) {
       if (process.env.OPENAI_API_KEY) {
-        try { return await callOpenAI(prompt, model || 'gpt-4o-mini', maxTokens) } catch {}
+        try { const m = model || 'gpt-4o-mini'; return { text: await callOpenAI(prompt, m, maxTokens), source: `openai:${m}` } } catch {}
       }
       if (process.env.OPENROUTER_API_KEY) {
-        try { return await callOpenRouter(prompt, model || 'openrouter/free', maxTokens) } catch {}
+        try { const m = model || 'openrouter/free'; return { text: await callOpenRouter(prompt, m, maxTokens), source: `openrouter:${m}` } } catch {}
       }
       if (process.env.OLLAMA_BASE_URL) {
-        try { return await callOllama(prompt, process.env.OLLAMA_MODEL || 'qwen2.5:32b', maxTokens, json) } catch {}
+        try { const m = process.env.OLLAMA_MODEL || 'qwen2.5:32b'; return { text: await callOllama(prompt, m, maxTokens, json), source: `ollama:${m}` } } catch {}
       }
     }
     throw err
   }
+}
+
+// Backward-compat shim
+export async function callLLM(prompt: string, opts: LLMOptions = {}): Promise<string> {
+  const { text } = await callLLMWithSource(prompt, opts)
+  return text
 }
 
 async function callOllama(

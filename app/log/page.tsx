@@ -38,6 +38,7 @@ export default function LogPage() {
   const [statusMessage, setStatusMessage] = useState('')
   const [extraction, setExtraction] = useState<DreamExtraction | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
+  const [sourceProvider, setSourceProvider] = useState<string | null>(null)
   const [birthData, setBirthData] = useState<BirthData | null>(null)
   const [showBirthModal, setShowBirthModal] = useState(false)
   const [dreams, setDreams] = useState<DreamLog[]>([])
@@ -120,6 +121,8 @@ export default function LogPage() {
 
           if (eventType === 'status') {
             setStatusMessage(data.message)
+          } else if (eventType === 'source') {
+            setSourceProvider(data.provider)
           } else if (eventType === 'extraction') {
             const ext = data.data as DreamExtraction
             setExtraction(ext)
@@ -265,6 +268,11 @@ export default function LogPage() {
                 <span className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--violet)' }}>
                   Dream Analysis
                 </span>
+                {sourceProvider && (
+                  <span className="text-[10px] px-1.5 rounded ml-2" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)' }}>
+                    {sourceProvider}
+                  </span>
+                )}
                 {savedId && <span className="text-xs" style={{ color: 'var(--muted)' }}>· saved</span>}
               </div>
               <button

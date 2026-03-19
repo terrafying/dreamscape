@@ -1,4 +1,4 @@
-import { callLLM, type LLMProvider } from '@/lib/llm'
+import { callLLMWithSource, type LLMProvider } from '@/lib/llm'
 import { buildAstroContext, getCurrentTransits, getDominantTransit } from '@/lib/astro'
 import type { BirthData } from '@/lib/types'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
@@ -107,12 +107,13 @@ Return only valid JSON. No preamble, no explanation, no markdown.`
 
         send('status', { message: 'Weaving interpretation...' })
 
-        const raw = await callLLM(prompt, {
+        const { text: raw, source } = await callLLMWithSource(prompt, {
           provider,
           model,
           maxTokens: 2000,
           json: true,
         })
+        send('source', { provider: source })
 
         // Strip any accidental markdown fences
         const cleaned = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()

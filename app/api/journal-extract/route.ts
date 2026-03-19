@@ -1,4 +1,4 @@
-import { callLLM, type LLMProvider } from '@/lib/llm'
+import { callLLMWithSource, type LLMProvider } from '@/lib/llm'
 import { buildAstroContext, getCurrentTransits } from '@/lib/astro'
 import type { BirthData } from '@/lib/types'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
@@ -93,12 +93,13 @@ Return only valid JSON.`
 
         send('status', { message: 'Composing your journal insight...' })
 
-        const raw = await callLLM(prompt, {
+        const { text: raw, source } = await callLLMWithSource(prompt, {
           provider,
           model,
           maxTokens: 1400,
           json: true,
         })
+        send('source', { provider: source })
 
         const cleaned = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```$/m, '').trim()
 
