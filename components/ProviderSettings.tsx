@@ -15,7 +15,7 @@ const RECOMMENDED: { name: string; sizeGB: number; note: string }[] = [
 ]
 
 export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
-  const [provider, setProvider] = useState<LLMProvider>('anthropic')
+  const [provider, setProvider] = useState<LLMProvider>('openrouter')
   const [model, setModel] = useState('qwen2.5:32b')
   const [orModel, setOrModel] = useState('openrouter/free')
   const [expanded, setExpanded] = useState(false)
@@ -24,7 +24,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
   const [loadingModels, setLoadingModels] = useState(false)
 
   useEffect(() => {
-    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'anthropic'
+    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'openrouter'
     const m = localStorage.getItem('dreamscape_model') || 'qwen2.5:32b'
     const orm = localStorage.getItem('dreamscape_or_model') || 'openrouter/free'
     setProvider(p)
