@@ -27,7 +27,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto px-4 pt-8 pb-6 space-y-4">
+    <div className="max-w-xl mx-auto px-4 pt-8 pb-6 space-y-6">
       <h1 className="text-2xl" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>Account</h1>
       {userEmail ? (
         <div className="space-y-2">
@@ -46,6 +46,86 @@ export default function AccountPage() {
           )}
         </div>
       )}
+
+      {/* Settings */}
+      <div className="space-y-3">
+        <h2 className="text-sm uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.14em' }}>Settings</h2>
+        <SyncToggle />
+        <ReminderSettings />
+      </div>
+    </div>
+  )
+}
+
+function SyncToggle() {
+  const [enabled, setEnabled] = useState<boolean>(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setEnabled(localStorage.getItem('dreamscape_sync_enabled') === '1')
+  }, [])
+  const toggle = () => {
+    const next = !enabled
+    setEnabled(next)
+    if (typeof window !== 'undefined') localStorage.setItem('dreamscape_sync_enabled', next ? '1' : '0')
+  }
+  return (
+    <div className="flex items-center justify-between rounded-lg px-3 py-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+      <div>
+        <div className="text-sm" style={{ color: 'var(--text)' }}>Cloud Sync (optional)</div>
+        <div className="text-xs" style={{ color: 'var(--muted)' }}>Keep your archive synced across devices (Supabase)</div>
+      </div>
+      <button onClick={toggle} className="px-3 py-1.5 rounded-full text-xs" style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}>{enabled ? 'On' : 'Off'}</button>
+    </div>
+  )
+}
+
+function ReminderSettings() {
+  const [evening, setEvening] = useState<string>('22:00')
+  const [morning, setMorning] = useState<string>('07:30')
+  const [enabled, setEnabled] = useState<boolean>(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setEvening(localStorage.getItem('dreamscape_reminder_evening') || '22:00')
+    setMorning(localStorage.getItem('dreamscape_reminder_morning') || '07:30')
+    setEnabled(localStorage.getItem('dreamscape_reminders') === '1')
+  }, [])
+
+  const save = () => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('dreamscape_reminder_evening', evening)
+    localStorage.setItem('dreamscape_reminder_morning', morning)
+    localStorage.setItem('dreamscape_reminders', enabled ? '1' : '0')
+    // Ask for notification permission if turning on
+    if (enabled && 'Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission()
+    }
+  }
+
+  return (
+    <div className="rounded-lg px-3 py-3 space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between">
+        <div className="text-sm" style={{ color: 'var(--text)' }}>Gentle Reminders</div>
+        <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enable
+        </label>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <label className="flex items-center gap-2" style={{ color: 'var(--muted)' }}>
+          Evening
+          <input type="time" value={evening} onChange={(e) => setEvening(e.target.value)} className="ml-auto rounded px-2 py-1 bg-transparent" style={{ border: '1px solid var(--border)', color: 'var(--text)' }} />
+        </label>
+        <label className="flex items-center gap-2" style={{ color: 'var(--muted)' }}>
+          Morning
+          <input type="time" value={morning} onChange={(e) => setMorning(e.target.value)} className="ml-auto rounded px-2 py-1 bg-transparent" style={{ border: '1px solid var(--border)', color: 'var(--text)' }} />
+        </label>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={save} className="px-3 py-1.5 rounded-full text-xs" style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}>Save</button>
+      </div>
+      <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
+        Note: Browser notifications only fire when the app is open. For system-level reminders, we’ll add iOS/Android push later.
+      </p>
     </div>
   )
 }
