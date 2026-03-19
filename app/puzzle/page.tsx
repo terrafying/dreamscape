@@ -219,11 +219,11 @@ function MazeWalls({ maze }: { maze: MazeGrid }) {
     <instancedMesh ref={meshRef} args={[undefined, undefined, maxInstances]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial
-        color="#0a0e14"
-        emissive="#121a28"
-        emissiveIntensity={0.3}
-        roughness={0.9}
-        metalness={0.1}
+        color="#0e1520"
+        emissive="#1e2a3a"
+        emissiveIntensity={0.65}
+        roughness={0.85}
+        metalness={0.08}
       />
     </instancedMesh>
   )
@@ -709,12 +709,12 @@ function AngelGuidance({ maze, playerX, playerZ, discovered }: { maze: MazeGrid;
   return (
     <group position={[ax, 1.4, az]}>
       <mesh>
-        <sphereGeometry args={[0.18, 16, 16]} />
-        <meshBasicMaterial color="#a0e6ff" transparent opacity={0.8} />
+        <sphereGeometry args={[0.3, 24, 24]} />
+        <meshBasicMaterial color="#b9ecff" transparent opacity={0.95} />
       </mesh>
       <mesh position={[0, 0, 0]}>
-        <ringGeometry args={[0.22, 0.28, 24]} />
-        <meshBasicMaterial color="#a0e6ff" transparent opacity={0.3} />
+        <ringGeometry args={[0.3, 0.36, 32]} />
+        <meshBasicMaterial color="#b9ecff" transparent opacity={0.4} />
       </mesh>
     </group>
   )
@@ -777,6 +777,7 @@ export default function PuzzlePage() {
   const [complete, setComplete] = useState(false)
   const [playerPos, setPlayerPos] = useState<[number, number]>([0, 0])
   const [visitedCells, setVisitedCells] = useState<Set<string>>(new Set())
+  const [pings, setPings] = useState<{ x: number; z: number; t: number }[]>([])
 
   const keysRef = useRef(new Set<string>())
   const lookRef = useRef({ yaw: 0, pitch: 0 })
@@ -789,7 +790,11 @@ export default function PuzzlePage() {
   useEffect(() => {
     if (!started) return
     const down = (e: KeyboardEvent) => {
-      keysRef.current.add(e.key.toLowerCase())
+      const k = e.key.toLowerCase()
+      keysRef.current.add(k)
+      if (k === 'f') {
+        setPings((prev) => [...prev, { x: playerPos[0], z: playerPos[1], t: Date.now() }])
+      }
     }
     const up = (e: KeyboardEvent) => {
       keysRef.current.delete(e.key.toLowerCase())
@@ -951,6 +956,11 @@ export default function PuzzlePage() {
         <MazeFloor maze={maze} />
         <Stars />
 
+        {/* Ephemeral pings of light */}
+        {pings.filter(p => Date.now() - p.t < 2000).map((p, i) => (
+          <pointLight key={i} position={[p.x, 1.2, p.z]} intensity={1.2} color="#6bc8ff" distance={6} decay={2} />
+        ))}
+
         {/* Angel guidance (teleological object) */}
         <AngelGuidance maze={maze} playerX={playerPos[0]} playerZ={playerPos[1]} discovered={discovered} />
 
@@ -981,7 +991,7 @@ export default function PuzzlePage() {
       />
       <ControlsHint />
       {debug && <PuzzleDebugPanel />}
-      <AudioSettings />
+      <div style={{ pointerEvents: 'auto' }}><AudioSettings /></div>
       <DiscoveryOverlay
         config={lastDiscovery !== null ? POLYTOPES[lastDiscovery] : null}
         show={showDiscovery}
