@@ -90,7 +90,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
 
           {/* Provider toggle */}
           <div className="flex gap-2 flex-wrap">
-            {(['anthropic', 'openai', 'openrouter', 'ollama'] as LLMProvider[]).map((p) => (
+            {(['anthropic', 'openai', 'openrouter'] as LLMProvider[]).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -102,7 +102,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
                   color: provider === p ? 'var(--violet)' : 'var(--muted)',
                 }}
               >
-                {p === 'anthropic' ? '☁ Anthropic API' : p === 'openai' ? '☁ OpenAI' : p === 'openrouter' ? '☁ OpenRouter' : '◉ Local (Ollama)'}
+                {p === 'anthropic' ? '☁ Anthropic API' : p === 'openai' ? '☁ OpenAI' : '☁ OpenRouter'}
               </button>
             ))}
           </div>
@@ -141,108 +141,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
             </div>
           )}
 
-          {/* Ollama config */}
-          {provider === 'ollama' && (
-            <div className="space-y-3">
-              {/* Status */}
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{
-                    background: ollamaStatus === 'running' ? '#4ade80'
-                      : ollamaStatus === 'offline' ? '#f87171'
-                      : '#475569',
-                  }}
-                />
-                <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                  {ollamaStatus === 'running' ? 'Ollama running'
-                    : ollamaStatus === 'offline' ? 'Ollama not detected'
-                    : 'Status unknown'}
-                </span>
-                <button
-                  type="button"
-                  onClick={fetchModels}
-                  disabled={loadingModels}
-                  className="ml-auto text-xs px-2 py-0.5 rounded transition-opacity hover:opacity-70"
-                  style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-                >
-                  {loadingModels ? '…' : 'Check'}
-                </button>
-              </div>
-
-              {/* Model input */}
-              <div className="space-y-1">
-                <label className="text-xs" style={{ color: 'var(--muted)' }}>Model</label>
-                <input
-                  type="text"
-                  value={model}
-                  onChange={(e) => save('ollama', e.target.value)}
-                  placeholder="qwen2.5:32b"
-                  className="w-full rounded-lg px-3 py-1.5 text-xs font-mono outline-none"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text)',
-                  }}
-                />
-              </div>
-
-              {/* Available models */}
-              {availableModels.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-xs" style={{ color: 'var(--muted)' }}>Installed</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {availableModels.map((m) => (
-                      <button
-                        key={m.name}
-                        type="button"
-                        onClick={() => save('ollama', m.name)}
-                        className="text-xs px-2 py-0.5 rounded-full font-mono transition-all"
-                        style={{
-                          background: model === m.name ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.05)',
-                          border: `1px solid ${model === m.name ? 'rgba(167,139,250,0.4)' : 'var(--border)'}`,
-                          color: model === m.name ? 'var(--violet)' : 'var(--muted)',
-                        }}
-                      >
-                        {m.name} <span style={{ opacity: 0.5 }}>{m.sizeGB}GB</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recommended models */}
-              <div className="space-y-1.5">
-                <div className="text-xs" style={{ color: 'var(--muted)' }}>
-                  Recommended for 24 GB RAM
-                </div>
-                {RECOMMENDED.map((r) => (
-                  <div key={r.name} className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => save('ollama', r.name)}
-                      className="text-xs font-mono transition-opacity hover:opacity-80"
-                      style={{ color: model === r.name ? 'var(--violet)' : 'var(--text)' }}
-                    >
-                      {r.name}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs" style={{ color: 'var(--muted)' }}>~{r.sizeGB} GB · {r.note}</span>
-                    </div>
-                  </div>
-                ))}
-                <p className="text-xs leading-relaxed pt-1" style={{ color: 'var(--muted)' }}>
-                  Install:{' '}
-                  <code
-                    className="px-1 py-0.5 rounded text-xs"
-                    style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text)' }}
-                  >
-                    ollama pull {model}
-                  </code>
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Ollama section removed for mobile-first simplicity */}
         </div>
       )}
     </div>

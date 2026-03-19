@@ -40,7 +40,6 @@ export default function ModelDefaultsPanel() {
           <option value="openrouter">OpenRouter</option>
           <option value="openai">OpenAI</option>
           <option value="anthropic">Anthropic</option>
-          <option value="ollama">Ollama</option>
         </select>
         {provider === 'openrouter' && (
           <>
