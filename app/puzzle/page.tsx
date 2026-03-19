@@ -96,22 +96,50 @@ function initAudio() {
   if (audioStarted) return
   audioStarted = true
   Tone.start()
-  const reverb = new Tone.Freeverb({ roomSize: 0.93, dampening: 900 }).toDestination()
-  const droneGain = new Tone.Gain(0.06).connect(reverb)
-  const drone = new Tone.Oscillator({ frequency: 55, type: 'sine' }).connect(droneGain)
+  const user = getAudioPrefs()
+  const reverb = new Tone.Freeverb({ roomSize: user.roomSize, dampening: user.dampening }).toDestination()
+  const droneGain = new Tone.Gain(user.droneGain).connect(reverb)
+  const drone = new Tone.Oscillator({ frequency: 55, type: user.droneType }).connect(droneGain)
   drone.start()
   const synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: 'triangle' },
+    oscillator: { type: user.synthType },
     envelope: { attack: 0.2, decay: 1.5, sustain: 0.4, release: 4 },
   }).connect(reverb)
-  synth.volume.value = -10
+  synth.volume.value = user.synthVolume
   const finale = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: 'triangle' },
+    oscillator: { type: user.synthType },
     envelope: { attack: 0.3, decay: 2, sustain: 0.6, release: 7 },
   }).connect(reverb)
-  finale.volume.value = -8
+  finale.volume.value = user.finaleVolume
   audioRig = { drone, droneGain, reverb, synth, finale }
 }
+
+function getAudioPrefs() {
+  const raw = typeof window !== 'undefined' ? localStorage.getItem('puzzle_audio') : null
+  const d = raw ? JSON.parse(raw) : {}
+  return {
+    droneGain: clampNum(d.droneGain ?? 0.04, 0, 0.3),
+    synthVolume: clampNum(d.synthVolume ?? -12, -40, 0),
+    finaleVolume: clampNum(d.finaleVolume ?? -10, -40, 0),
+    roomSize: clampNum(d.roomSize ?? 0.9, 0, 0.99),
+    dampening: clampNum(d.dampening ?? 900, 100, 3000),
+    droneType: (d.droneType ?? 'sine') as any,
+    synthType: (d.synthType ?? 'triangle') as any,
+  }
+}
+function setAudioPrefs(p: Partial<ReturnType<typeof getAudioPrefs>>) {
+  const cur = getAudioPrefs()
+  const next = { ...cur, ...p }
+  if (typeof window !== 'undefined') localStorage.setItem('puzzle_audio', JSON.stringify(next))
+  if (audioRig) {
+    audioRig.droneGain.gain.rampTo(next.droneGain, 0.2)
+    audioRig.synth.volume.rampTo(next.synthVolume, 0.2)
+    audioRig.finale.volume.rampTo(next.finaleVolume, 0.2)
+    ;(audioRig.reverb as any).roomSize?.value !== undefined && ((audioRig.reverb as any).roomSize.value = next.roomSize)
+    ;(audioRig.reverb as any).dampening?.value !== undefined && ((audioRig.reverb as any).dampening.value = next.dampening)
+  }
+}
+function clampNum(n: number, a: number, b: number) { return Math.max(a, Math.min(b, n)) }
 
 function updateDrone(proximity: number) {
   if (!audioRig) return
@@ -694,6 +722,53 @@ function AngelGuidance({ maze, playerX, playerZ, discovered }: { maze: MazeGrid;
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
+function AudioSettings() {
+  const [open, setOpen] = useState(false)
+  const [prefs, setPrefs] = useState(getAudioPrefs())
+  useEffect(() => { setPrefs(getAudioPrefs()) }, [])
+  const update = (p: Partial<typeof prefs>) => { const next = { ...prefs, ...p }; setPrefs(next); setAudioPrefs(p) }
+  return (
+    <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 45 }}>
+      <button onClick={() => setOpen(v => !v)} className="text-xs px-2 py-1 rounded" style={{ border: '1px solid var(--border)', color: 'var(--muted)', background: 'rgba(255,255,255,0.06)' }}>
+        {open ? 'Audio ▲' : 'Audio ▼'}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-lg p-3 space-y-2" style={{ background: 'rgba(8,12,18,0.9)', border: '1px solid var(--border)' }}>
+          <Labeled label="Drone Gain"><input type="range" min={0} max={0.3} step={0.005} value={prefs.droneGain} onChange={(e) => update({ droneGain: Number(e.target.value) })} /></Labeled>
+          <Labeled label="Synth Volume"><input type="range" min={-40} max={0} step={1} value={prefs.synthVolume} onChange={(e) => update({ synthVolume: Number(e.target.value) })} /></Labeled>
+          <Labeled label="Finale Volume"><input type="range" min={-40} max={0} step={1} value={prefs.finaleVolume} onChange={(e) => update({ finaleVolume: Number(e.target.value) })} /></Labeled>
+          <Labeled label="Reverb Size"><input type="range" min={0} max={0.99} step={0.01} value={prefs.roomSize} onChange={(e) => update({ roomSize: Number(e.target.value) })} /></Labeled>
+          <Labeled label="Dampening"><input type="range" min={100} max={3000} step={50} value={prefs.dampening} onChange={(e) => update({ dampening: Number(e.target.value) })} /></Labeled>
+          <Labeled label="Drone Wave">
+            <select value={prefs.droneType} onChange={(e) => update({ droneType: e.target.value as any })} className="text-xs">
+              <option value="sine">sine</option>
+              <option value="triangle">triangle</option>
+              <option value="square">square</option>
+              <option value="sawtooth">sawtooth</option>
+            </select>
+          </Labeled>
+          <Labeled label="Synth Wave">
+            <select value={prefs.synthType} onChange={(e) => update({ synthType: e.target.value as any })} className="text-xs">
+              <option value="triangle">triangle</option>
+              <option value="sine">sine</option>
+              <option value="square">square</option>
+              <option value="sawtooth">sawtooth</option>
+            </select>
+          </Labeled>
+        </div>
+      )}
+    </div>
+  )
+}
+function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-xs" style={{ color: 'var(--muted)' }}>
+      <span>{label}</span>
+      <span>{children}</span>
+    </label>
+  )
+}
+
 export default function PuzzlePage() {
   const [started, setStarted] = useState(false)
   const [discovered, setDiscovered] = useState([false, false, false, false])
@@ -906,6 +981,7 @@ export default function PuzzlePage() {
       />
       <ControlsHint />
       {debug && <PuzzleDebugPanel />}
+      <AudioSettings />
       <DiscoveryOverlay
         config={lastDiscovery !== null ? POLYTOPES[lastDiscovery] : null}
         show={showDiscovery}
