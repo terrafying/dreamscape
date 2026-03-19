@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { getCurrentSky } from '@/lib/astro'
+import GuidedFirstRun from '@/components/GuidedFirstRun'
+import AuthSheet from '@/components/AuthSheet'
 
 function dateKey(offsetDays = 0): string {
   const d = new Date()
@@ -55,11 +57,9 @@ export default function Home() {
   return (
     <div className="max-w-xl mx-auto px-4 pt-8 pb-6 space-y-6">
       {/* One-time guided first run sheet */}
-      {/* @ts-expect-error Client component import at runtime */}
-      {require('@/components/GuidedFirstRun').default()}
+      <GuidedFirstRun />
       {/* Optional auth prompt (magic link) */}
-      {/* @ts-expect-error Client component import at runtime */}
-      {require('@/components/AuthSheet').default()}
+      <AuthSheet />
       <div
         className="rounded-2xl p-6 space-y-3"
         style={{
