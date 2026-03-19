@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
+import PuzzleDebugPanel from '@/components/PuzzleDebugPanel'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import * as Tone from 'tone'
@@ -778,6 +780,9 @@ export default function PuzzlePage() {
     updateDrone(proximity)
   }, [maze])
 
+  const params = useSearchParams()
+  const debug = params.get('debug') === '1'
+
   if (!started) {
     return <StartScreen onStart={() => { initAudio(); setStarted(true) }} />
   }
@@ -842,6 +847,7 @@ export default function PuzzlePage() {
         visitedCells={visitedCells}
       />
       <ControlsHint />
+      {debug && <PuzzleDebugPanel />}
       <DiscoveryOverlay
         config={lastDiscovery !== null ? POLYTOPES[lastDiscovery] : null}
         show={showDiscovery}

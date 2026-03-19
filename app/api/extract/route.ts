@@ -127,8 +127,10 @@ Return only valid JSON. No preamble, no explanation, no markdown.`
           return
         }
 
-        await setCache(cacheKey, extraction)
-        send('extraction', { data: extraction })
+        const { mergeCuratedSymbols } = await import('@/lib/symbols')
+        const enriched = mergeCuratedSymbols(extraction)
+        await setCache(cacheKey, enriched)
+        send('extraction', { data: enriched })
         send('done', {})
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Library",
+    "aliases": ["archives", "stacks"],
+    "category": "Place",
+    "meaning": "A living archive of the self. Not just knowledge, but what your psyche has carefully filed away and is now ready to retrieve. Entering a library often marks a chapter where old material is ripe for integration."
+  },
+  {
+    "name": "Red Book",
+    "aliases": ["crimson book", "scarlet book"],
+    "category": "Object",
+    "meaning": "The hot core of a question. Red signals vitality and risk — a page you must write, not read. If its pages are blank, the task is authorship: meaning emerges by engaging, not by waiting."
+  },
+  {
+    "name": "Ladder",
+    "aliases": ["rung", "ladderway"],
+    "category": "Object",
+    "meaning": "A vertical invitation. Climbing describes the psyche’s will to relate earth to sky — effort, reach, and the wobble between where you stand and what you’re capable of."
+  },
+  {
+    "name": "Fog",
+    "aliases": ["mist", "haze"],
+    "category": "Element",
+    "meaning": "A protective blur around what isn’t ready to be seen head‑on. Fog marks liminal thresholds; patience often reveals outlines without forcing clarity."
+  },
+  {
+    "name": "Silver Robes",
+    "aliases": ["silver robe", "silver garment"],
+    "category": "Appearance",
+    "meaning": "Lunar wisdom, receptive and cool. Guidance that arrives through reflection and intuition rather than command."
+  }
+]
