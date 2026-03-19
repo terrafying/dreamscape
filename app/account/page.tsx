@@ -33,6 +33,13 @@ export default function AccountPage() {
     if (url.searchParams.get('checkout') === 'success') {
       localStorage.setItem('dreamscape_plan', 'premium')
       localStorage.setItem('dreamscape_sync_enabled', '1')
+      const sessionId = url.searchParams.get('session_id')
+      if (sessionId) {
+        fetch(`/api/billing/success?session_id=${encodeURIComponent(sessionId)}`)
+          .then((r) => r.json())
+          .then((j) => { if (j?.customer) localStorage.setItem('stripe_customer_id', j.customer) })
+          .catch(() => {})
+      }
     }
   }, [])
 

@@ -22,13 +22,16 @@ export default function Paywall({ title = 'Go deeper with Dreamscape Premium', m
         >
           {cta}
         </Link>
-        <Link
-          href="/api/billing/portal"
+        {/* Build portal link client-side if we have a stored customer id */}
+        <a
+          href={typeof window !== 'undefined' && localStorage.getItem('stripe_customer_id')
+            ? `/api/billing/portal?customer=${encodeURIComponent(localStorage.getItem('stripe_customer_id') as string)}`
+            : '/account'}
           className="px-3 py-2 rounded-full text-xs"
           style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
         >
           Manage
-        </Link>
+        </a>
       </div>
     </div>
   )

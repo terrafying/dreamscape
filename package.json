@@ -25,6 +25,7 @@
     "@capacitor/preferences": "^8.0.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+    "@supabase/supabase-js": "^2.99.3",
     "@types/howler": "^2.2.12",
     "@types/three": "^0.164.0",
     "ai": "^3.3.0",

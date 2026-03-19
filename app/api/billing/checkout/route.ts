@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       mode: 'subscription',
       'line_items[0][price]': priceId,
       'line_items[0][quantity]': '1',
-      success_url: `${origin}/account?checkout=success`,
+      success_url: `${origin}/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/account?checkout=cancel`,
     })
     const resp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
