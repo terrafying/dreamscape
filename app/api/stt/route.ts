@@ -8,8 +8,8 @@ export async function POST(req: Request) {
     const file = form.get('audio') as File | null
     if (!file) return NextResponse.json({ ok: false, error: 'No audio' }, { status: 400 })
 
-    const dg = process.env.DEEPGRAM_API_KEY
-    const oai = process.env.OPENAI_API_KEY
+    const dg = req.headers.get('x-deepgram-key') || process.env.DEEPGRAM_API_KEY
+    const oai = req.headers.get('x-openai-key') || process.env.OPENAI_API_KEY
 
     // Try Deepgram first
     if (dg) {

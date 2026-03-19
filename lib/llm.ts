@@ -7,6 +7,7 @@ export interface LLMOptions {
   model?: string
   maxTokens?: number
   json?: boolean // request JSON-mode output (Ollama format:'json', Anthropic via prompt)
+  apiKeys?: { openai?: string; anthropic?: string; openrouter?: string }
 }
 
 // Lazy singleton so tests can mock the module before instantiation
@@ -26,17 +27,18 @@ export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): 
     }
     if (provider === 'openai') {
       const m = model || process.env.OPENAI_MODEL || 'gpt-4o-mini'
-      return { text: await callOpenAI(prompt, m, maxTokens), source: `openai:${m}` }
+      return { text: await callOpenAI(prompt, m, maxTokens, opts.apiKeys?.openai), source: `openai:${m}` }
     }
     if (provider === 'openrouter') {
       const m = model || process.env.OPENROUTER_MODEL || 'openrouter/free'
-      const text = await callOpenRouter(prompt, m, maxTokens)
+      const text = await callOpenRouter(prompt, m, maxTokens, opts.apiKeys?.openrouter)
       return { text, source: `openrouter:${m}` }
     }
 
     // Anthropic default
     const m = model || 'claude-3-haiku-20240307'
-    const response = await anthropicClient().messages.create({
+    const client = opts.apiKeys?.anthropic ? new (Anthropic as any)({ apiKey: opts.apiKeys.anthropic }) : anthropicClient()
+    const response = await client.messages.create({
       model: m,
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
@@ -99,8 +101,8 @@ async function callOllama(
   return data.message?.content ?? ''
 }
 
-async function callOpenAI(prompt: string, model: string, maxTokens: number): Promise<string> {
-  const key = process.env.OPENAI_API_KEY
+async function callOpenAI(prompt: string, model: string, maxTokens: number, overrideKey?: string): Promise<string> {
+  const key = overrideKey || process.env.OPENAI_API_KEY
   if (!key) throw new Error('Missing OPENAI_API_KEY')
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -120,8 +122,8 @@ async function callOpenAI(prompt: string, model: string, maxTokens: number): Pro
 
 import { pickOpenRouterModel, markOpenRouterFailure, markOpenRouterSuccess } from '@/lib/openrouter'
 
-async function callOpenRouter(prompt: string, model: string, maxTokens: number): Promise<string> {
-  const key = process.env.OPENROUTER_API_KEY
+async function callOpenRouter(prompt: string, model: string, maxTokens: number, overrideKey?: string): Promise<string> {
+  const key = overrideKey || process.env.OPENROUTER_API_KEY
   if (!key) throw new Error('Missing OPENROUTER_API_KEY')
   const chosen = model === 'openrouter/free' || !model ? pickOpenRouterModel() : model
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {

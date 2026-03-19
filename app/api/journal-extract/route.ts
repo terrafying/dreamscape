@@ -98,6 +98,11 @@ Return only valid JSON.`
           model,
           maxTokens: 1400,
           json: true,
+          apiKeys: {
+            openai: req.headers.get('x-openai-key') || undefined,
+            openrouter: req.headers.get('x-openrouter-key') || undefined,
+            anthropic: req.headers.get('x-anthropic-key') || undefined,
+          },
         })
         send('source', { provider: source })
 

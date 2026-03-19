@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getSupabase } from '@/lib/supabaseClient'
+import ApiKeysPanel from '@/components/ApiKeysPanel'
 
 export default function AccountPage() {
   const supabase = getSupabase()
@@ -76,6 +77,14 @@ export default function AccountPage() {
         <h2 className="text-sm uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.14em' }}>Settings</h2>
         <SyncToggle />
         <ReminderSettings />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.14em' }}>API</h2>
+        <ApiKeysPanel />
+        <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
+          BYO keys are not paywalled yet (MVP). Later we’ll offer using our managed keys as a Premium feature.
+        </p>
       </div>
     </div>
   )
