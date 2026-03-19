@@ -134,6 +134,48 @@ export default function Home() {
           </p>
         </div>
       </div>
+
+      {/* Quick Start */}
+      <div
+        className="rounded-xl p-4 space-y-3"
+        style={{ background: 'rgba(15,15,26,0.65)', border: '1px solid var(--border)' }}
+      >
+        <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--muted)' }}>
+          Quick Start
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <Link
+            href={isEveningWindow ? '/journal' : '/log'}
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>{isEveningWindow ? '☾' : '☀'}</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+              {isEveningWindow ? 'Dusk Entry' : 'Dawn Log'}
+            </div>
+          </Link>
+          <Link
+            href="/strata"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>◈</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+              See Insights
+            </div>
+          </Link>
+          <Link
+            href="/letters"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>◇</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+              Dream Letter
+            </div>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }
