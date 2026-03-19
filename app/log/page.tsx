@@ -288,20 +288,32 @@ export default function LogPage() {
           </div>
         )}
 
-        {/* Recent dreams list */}
+        {/* Paywall banner for free tier after limits */}
         {status === 'idle' && dreams.length > 0 && (
-          <div className="space-y-2 pt-2">
-            <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
-              Recent
+          <>
+            {(() => {
+              // Lazy import to avoid a circular import at top-level
+              const over = (window ? require('@/lib/entitlements') : { isOverFreeLimits: () => false }).isOverFreeLimits?.(dreams) ?? false
+              return over ? (
+                <div className="pt-2">
+                  {require('@/components/Paywall').default({ title: 'Keep your archive growing', message: 'Free tier includes up to 5 dreams and 3 weeks of history. Upgrade to unlock deeper analysis and unlimited logging.' })}
+                </div>
+              ) : null
+            })()}
+
+            <div className="space-y-2 pt-2">
+              <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
+                Recent
+              </div>
+              {dreams.slice(0, 5).map((dream) => (
+                <DreamEntry key={dream.id} dream={dream} onSelect={() => {
+                  setTranscript(dream.transcript)
+                  setExtraction(dream.extraction || null)
+                  setStatus(dream.extraction ? 'done' : 'idle')
+                }} />
+              ))}
             </div>
-            {dreams.slice(0, 5).map((dream) => (
-              <DreamEntry key={dream.id} dream={dream} onSelect={() => {
-                setTranscript(dream.transcript)
-                setExtraction(dream.extraction || null)
-                setStatus(dream.extraction ? 'done' : 'idle')
-              }} />
-            ))}
-          </div>
+          </>
         )}
 
         {/* Birth data prompt */}

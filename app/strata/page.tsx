@@ -6,6 +6,7 @@ import { getDreams, getBirthData, saveBirthData, seedDemoDreams } from '@/lib/st
 import { getBiometricData, saveBiometricDataBatch } from '@/lib/biometrics'
 import { getNatalPlacements, getCurrentTransits, getDominantTransit } from '@/lib/astro'
 import { getAppleHealthSampleData } from '@/lib/integrations/health'
+import { isOverFreeLimits } from '@/lib/entitlements'
 import EmotionTimeline from '@/components/charts/EmotionTimeline'
 import ThemeRadar from '@/components/charts/ThemeRadar'
 import SymbolFrequency from '@/components/charts/SymbolFrequency'
@@ -14,6 +15,7 @@ import LunarCalendar from '@/components/charts/LunarCalendar'
 import BiometricChart from '@/components/BiometricChart'
 import AstroPanel from '@/components/AstroPanel'
 import BirthDataModal from '@/components/BirthDataModal'
+import Paywall from '@/components/Paywall'
 
 // ─── Archetype definitions ────────────────────────────────────────────────────
 
@@ -685,30 +687,35 @@ export default function StrataPage() {
             <BiometricChart biometrics={biometrics} dreams={withExtraction} />
           </ChartCard>
 
-          <div
-            className="rounded-2xl p-5 space-y-3"
-            style={{ background: 'rgba(15,15,26,0.7)', border: '1px solid var(--border)' }}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
-                Health Correlation Insights
+          {/* Paywall: advanced insights beyond free limits */}
+          {isOverFreeLimits(dreams) ? (
+            <Paywall title="Unlock Health Correlation Insights" message="See how HRV, sleep score, and restfulness align with your dream patterns over weeks and months." />
+          ) : (
+            <div
+              className="rounded-2xl p-5 space-y-3"
+              style={{ background: 'rgba(15,15,26,0.7)', border: '1px solid var(--border)' }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
+                  Health Correlation Insights
+                </div>
+                {biometrics.length === 0 && (
+                  <button
+                    onClick={handleLoadSampleBiometrics}
+                    className="text-xs px-2.5 py-1 rounded-full transition-opacity hover:opacity-75"
+                    style={{ border: '1px solid rgba(45,212,191,0.4)', color: '#2dd4bf', fontFamily: 'monospace' }}
+                  >
+                    Load sample data
+                  </button>
+                )}
               </div>
-              {biometrics.length === 0 && (
-                <button
-                  onClick={handleLoadSampleBiometrics}
-                  className="text-xs px-2.5 py-1 rounded-full transition-opacity hover:opacity-75"
-                  style={{ border: '1px solid rgba(45,212,191,0.4)', color: '#2dd4bf', fontFamily: 'monospace' }}
-                >
-                  Load sample data
-                </button>
-              )}
+              <div className="space-y-2 text-sm" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
+                {healthInsights.map((insight) => (
+                  <p key={insight}>• {insight}</p>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2 text-sm" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
-              {healthInsights.map((insight) => (
-                <p key={insight}>• {insight}</p>
-              ))}
-            </div>
-          </div>
+          )}
 
           <ChartCard>
             <LunarCalendar dreams={dreams} />
