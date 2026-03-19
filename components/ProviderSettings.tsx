@@ -17,6 +17,7 @@ const RECOMMENDED: { name: string; sizeGB: number; note: string }[] = [
 export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
   const [provider, setProvider] = useState<LLMProvider>('anthropic')
   const [model, setModel] = useState('qwen2.5:32b')
+  const [orModel, setOrModel] = useState('openrouter/free')
   const [expanded, setExpanded] = useState(false)
   const [availableModels, setAvailableModels] = useState<{ name: string; sizeGB: number }[]>([])
   const [ollamaStatus, setOllamaStatus] = useState<'unknown' | 'running' | 'offline'>('unknown')
@@ -25,17 +26,21 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
   useEffect(() => {
     const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'anthropic'
     const m = localStorage.getItem('dreamscape_model') || 'qwen2.5:32b'
+    const orm = localStorage.getItem('dreamscape_or_model') || 'openrouter/free'
     setProvider(p)
     setModel(m)
-    onChange?.(p, p === 'ollama' ? m : undefined)
+    setOrModel(orm)
+    onChange?.(p, p === 'ollama' ? m : p === 'openrouter' ? orm : undefined)
   }, [])
 
   const save = (p: LLMProvider, m: string) => {
     localStorage.setItem('dreamscape_provider', p)
-    localStorage.setItem('dreamscape_model', m)
+    if (p === 'ollama') localStorage.setItem('dreamscape_model', m)
+    if (p === 'openrouter') localStorage.setItem('dreamscape_or_model', m)
     setProvider(p)
-    setModel(m)
-    onChange?.(p, p === 'ollama' ? m : undefined)
+    if (p === 'ollama') setModel(m)
+    if (p === 'openrouter') setOrModel(m)
+    onChange?.(p, p === 'ollama' ? m : p === 'openrouter' ? m : undefined)
   }
 
   const fetchModels = async () => {
@@ -53,7 +58,11 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
   }
 
   const label = provider === 'anthropic'
-    ? '☁ Claude Opus 4.6'
+    ? '☁ Anthropic (auto)'
+    : provider === 'openai'
+    ? '☁ OpenAI (auto)'
+    : provider === 'openrouter'
+    ? `☁ OpenRouter (${orModel})`
     : `◉ ${model}`
 
   return (
@@ -80,8 +89,8 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
           </div>
 
           {/* Provider toggle */}
-          <div className="flex gap-2">
-            {(['anthropic', 'ollama'] as LLMProvider[]).map((p) => (
+          <div className="flex gap-2 flex-wrap">
+            {(['anthropic', 'openai', 'openrouter', 'ollama'] as LLMProvider[]).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -93,7 +102,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
                   color: provider === p ? 'var(--violet)' : 'var(--muted)',
                 }}
               >
-                {p === 'anthropic' ? '☁ Anthropic API' : '◉ Local (Ollama)'}
+                {p === 'anthropic' ? '☁ Anthropic API' : p === 'openai' ? '☁ OpenAI' : p === 'openrouter' ? '☁ OpenRouter' : '◉ Local (Ollama)'}
               </button>
             ))}
           </div>
@@ -101,9 +110,35 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
           {/* Anthropic info */}
           {provider === 'anthropic' && (
             <p className="text-xs" style={{ color: 'var(--muted)' }}>
-              Uses <span style={{ color: 'var(--text)' }}>claude-opus-4-6</span> via your{' '}
-              <span style={{ color: 'var(--violet)' }}>ANTHROPIC_API_KEY</span>.
+              Uses Anthropic via your <span style={{ color: 'var(--violet)' }}>ANTHROPIC_API_KEY</span> with in-app fallbacks if rate-limited.
             </p>
+          )}
+
+          {/* OpenAI info */}
+          {provider === 'openai' && (
+            <p className="text-xs" style={{ color: 'var(--muted)' }}>
+              Uses OpenAI via your <span style={{ color: 'var(--violet)' }}>OPENAI_API_KEY</span>. Model defaults to <span style={{ color: 'var(--text)' }}>gpt-4o-mini</span>.
+            </p>
+          )}
+
+          {/* OpenRouter config */}
+          {provider === 'openrouter' && (
+            <div className="space-y-2">
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                Uses OpenRouter via your <span style={{ color: 'var(--violet)' }}>OPENROUTER_API_KEY</span>. Auto-rotates free models with cool-down on failures.
+              </p>
+              <div className="space-y-1">
+                <label className="text-xs" style={{ color: 'var(--muted)' }}>Model override</label>
+                <input
+                  type="text"
+                  value={orModel}
+                  onChange={(e) => save('openrouter', e.target.value)}
+                  placeholder="openrouter/free"
+                  className="w-full rounded-lg px-3 py-1.5 text-xs font-mono outline-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
           )}
 
           {/* Ollama config */}
