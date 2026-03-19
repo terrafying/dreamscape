@@ -11,8 +11,13 @@ export default function AuthSheet() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const seen = localStorage.getItem('dreamscape_auth_prompted')
-    if (!seen) setOpen(true)
+    const prompted = localStorage.getItem('dreamscape_auth_prompted')
+    const guidedSeen = localStorage.getItem('dreamscape_guided_seen')
+    // Only prompt after guided sheet has been seen to avoid stacked sheets
+    if (!prompted && guidedSeen) {
+      const t = setTimeout(() => setOpen(true), 400)
+      return () => clearTimeout(t)
+    }
   }, [])
 
   const dismiss = () => {
@@ -60,6 +65,16 @@ export default function AuthSheet() {
             {status === 'sent' ? 'Sent ✓' : status === 'sending' ? 'Sending…' : 'Send Link'}
           </button>
         </div>
+        {status === 'sent' && (
+          <div className="text-[11px] space-y-1" style={{ color: 'var(--muted)' }}>
+            <div>We sent a login link to <span style={{ color: 'var(--text)' }}>{email}</span>.</div>
+            <div className="flex gap-2">
+              <a href="https://mail.google.com/" target="_blank" className="underline">Open Gmail</a>
+              <a href="https://www.icloud.com/mail" target="_blank" className="underline">iCloud Mail</a>
+              <a href="https://outlook.live.com/mail/0/inbox" target="_blank" className="underline">Outlook</a>
+            </div>
+          </div>
+        )}
         {!supabase && (
           <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
             Admin note: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable.
