@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { DreamLog, DreamExtraction, BirthData } from '@/lib/types'
 import type { LLMProvider } from '@/lib/llm'
 import { getDreams, saveDream, getBirthData, saveBirthData, generateId } from '@/lib/store'
+import { apiFetch } from '@/lib/apiFetch'
 import { getNatalPlacements } from '@/lib/astro'
 import ExtractionDisplay from '@/components/ExtractionDisplay'
 import BirthDataModal from '@/components/BirthDataModal'
@@ -82,10 +83,8 @@ export default function LogPage() {
     abortRef.current = new AbortController()
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || ''
-      const res = await fetch(`${baseUrl}/api/extract`, {
+      const res = await apiFetch('/api/extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript, date: today, birthData, provider, model }),
         signal: abortRef.current.signal,
       })

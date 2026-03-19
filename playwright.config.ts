@@ -44,6 +44,15 @@ export default defineConfig({
       use: { ...devices['iPad (gen 7)'] },
       testMatch: ['**/mobile.spec.ts'],
     },
+    {
+      name: 'video-iphone',
+      use: {
+        ...devices['iPhone 14 Pro'],
+        video: { mode: 'on', size: { width: 393, height: 852 } },
+        launchOptions: { slowMo: 120 },
+      },
+      testMatch: ['**/demo-videos.spec.ts'],
+    },
   ],
   webServer: {
     command: 'npm run dev -- --port 3001',

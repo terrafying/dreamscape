@@ -53,14 +53,18 @@ export default function BirthDataModal({ onSave, onDismiss }: BirthDataModalProp
     setDateError('')
     setTimeError('')
 
-    const date = parseDate(dateRaw)
+    // type="date" returns YYYY-MM-DD directly; text fallback goes through parseDate
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : parseDate(dateRaw)
     if (!date) {
       setDateError('Use MM/DD/YYYY or YYYY-MM-DD')
       return
     }
     if (!location.trim()) return
 
-    const time = timeRaw ? parseTime(timeRaw) : undefined
+    // type="time" returns HH:MM directly; text fallback goes through parseTime
+    const time = timeRaw
+      ? (/^\d{2}:\d{2}$/.test(timeRaw) ? timeRaw : parseTime(timeRaw))
+      : undefined
     if (timeRaw && !time) {
       setTimeError('Use H:MM AM/PM or HH:MM')
       return
@@ -103,14 +107,12 @@ export default function BirthDataModal({ onSave, onDismiss }: BirthDataModalProp
               Birth Date *
             </label>
             <input
-              type="text"
-              inputMode="numeric"
+              type="date"
               value={dateRaw}
               onChange={(e) => { setDateRaw(e.target.value); setDateError('') }}
-              placeholder="MM/DD/YYYY"
+              max={new Date().toISOString().split('T')[0]}
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ ...inputStyle, borderColor: dateError ? '#f87171' : undefined }}
-              autoComplete="off"
+              style={{ ...inputStyle, borderColor: dateError ? '#f87171' : undefined, colorScheme: 'dark' }}
             />
             {dateError && <p className="text-xs" style={{ color: '#f87171' }}>{dateError}</p>}
           </div>
@@ -121,14 +123,11 @@ export default function BirthDataModal({ onSave, onDismiss }: BirthDataModalProp
               <span style={{ color: 'var(--muted)', fontSize: '10px' }}>(optional — needed for rising sign)</span>
             </label>
             <input
-              type="text"
-              inputMode="numeric"
+              type="time"
               value={timeRaw}
               onChange={(e) => { setTimeRaw(e.target.value); setTimeError('') }}
-              placeholder="4:30 AM"
               className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ ...inputStyle, borderColor: timeError ? '#f87171' : undefined }}
-              autoComplete="off"
+              style={{ ...inputStyle, borderColor: timeError ? '#f87171' : undefined, colorScheme: 'dark' }}
             />
             {timeError && <p className="text-xs" style={{ color: '#f87171' }}>{timeError}</p>}
           </div>

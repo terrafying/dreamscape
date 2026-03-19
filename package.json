@@ -13,7 +13,10 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "vitest run && playwright test",
-    "screenshots": "playwright test tests/e2e/screenshots.spec.ts --project=desktop-screenshots && playwright test tests/e2e/screenshots.spec.ts --project=mobile-screenshots"
+    "screenshots": "playwright test tests/e2e/screenshots.spec.ts --project=desktop-screenshots && playwright test tests/e2e/screenshots.spec.ts --project=mobile-screenshots",
+    "videos": "playwright test tests/e2e/demo-videos.spec.ts --project=video-iphone",
+    "videos:trim": "bash scripts/trim-videos.sh",
+    "videos:all": "npm run videos && npm run videos:trim"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",

@@ -5,6 +5,7 @@ import type { DreamLog, BirthData } from '@/lib/types'
 import type { LLMProvider } from '@/lib/llm'
 import { getDreams, getBirthData } from '@/lib/store'
 import RecommendationCards from '@/components/RecommendationCards'
+import { apiFetch } from '@/lib/apiFetch'
 
 interface StructuredLetter {
   key_patterns: { pattern: string; frequency: number; significance: string }[]
@@ -61,10 +62,8 @@ export default function LettersPage() {
     const today = new Date().toISOString().split('T')[0]
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || ''
-      const res = await fetch(`${baseUrl}/api/letter`, {
+      const res = await apiFetch('/api/letter', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dreams: analyzed, birthData, date: today, provider, model }),
       })
 

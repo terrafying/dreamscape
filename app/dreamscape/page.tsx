@@ -5,6 +5,7 @@ import BinauralPlayer from '@/components/BinauralPlayer'
 import BreathworkPlayer from '@/components/BreathworkPlayer'
 import { getDreams } from '@/lib/store'
 import type { DreamLog } from '@/lib/types'
+import { apiFetch } from '@/lib/apiFetch'
 
 const TABS = [
   { id: 'breathwork', label: 'Breathwork', icon: '◎' },
@@ -33,10 +34,8 @@ function StoryTab() {
 
     try {
       const birth = typeof window !== 'undefined' ? localStorage.getItem('dreamscape_birth') : null
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || ''
-      const res = await fetch(`${baseUrl}/api/story`, {
+      const res = await apiFetch('/api/story', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           dreams,
           birthData: birth ? JSON.parse(birth) : null,

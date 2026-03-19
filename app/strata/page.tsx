@@ -12,17 +12,291 @@ import LunarCalendar from '@/components/charts/LunarCalendar'
 import AstroPanel from '@/components/AstroPanel'
 import BirthDataModal from '@/components/BirthDataModal'
 
+// ─── Archetype definitions ────────────────────────────────────────────────────
+
+const ARCHETYPES = [
+  {
+    id: 'undertow',
+    name: 'The Undertow',
+    description: "You process grief and loss through transformation. Your dreams are a form of healing you don't give yourself credit for.",
+    rarity: '18%',
+    icon: '∿',
+  },
+  {
+    id: 'cartographer',
+    name: 'The Cartographer',
+    description: "You are mapping unknown territories. Your unconscious is surveying ground you haven't consciously claimed yet.",
+    rarity: '12%',
+    icon: '◈',
+  },
+  {
+    id: 'architect',
+    name: 'The Architect',
+    description: "You build worlds in sleep that reflect the structures you're constructing in waking life.",
+    rarity: '21%',
+    icon: '◇',
+  },
+  {
+    id: 'witness',
+    name: 'The Witness',
+    description: "You observe more than you act in dreams — your unconscious is developing a capacity for radical self-awareness.",
+    rarity: '9%',
+    icon: '✦',
+  },
+  {
+    id: 'alchemist',
+    name: 'The Alchemist',
+    description: "Transformation is your constant. Your dreams suggest a psyche that cannot stay still — always converting one thing into another.",
+    rarity: '15%',
+    icon: '⬡',
+  },
+  {
+    id: 'archivist',
+    name: 'The Archivist',
+    description: "You are storing and cataloguing experience. Your dreams suggest a mind building a vast inner library of meaning.",
+    rarity: '23%',
+    icon: '◉',
+  },
+  {
+    id: 'navigator',
+    name: 'The Navigator',
+    description: "You move through terrain with intention, even when the terrain shifts. Your dreams suggest deep inner directedness.",
+    rarity: '17%',
+    icon: '◎',
+  },
+  {
+    id: 'oracle',
+    name: 'The Oracle',
+    description: "Your dreams reach toward revelation. The imagery you generate is charged with meaning that extends beyond the personal.",
+    rarity: '14%',
+    icon: '⬟',
+  },
+]
+
+function computeArchetype(dreams: DreamLog[]): typeof ARCHETYPES[number] | null {
+  if (dreams.length < 5) return null
+
+  // Tally narrative arcs
+  const arcCount: Record<string, number> = {}
+  for (const d of dreams) {
+    const arc = d.extraction?.narrative_arc
+    if (arc) arcCount[arc] = (arcCount[arc] || 0) + 1
+  }
+  const dominantArc = Object.entries(arcCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+
+  // Tally emotion valence (positive = valence > 0, negative = valence < 0)
+  let positiveCount = 0
+  let negativeCount = 0
+  for (const d of dreams) {
+    for (const em of d.extraction?.emotions || []) {
+      if (em.valence > 0) positiveCount++
+      else if (em.valence < 0) negativeCount++
+    }
+  }
+  const dominantValence = positiveCount >= negativeCount ? 'positive' : 'negative'
+
+  // Tally symbol categories
+  const symCatCount: Record<string, number> = {}
+  for (const d of dreams) {
+    for (const s of d.extraction?.symbols || []) {
+      const cat = (s.category || '').toLowerCase()
+      symCatCount[cat] = (symCatCount[cat] || 0) + 1
+    }
+  }
+  const dominantSymCat = Object.entries(symCatCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+
+  // Tally theme categories
+  const themeCatCount: Record<string, number> = {}
+  for (const d of dreams) {
+    for (const t of d.extraction?.themes || []) {
+      const cat = (t.category || t.name || '').toLowerCase()
+      themeCatCount[cat] = (themeCatCount[cat] || 0) + 1
+    }
+  }
+  const dominantThemeCat = Object.entries(themeCatCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+
+  // Average lucidity
+  const avgLucidity =
+    dreams.reduce((s, d) => s + (d.extraction?.lucidity || 0), 0) / dreams.length
+
+  // Score each archetype
+  const scores: Record<string, number> = {}
+  ARCHETYPES.forEach((a) => { scores[a.id] = 0 })
+
+  // Narrative arc matching
+  if (dominantArc === 'descending') scores['undertow'] += 3
+  if (dominantArc === 'liminal') scores['cartographer'] += 3
+  if (dominantArc === 'ascending') {
+    scores['architect'] += 3
+    scores['navigator'] += 3
+  }
+  if (dominantArc === 'cyclical') scores['alchemist'] += 3
+  if (dominantArc === 'fragmented') scores['archivist'] += 3
+
+  // Valence matching
+  if (dominantValence === 'negative') scores['undertow'] += 2
+  if (dominantValence === 'positive') scores['navigator'] += 2
+
+  // Symbol category matching
+  if (dominantSymCat.includes('cosmic') || dominantSymCat.includes('archetypal')) scores['oracle'] += 2
+  if (dominantSymCat.includes('knowledge')) scores['archivist'] += 2
+  if (dominantSymCat.includes('architecture') || dominantSymCat.includes('building')) scores['architect'] += 2
+  if (dominantSymCat.includes('elemental') || dominantSymCat.includes('transformation')) scores['alchemist'] += 2
+
+  // Theme category matching
+  if (dominantThemeCat.includes('knowledge') || dominantThemeCat.includes('intellectual')) scores['archivist'] += 2
+  if (dominantThemeCat.includes('transform')) scores['alchemist'] += 2
+  if (dominantThemeCat.includes('cosmic') || dominantThemeCat.includes('spirit')) scores['oracle'] += 2
+  if (dominantThemeCat.includes('liminal') || dominantThemeCat.includes('threshold')) scores['cartographer'] += 2
+
+  // Lucidity bonus
+  if (avgLucidity > 1.5) scores['witness'] += 3
+
+  // Pick highest score (first in case of tie)
+  let best = ARCHETYPES[0]
+  let bestScore = scores[ARCHETYPES[0].id]
+  for (const archetype of ARCHETYPES) {
+    if (scores[archetype.id] > bestScore) {
+      bestScore = scores[archetype.id]
+      best = archetype
+    }
+  }
+  return best
+}
+
+// ─── Weekly summary helpers ───────────────────────────────────────────────────
+
+function shouldShowSummary(): boolean {
+  if (typeof window === 'undefined') return false
+  const dismissed = localStorage.getItem('dreamscape_summary_dismissed')
+  const lastShown = localStorage.getItem('dreamscape_last_summary')
+  const today = new Date()
+  const dayOfWeek = today.getDay() // 0 = Sunday
+
+  if (dismissed) {
+    // If dismissed today, don't show again today
+    const dismissedDate = new Date(dismissed)
+    if (dismissedDate.toDateString() === today.toDateString()) return false
+  }
+
+  if (!lastShown) return true // never shown, will check dream count at render time
+  const lastDate = new Date(lastShown)
+  const daysSince = (today.getTime() - lastDate.getTime()) / 86400000
+  if (dayOfWeek === 0) return true // always show on Sundays
+  if (daysSince >= 7) return true
+  return false
+}
+
+function buildWeeklySummary(dreams: DreamLog[]) {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)
+  const recent = dreams.filter((d) => new Date(d.date) >= sevenDaysAgo)
+  const analyzed = recent.filter((d) => d.extraction)
+
+  // Top symbols
+  const symCount: Record<string, number> = {}
+  for (const d of analyzed) {
+    for (const s of d.extraction!.symbols || []) {
+      symCount[s.name] = (symCount[s.name] || 0) + 1
+    }
+  }
+  const topSymbols = Object.entries(symCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name]) => name)
+
+  // Dominant emotion
+  const emCount: Record<string, number> = {}
+  for (const d of analyzed) {
+    for (const em of d.extraction!.emotions || []) {
+      emCount[em.name] = (emCount[em.name] || 0) + em.intensity
+    }
+  }
+  const topEmotion = Object.entries(emCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+  // Top themes
+  const themeCount: Record<string, number> = {}
+  for (const d of analyzed) {
+    for (const t of d.extraction!.themes || []) {
+      themeCount[t.name] = (themeCount[t.name] || 0) + 1
+    }
+  }
+  const topThemes = Object.entries(themeCount).sort((a, b) => b[1] - a[1]).map(([name]) => name)
+  const topTheme = topThemes[0] ?? null
+  const secondTheme = topThemes[1] ?? null
+
+  // Dominant arc
+  const arcCount: Record<string, number> = {}
+  for (const d of analyzed) {
+    const arc = d.extraction?.narrative_arc
+    if (arc) arcCount[arc] = (arcCount[arc] || 0) + 1
+  }
+  const dominantArc = Object.entries(arcCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+
+  // Valence
+  let posV = 0, negV = 0
+  for (const d of analyzed) {
+    for (const em of d.extraction!.emotions || []) {
+      if (em.valence > 0) posV++
+      else if (em.valence < 0) negV++
+    }
+  }
+  const valencePositive = posV >= negV
+
+  // AI-style insight (template-based, no API)
+  let insight = ''
+  if (dominantArc === 'descending' && topSymbols[0]) {
+    insight = `Your unconscious is processing something — the recurring ${topSymbols[0]} points toward unresolved material.`
+  } else if (dominantArc === 'liminal' && topSymbols[0]) {
+    insight = `You're in threshold space. The ${topSymbols[0]} imagery suggests a transition is underway.`
+  } else if (valencePositive && topTheme) {
+    insight = `Your dreams this week suggest ${topTheme} is active and generative.`
+  } else if (topTheme && secondTheme) {
+    insight = `Your dreamscape this week was shaped by ${topTheme} and ${secondTheme}.`
+  } else if (topTheme) {
+    insight = `Your dreamscape this week was shaped by ${topTheme}.`
+  }
+
+  // Date range label
+  const weekStart = new Date(Date.now() - 6 * 86400000)
+  const weekStartStr = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const dateRange = `${weekStartStr} – ${todayStr}`
+
+  return {
+    dateRange,
+    totalRecent: recent.length,
+    totalAnalyzed: analyzed.length,
+    topSymbols,
+    topEmotion,
+    topTheme,
+    insight,
+  }
+}
+
+// ─── Page component ───────────────────────────────────────────────────────────
+
 export default function StrataPage() {
   const [dreams, setDreams] = useState<DreamLog[]>([])
   const [birthData, setBirthData] = useState<BirthData | null>(null)
   const [showBirthModal, setShowBirthModal] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [archetypeCopied, setArchetypeCopied] = useState(false)
+  const [summaryVisible, setSummaryVisible] = useState(false)
+  const [summaryDismissed, setSummaryDismissed] = useState(false)
 
   useEffect(() => {
     Promise.all([getDreams(), getBirthData()]).then(([d, bd]) => {
       setDreams(d)
       setBirthData(bd)
       setLoaded(true)
+
+      // Determine summary visibility after dreams load
+      const analyzed = d.filter((dream) => dream.extraction)
+      const show = shouldShowSummary() && analyzed.length >= 3
+      if (show) {
+        setSummaryVisible(true)
+        localStorage.setItem('dreamscape_last_summary', new Date().toISOString())
+      }
     })
   }, [])
 
@@ -85,6 +359,31 @@ export default function StrataPage() {
     .map(([name, { sum, count }]) => ({ name, avg: sum / count }))
     .sort((a, b) => b.avg - a.avg)[0]
 
+  // Archetype
+  const archetype = computeArchetype(withExtraction)
+
+  const handleArchetypeShare = async () => {
+    if (!archetype) return
+    const text = `✦ My Dreamscape Archetype ✦\n${archetype.name} (${archetype.rarity} of dreamers)\n"${archetype.description}"\n— dreamscape.quest`
+    if (navigator.share) {
+      try { await navigator.share({ text }) } catch { /* cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(text)
+      setArchetypeCopied(true)
+      setTimeout(() => setArchetypeCopied(false), 2000)
+    }
+  }
+
+  const handleDismissSummary = () => {
+    setSummaryDismissed(true)
+    setSummaryVisible(false)
+    localStorage.setItem('dreamscape_summary_dismissed', new Date().toISOString())
+  }
+
+  const summary = loaded && summaryVisible && !summaryDismissed
+    ? buildWeeklySummary(dreams)
+    : null
+
   return (
     <>
       {showBirthModal && (
@@ -118,6 +417,64 @@ export default function StrataPage() {
             </button>
           )}
         </div>
+
+        {/* Weekly Summary Card — first card when visible */}
+        {summary && (
+          <div
+            className="rounded-2xl p-5 space-y-3"
+            style={{
+              background: 'rgba(15,15,26,0.7)',
+              border: '1px solid var(--border)',
+              borderLeft: '3px solid var(--violet)',
+            }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--violet)', letterSpacing: '0.12em' }}>
+                ◈ Dream Summary · Week of {summary.dateRange}
+              </div>
+              <button
+                onClick={handleDismissSummary}
+                className="shrink-0 text-sm leading-none transition-opacity hover:opacity-60"
+                style={{ color: 'var(--muted)' }}
+                aria-label="Dismiss summary"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="text-xs space-y-1" style={{ color: 'var(--muted)', fontFamily: 'monospace' }}>
+              <div>
+                This week: <span style={{ color: 'var(--text)' }}>{summary.totalRecent} dream{summary.totalRecent !== 1 ? 's' : ''} logged</span>
+                {' · '}
+                <span style={{ color: 'var(--text)' }}>{summary.totalAnalyzed} analyzed</span>
+              </div>
+              {summary.topSymbols.length > 0 && (
+                <div>
+                  Top symbols: <span style={{ color: 'var(--text)' }}>{summary.topSymbols.join(', ')}</span>
+                </div>
+              )}
+              {summary.topEmotion && (
+                <div>
+                  Emotional tone: <span style={{ color: 'var(--text)' }}>{summary.topEmotion}</span>
+                </div>
+              )}
+              {summary.topTheme && (
+                <div>
+                  Recurring theme: <span style={{ color: 'var(--text)' }}>{summary.topTheme}</span>
+                </div>
+              )}
+            </div>
+
+            {summary.insight && (
+              <p
+                className="text-sm leading-relaxed italic"
+                style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}
+              >
+                {summary.insight}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Stats row */}
         {withExtraction.length > 0 && (
@@ -163,6 +520,78 @@ export default function StrataPage() {
               {topWeekSymbol[1].meaning}
             </p>
           </div>
+        )}
+
+        {/* Dream Archetype Card */}
+        {withExtraction.length >= 5 ? (
+          archetype && (
+            <div
+              className="rounded-2xl p-5 space-y-3"
+              style={{ background: 'rgba(15,15,26,0.7)', border: '1px solid var(--border)' }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
+                  Your Dreamscape Archetype
+                </div>
+                <button
+                  onClick={handleArchetypeShare}
+                  className="shrink-0 text-xs px-2.5 py-1 rounded-full transition-opacity hover:opacity-70"
+                  style={{ border: '1px solid rgba(167,139,250,0.4)', color: 'var(--violet)', fontFamily: 'monospace' }}
+                >
+                  {archetypeCopied ? '✓ Copied' : 'Share'}
+                </button>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div
+                  className="text-3xl leading-none shrink-0"
+                  style={{ color: 'var(--violet)', fontFamily: 'monospace' }}
+                >
+                  {archetype.icon}
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <div
+                    className="text-xl font-medium"
+                    style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}
+                  >
+                    {archetype.name}
+                  </div>
+                  <p
+                    className="text-sm leading-relaxed italic"
+                    style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}
+                  >
+                    {archetype.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <span
+                  className="text-xs"
+                  style={{ color: 'var(--muted)', fontFamily: 'monospace' }}
+                >
+                  {archetype.rarity} of dreamers share this archetype
+                </span>
+              </div>
+            </div>
+          )
+        ) : (
+          withExtraction.length > 0 && withExtraction.length < 5 && (
+            <div
+              className="rounded-2xl p-5 text-center"
+              style={{ background: 'rgba(15,15,26,0.7)', border: '1px dashed rgba(167,139,250,0.2)' }}
+            >
+              <div
+                className="text-2xl mb-2"
+                style={{ color: 'rgba(167,139,250,0.3)', fontFamily: 'monospace' }}
+              >
+                ◈
+              </div>
+              <p className="text-sm" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}>
+                Log {5 - withExtraction.length} more analyzed dream{5 - withExtraction.length !== 1 ? 's' : ''} to unlock your archetype
+              </p>
+            </div>
+          )
         )}
 
         {/* Astro Panel */}

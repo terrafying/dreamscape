@@ -1,6 +1,7 @@
 import { callLLM, type LLMProvider } from '@/lib/llm'
 import type { DreamLog, BirthData } from '@/lib/types'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
+import { checkAuth } from '@/lib/auth'
 
 
 function sse(event: string, data: unknown): string {
@@ -8,6 +9,8 @@ function sse(event: string, data: unknown): string {
 }
 
 export async function POST(req: Request) {
+  const denied = checkAuth(req)
+  if (denied) return denied
   const { dreams, birthData, date, provider, model } = (await req.json()) as {
     dreams: DreamLog[]
     birthData?: BirthData | null
