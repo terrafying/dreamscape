@@ -21,7 +21,7 @@ export default function GuidedFirstRun() {
   }
 
   const loadDemo = async () => {
-    await seedDemoDreams(3)
+    await seedDemoDreams()
     const days = [0, -1, -2].map((o) => {
       const d = new Date(); d.setDate(d.getDate() + o)
       return d.toISOString().split('T')[0]
