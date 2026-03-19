@@ -94,10 +94,13 @@ export default function BirthDataModal({ onSave, onDismiss }: BirthDataModalProp
       >
         <div className="space-y-1">
           <h2 className="text-lg font-medium" style={{ color: 'var(--text)' }}>
-            ✦ Birth Chart
+            ✦ Welcome to the Ritual
           </h2>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            Optional. Adds natal chart context to every dream analysis — revealing how the current sky touches your personal astrology.
+            This is your dusk-and-dawn practice. Close the day softly, then gather the morning before it slips away.
+          </p>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+            Add your birth details to weave natal context into the sky card. Optional, but helpful for deeper symbolic resonance.
           </p>
         </div>
 
@@ -152,7 +155,7 @@ export default function BirthDataModal({ onSave, onDismiss }: BirthDataModalProp
               className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
               style={{ background: 'var(--violet)', color: '#07070f' }}
             >
-              Save Chart
+              Enter the Ritual
             </button>
             <button
               type="button"

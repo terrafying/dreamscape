@@ -1,14 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { DreamLog, BirthData } from '@/lib/types'
+import type { DreamLog, BirthData, BiometricData } from '@/lib/types'
 import { getDreams, getBirthData, saveBirthData, seedDemoDreams } from '@/lib/store'
+import { getBiometricData, saveBiometricDataBatch } from '@/lib/biometrics'
 import { getNatalPlacements, getCurrentTransits, getDominantTransit } from '@/lib/astro'
+import { getAppleHealthSampleData } from '@/lib/integrations/health'
 import EmotionTimeline from '@/components/charts/EmotionTimeline'
 import ThemeRadar from '@/components/charts/ThemeRadar'
 import SymbolFrequency from '@/components/charts/SymbolFrequency'
 import LucidityTrend from '@/components/charts/LucidityTrend'
 import LunarCalendar from '@/components/charts/LunarCalendar'
+import BiometricChart from '@/components/BiometricChart'
 import AstroPanel from '@/components/AstroPanel'
 import BirthDataModal from '@/components/BirthDataModal'
 
@@ -273,10 +276,65 @@ function buildWeeklySummary(dreams: DreamLog[]) {
   }
 }
 
+function getHealthInsights(dreams: DreamLog[], biometrics: BiometricData[]): string[] {
+  if (!biometrics.length) {
+    return ['Import or load sample biometric data to start seeing dream-health correlations.']
+  }
+  if (!dreams.length) {
+    return ['Log a few analyzed dreams to generate correlation insights with your biometrics.']
+  }
+
+  const biometricByDate = new Map(biometrics.map((b) => [b.date, b]))
+  const paired = dreams
+    .map((dream) => ({ dream, bio: biometricByDate.get(dream.date) }))
+    .filter((item): item is { dream: DreamLog; bio: BiometricData } => Boolean(item.bio))
+
+  if (!paired.length) {
+    return ['No same-date dream/biometric overlap yet. As overlap grows, correlation insights will appear here.']
+  }
+
+  const stressEmotionSet = new Set(['anxiety', 'fear', 'panic', 'urgency', 'frustration', 'dread'])
+  const fragmentedOnLowHrv = paired.filter(({ dream, bio }) => {
+    const arc = dream.extraction?.narrative_arc
+    return bio.hrv < 50 && (arc === 'fragmented' || arc === 'liminal')
+  }).length
+
+  const stressOnLowHrv = paired.filter(({ dream, bio }) => {
+    const emotions = dream.extraction?.emotions || []
+    const hasStressEmotion = emotions.some((e) => stressEmotionSet.has(e.name.toLowerCase()))
+    return hasStressEmotion && bio.hrv < 50
+  }).length
+
+  const lowSleepScoreNights = paired.filter(({ bio }) => bio.sleepScore < 70).length
+  const stressOnLowSleep = paired.filter(({ dream, bio }) => {
+    const emotions = dream.extraction?.emotions || []
+    const hasStressEmotion = emotions.some((e) => stressEmotionSet.has(e.name.toLowerCase()))
+    return hasStressEmotion && bio.sleepScore < 70
+  }).length
+
+  const insights: string[] = []
+  if (fragmentedOnLowHrv >= 2 || fragmentedOnLowHrv >= Math.ceil(paired.length * 0.3)) {
+    insights.push('Your most fragmented dream nights align with lower HRV readings.')
+  }
+  if (stressOnLowHrv >= 2 || stressOnLowHrv >= Math.ceil(paired.length * 0.35)) {
+    insights.push('High stress dreams are clustering on low-HRV nights.')
+  }
+  if (lowSleepScoreNights > 0 && stressOnLowSleep / lowSleepScoreNights >= 0.5) {
+    insights.push('Lower sleep score nights are more likely to include stress-heavy dream content.')
+  }
+
+  if (!insights.length) {
+    insights.push('You have overlapping dream and biometric history now; patterns will sharpen as more nights are logged.')
+  }
+
+  return insights.slice(0, 2)
+}
+
 // ─── Page component ───────────────────────────────────────────────────────────
 
 export default function StrataPage() {
   const [dreams, setDreams] = useState<DreamLog[]>([])
+  const [biometrics, setBiometrics] = useState<BiometricData[]>([])
   const [birthData, setBirthData] = useState<BirthData | null>(null)
   const [showBirthModal, setShowBirthModal] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -285,8 +343,9 @@ export default function StrataPage() {
   const [summaryDismissed, setSummaryDismissed] = useState(false)
 
   useEffect(() => {
-    Promise.all([getDreams(), getBirthData()]).then(([d, bd]) => {
+    Promise.all([getDreams(), getBirthData(), getBiometricData()]).then(([d, bd, bio]) => {
       setDreams(d)
+      setBiometrics(bio)
       setBirthData(bd)
       setLoaded(true)
 
@@ -317,6 +376,17 @@ export default function StrataPage() {
   const handleLoadDemo = async () => {
     await seedDemoDreams()
     setDreams(await getDreams())
+  }
+
+  const handleLoadSampleBiometrics = async () => {
+    const dates = (withExtraction.length ? withExtraction : dreams)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-21)
+      .map((d) => d.date)
+    const sampleDates = dates.length ? dates : [new Date().toISOString().split('T')[0]]
+    await saveBiometricDataBatch(getAppleHealthSampleData(sampleDates))
+    setBiometrics(await getBiometricData())
   }
 
   const handleSaveBirth = (data: BirthData) => {
@@ -383,6 +453,7 @@ export default function StrataPage() {
   const summary = loaded && summaryVisible && !summaryDismissed
     ? buildWeeklySummary(dreams)
     : null
+  const healthInsights = getHealthInsights(withExtraction, biometrics)
 
   return (
     <>
@@ -610,6 +681,35 @@ export default function StrataPage() {
 
         {/* Charts */}
         <div className="space-y-8">
+          <ChartCard>
+            <BiometricChart biometrics={biometrics} dreams={withExtraction} />
+          </ChartCard>
+
+          <div
+            className="rounded-2xl p-5 space-y-3"
+            style={{ background: 'rgba(15,15,26,0.7)', border: '1px solid var(--border)' }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
+                Health Correlation Insights
+              </div>
+              {biometrics.length === 0 && (
+                <button
+                  onClick={handleLoadSampleBiometrics}
+                  className="text-xs px-2.5 py-1 rounded-full transition-opacity hover:opacity-75"
+                  style={{ border: '1px solid rgba(45,212,191,0.4)', color: '#2dd4bf', fontFamily: 'monospace' }}
+                >
+                  Load sample data
+                </button>
+              )}
+            </div>
+            <div className="space-y-2 text-sm" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
+              {healthInsights.map((insight) => (
+                <p key={insight}>• {insight}</p>
+              ))}
+            </div>
+          </div>
+
           <ChartCard>
             <LunarCalendar dreams={dreams} />
           </ChartCard>

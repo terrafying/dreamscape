@@ -32,6 +32,38 @@ export interface DreamLog {
   createdAt: number
 }
 
+export interface BiometricData {
+  date: string // YYYY-MM-DD
+  sleepScore: number // 0-100
+  hrv: number // milliseconds
+  deepSleepMinutes: number
+  restfulnessIndex: number // 0-100
+}
+
+export interface JournalExtraction {
+  mood_emotions: string[]
+  intentions: string[]
+  gratitude_moments: string[]
+  themes: string[]
+  reflection: string // 2-3 sentences of concise insight
+  astro_context: {
+    moon_phase: string
+    moon_sign: string
+    cosmic_themes: string[]
+    transit_note: string
+    natal_aspects: string[]
+  }
+}
+
+export interface JournalLog {
+  id: string
+  date: string // YYYY-MM-DD
+  transcript: string
+  extraction?: JournalExtraction
+  createdAt: number
+  entryType: 'evening' | 'morning'
+}
+
 export interface BirthData {
   date: string // YYYY-MM-DD
   time?: string // HH:MM

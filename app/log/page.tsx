@@ -165,7 +165,7 @@ export default function LogPage() {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-medium tracking-tight" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
-              Dream Log
+              Morning Ritual
             </h1>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -193,7 +193,7 @@ export default function LogPage() {
             <textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Describe your dream in as much detail as you can remember — images, feelings, characters, what happened, what it felt like when you woke up..."
+              placeholder="First 10 minutes: capture the dream before it dissolves — images, feelings, characters, and what the morning body remembers."
               disabled={status === 'loading'}
               className="w-full rounded-2xl px-4 py-4 text-sm leading-relaxed outline-none resize-none transition-all"
               style={{
@@ -228,7 +228,7 @@ export default function LogPage() {
                 cursor: !transcript.trim() || status === 'loading' ? 'not-allowed' : 'pointer',
               }}
             >
-              {status === 'loading' ? 'Analyzing...' : 'Analyze Dream ✦'}
+              {status === 'loading' ? 'Interpreting...' : 'Capture + Interpret ✦'}
             </button>
 
             <ProviderSettings onChange={handleProviderChange} />

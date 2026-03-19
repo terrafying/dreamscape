@@ -5,6 +5,7 @@ import {
   getMoonSign,
   getCurrentRetrogrades,
   getCurrentTransits,
+  getCurrentSky,
   getDominantTransit,
   buildAstroContext,
 } from '@/lib/astro'
@@ -172,6 +173,17 @@ describe('getCurrentTransits', () => {
     expect(result).toHaveProperty('moonPhaseEmoji')
     expect(result).toHaveProperty('retrogrades')
     expect(Array.isArray(result.retrogrades)).toBe(true)
+  })
+})
+
+// ─── getCurrentSky ────────────────────────────────────────────────────────────
+
+describe('getCurrentSky', () => {
+  it('includes dominant transit narrative', () => {
+    const sky = getCurrentSky('2026-03-16')
+    expect(sky).toHaveProperty('dominantTransit')
+    expect(typeof sky.dominantTransit).toBe('string')
+    expect(sky.dominantTransit.length).toBeGreaterThan(20)
   })
 })
 

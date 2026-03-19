@@ -1,6 +1,6 @@
 import { registerPlugin, Capacitor } from '@capacitor/core'
 import { Preferences } from '@capacitor/preferences'
-import type { DreamLog, BirthData } from './types'
+import type { DreamLog, JournalLog, BirthData } from './types'
 
 export interface CloudStorePlugin {
   get(options: { key: string }): Promise<{ value: string }>
@@ -11,6 +11,7 @@ export interface CloudStorePlugin {
 const CloudStore = registerPlugin<CloudStorePlugin>('CloudStore')
 
 const DREAMS_KEY = 'dreamscape_dreams'
+const JOURNALS_KEY = 'dreamscape_journals'
 const BIRTH_KEY = 'dreamscape_birth'
 
 async function getStorageValue(key: string): Promise<string | null> {
@@ -86,6 +87,36 @@ export async function clearExampleDreams(): Promise<void> {
   let dreams = await getDreams()
   dreams = dreams.filter((d) => !d.isExample)
   await setStorageValue(DREAMS_KEY, JSON.stringify(dreams))
+}
+
+// ─── Journal Logs ─────────────────────────────────────────────────────────────
+
+export async function getJournals(): Promise<JournalLog[]> {
+  try {
+    const raw = await getStorageValue(JOURNALS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export async function saveJournal(journal: JournalLog): Promise<void> {
+  const journals = await getJournals()
+  const idx = journals.findIndex((j) => j.id === journal.id)
+  if (idx >= 0) {
+    journals[idx] = journal
+  } else {
+    journals.unshift(journal)
+  }
+  await setStorageValue(JOURNALS_KEY, JSON.stringify(journals))
+}
+
+export async function deleteJournal(id: string): Promise<void> {
+  let journals = await getJournals()
+  journals = journals.filter((j) => j.id !== id)
+  await setStorageValue(JOURNALS_KEY, JSON.stringify(journals))
 }
 
 // ─── Birth Data ───────────────────────────────────────────────────────────────

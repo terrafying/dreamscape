@@ -11,18 +11,21 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-test('redirects / to /log', async ({ page }) => {
+test('loads ritual hub at /', async ({ page }) => {
   await page.goto('/')
-  await expect(page).toHaveURL('/log')
+  await expect(page).toHaveURL('/')
+  await expect(page.getByRole('heading', { name: 'The last 10 and first 10 minutes of your day.' })).toBeVisible()
 })
 
 test('all nav tabs are present', async ({ page }) => {
   await page.goto('/log')
   const nav = page.locator('nav')
-  await expect(nav.getByText('Log')).toBeVisible()
+  await expect(nav.getByText('Altar')).toBeVisible()
+  await expect(nav.getByText('Dawn')).toBeVisible()
+  await expect(nav.getByText('Journal')).toBeVisible()
   await expect(nav.getByText('Strata')).toBeVisible()
   await expect(nav.getByText('Letters')).toBeVisible()
-  await expect(nav.getByText('Stories')).toBeVisible()
+  await expect(nav.getByText('Sleep')).toBeVisible()
 })
 
 test('navigates to /strata via nav', async ({ page }) => {
@@ -40,7 +43,7 @@ test('navigates to /letters via nav', async ({ page }) => {
 
 test('navigates to /dreamscape via nav', async ({ page }) => {
   await page.goto('/log')
-  await page.locator('nav').getByText('Stories').click()
+  await page.locator('nav').getByText('Sleep').click()
   await expect(page).toHaveURL('/dreamscape')
   await expect(page.getByRole('heading', { name: 'Sleep' })).toBeVisible()
 })

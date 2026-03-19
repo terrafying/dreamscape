@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const tabs = [
-  { href: '/log', label: 'Log', icon: '✦' },
+  { href: '/', label: 'Altar', icon: '✦' },
+  { href: '/journal', label: 'Dusk', icon: '☾' },
+  { href: '/log', label: 'Dawn', icon: '☀' },
   { href: '/strata', label: 'Strata', icon: '◈' },
   { href: '/letters', label: 'Letters', icon: '◇' },
   { href: '/dreamscape', label: 'Sleep', icon: '◉' },
@@ -30,9 +32,10 @@ export default function Nav() {
           <Link
             key={tab.href}
             href={tab.href}
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200"
+            className="relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200"
             style={{
-              color: active ? 'var(--violet)' : 'var(--muted)',
+              color: active ? 'var(--text)' : 'var(--muted)',
+              background: active ? 'linear-gradient(180deg, rgba(167,139,250,0.15), rgba(167,139,250,0.04))' : 'transparent',
             }}
           >
             <span className="text-lg leading-none" style={{ fontFamily: 'monospace' }}>

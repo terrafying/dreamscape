@@ -142,6 +142,14 @@ export function getCurrentTransits(dateStr: string): {
   }
 }
 
+export function getCurrentSky(dateStr: string): CurrentSky {
+  const transits = getCurrentTransits(dateStr)
+  return {
+    ...transits,
+    dominantTransit: getDominantTransit(dateStr),
+  }
+}
+
 // ─── Natal Placements ─────────────────────────────────────────────────────────
 
 export function getNatalPlacements(birthData: BirthData): NatalPlacements {
