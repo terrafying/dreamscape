@@ -1,3 +1,8 @@
 node_modules
 .vercel
 .env.local
+.next/
+out/
+test-results/
+.claude-flow/
+.DS_Store

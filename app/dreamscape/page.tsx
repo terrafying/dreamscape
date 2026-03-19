@@ -1,11 +1,71 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import BinauralPlayer from '@/components/BinauralPlayer'
 import BreathworkPlayer from '@/components/BreathworkPlayer'
 import { getDreams } from '@/lib/store'
 import type { DreamLog } from '@/lib/types'
 import { apiFetch } from '@/lib/apiFetch'
+
+// ─── Speech hook ──────────────────────────────────────────────────────────────
+
+function useSpeech() {
+  const [speaking, setSpeaking] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const utterRef = useRef<SpeechSynthesisUtterance | null>(null)
+
+  // Pick a soothing voice: prefer soft female en-US voices
+  const pickVoice = useCallback((): SpeechSynthesisVoice | null => {
+    if (typeof window === 'undefined') return null
+    const voices = window.speechSynthesis.getVoices()
+    const preferred = ['Samantha', 'Karen', 'Moira', 'Google US English Female', 'Microsoft Aria']
+    for (const name of preferred) {
+      const v = voices.find((v) => v.name.includes(name))
+      if (v) return v
+    }
+    return voices.find((v) => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
+      ?? voices.find((v) => v.lang.startsWith('en-US'))
+      ?? voices.find((v) => v.lang.startsWith('en'))
+      ?? null
+  }, [])
+
+  const speak = useCallback((text: string) => {
+    if (typeof window === 'undefined') return
+    window.speechSynthesis.cancel()
+    const utt = new SpeechSynthesisUtterance(text)
+    utt.rate = 0.82
+    utt.pitch = 0.95
+    utt.volume = 1
+    const voice = pickVoice()
+    if (voice) utt.voice = voice
+    utt.onstart = () => { setSpeaking(true); setPaused(false) }
+    utt.onend = () => { setSpeaking(false); setPaused(false) }
+    utt.onerror = () => { setSpeaking(false); setPaused(false) }
+    utterRef.current = utt
+    window.speechSynthesis.speak(utt)
+  }, [pickVoice])
+
+  const stop = useCallback(() => {
+    window.speechSynthesis.cancel()
+    setSpeaking(false)
+    setPaused(false)
+  }, [])
+
+  const togglePause = useCallback(() => {
+    if (paused) {
+      window.speechSynthesis.resume()
+      setPaused(false)
+    } else {
+      window.speechSynthesis.pause()
+      setPaused(true)
+    }
+  }, [paused])
+
+  // Cancel on unmount
+  useEffect(() => () => { window.speechSynthesis?.cancel() }, [])
+
+  return { speaking, paused, speak, stop, togglePause }
+}
 
 const TABS = [
   { id: 'breathwork', label: 'Breathwork', icon: '◎' },
@@ -13,6 +73,32 @@ const TABS = [
   { id: 'stories',    label: 'Stories',    icon: '◇' },
 ] as const
 type Tab = typeof TABS[number]['id']
+
+// ─── Speaking icon (animated bars) ───────────────────────────────────────────
+
+function SpeakingIcon({ active }: { active: boolean }) {
+  return (
+    <span
+      className="flex items-end gap-px"
+      style={{ height: '14px' }}
+      aria-hidden
+    >
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          style={{
+            display: 'block',
+            width: '3px',
+            borderRadius: '2px',
+            background: 'var(--violet)',
+            height: active ? `${[8, 14, 6][i]}px` : '5px',
+            animation: active ? `wave-bar 0.9s ease-in-out ${i * 0.15}s infinite alternate` : 'none',
+          }}
+        />
+      ))}
+    </span>
+  )
+}
 
 // ─── Story tab ────────────────────────────────────────────────────────────────
 
@@ -22,6 +108,7 @@ function StoryTab() {
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const { speaking, paused, speak, stop, togglePause } = useSpeech()
 
   useEffect(() => { getDreams().then(setDreams) }, [])
 
@@ -118,19 +205,56 @@ function StoryTab() {
       </button>
 
       {storyText && (
-        <div
-          className="rounded-xl p-5 leading-loose"
-          style={{
-            background: 'rgba(15,15,26,0.7)',
-            border: '1px solid var(--border)',
-            fontFamily: 'Georgia, serif',
-            fontSize: '15px',
-            color: 'var(--text)',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
-          {storyText}
-        </div>
+        <>
+          <div
+            className="rounded-xl p-5 leading-loose"
+            style={{
+              background: 'rgba(15,15,26,0.7)',
+              border: '1px solid var(--border)',
+              fontFamily: 'Georgia, serif',
+              fontSize: '15px',
+              color: 'var(--text)',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {storyText}
+          </div>
+
+          {/* Read-aloud controls */}
+          <div className="flex items-center gap-3">
+            {!speaking ? (
+              <button
+                onClick={() => speak(storyText)}
+                className="flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:opacity-90"
+                style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', color: 'var(--violet)' }}
+              >
+                <SpeakingIcon active={false} />
+                Read Aloud
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={togglePause}
+                  className="flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200"
+                  style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.4)', color: 'var(--violet)' }}
+                >
+                  {paused ? (
+                    <><span style={{ fontSize: '14px' }}>▶</span> Resume</>
+                  ) : (
+                    <><SpeakingIcon active /><span>Pause</span></>
+                  )}
+                </button>
+                <button
+                  onClick={stop}
+                  className="px-4 py-3 rounded-xl text-sm transition-opacity hover:opacity-70"
+                  style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+                >
+                  ◼ Stop
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
     </div>
   )
@@ -222,6 +346,10 @@ export default function DreamscapePage() {
         @keyframes pulse-banner {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.3; transform: scale(0.6); }
+        }
+        @keyframes wave-bar {
+          from { transform: scaleY(0.4); opacity: 0.7; }
+          to   { transform: scaleY(1.0); opacity: 1; }
         }
       `}</style>
     </div>
