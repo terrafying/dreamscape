@@ -26,8 +26,25 @@ export default function AccountPage() {
     setStatus(error ? 'error' : 'sent')
   }
 
+  // Post-checkout success handling: upgrade local plan and enable sync
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('checkout') === 'success') {
+      localStorage.setItem('dreamscape_plan', 'premium')
+      localStorage.setItem('dreamscape_sync_enabled', '1')
+    }
+  }, [])
+
+  const banner = (typeof window !== 'undefined') && new URLSearchParams(window.location.search).get('checkout') === 'success'
+
   return (
     <div className="max-w-xl mx-auto px-4 pt-8 pb-6 space-y-6">
+      {banner && (
+        <div className="rounded-xl p-3 text-sm" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#86efac' }}>
+          Subscription active. Premium unlocked and cloud sync enabled.
+        </div>
+      )}
       <h1 className="text-2xl" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>Account</h1>
       {userEmail ? (
         <div className="space-y-2">
