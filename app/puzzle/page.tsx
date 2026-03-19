@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
 import PuzzleDebugPanel from '@/components/PuzzleDebugPanel'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -915,8 +914,13 @@ export default function PuzzlePage() {
     updateDrone(proximity)
   }, [maze])
 
-  const params = useSearchParams()
-  const debug = params.get('debug') === '1'
+  const [debug, setDebug] = useState(false)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search)
+      setDebug(p.get('debug') === '1')
+    }
+  }, [])
 
   if (!started) {
     return <StartScreen onStart={() => { initAudio(); setStarted(true) }} />
