@@ -11,6 +11,7 @@ import BirthDataModal from '@/components/BirthDataModal'
 import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
 import ShareableDreamCard from '@/components/ShareableDreamCard'
+import HQVoiceButton from '@/components/HQVoiceButton'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
@@ -216,7 +217,10 @@ export default function LogPage() {
                   </div>
                 )}
               </div>
-              <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
+              <div className="flex items-center gap-2">
+                <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
+                <HQVoiceButton onAppend={appendVoice} disabled={status === 'loading'} />
+              </div>
             </div>
 
             <button

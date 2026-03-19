@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/apiFetch'
 import { generateId, getBirthData, getJournals, saveJournal } from '@/lib/store'
 import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
+import HQVoiceButton from '@/components/HQVoiceButton'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 type EntryType = 'evening' | 'morning'
@@ -186,7 +187,10 @@ export default function JournalPage() {
                 </div>
               )}
             </div>
-            <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
+            <div className="flex items-center gap-2">
+              <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
+              <HQVoiceButton onAppend={appendVoice} disabled={status === 'loading'} />
+            </div>
           </div>
 
           <button
