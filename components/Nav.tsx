@@ -17,6 +17,7 @@ const overflowTabs = [
   { href: '/letters', label: 'Letters', icon: '◇' },
   { href: '/dreamscape', label: 'Sleep', icon: '◉' },
   { href: '/invoke', label: 'Invoke', icon: '⬡' },
+  { href: '/account', label: 'Account', icon: '⚑' },
 ]
 
 export default function Nav() {

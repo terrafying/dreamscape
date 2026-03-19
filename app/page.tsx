@@ -56,7 +56,10 @@ export default function Home() {
     <div className="max-w-xl mx-auto px-4 pt-8 pb-6 space-y-6">
       {/* One-time guided first run sheet */}
       {/* @ts-expect-error Client component import at runtime */}
-      {require('@/components/GuidedFirstRun').default()} 
+      {require('@/components/GuidedFirstRun').default()}
+      {/* Optional auth prompt (magic link) */}
+      {/* @ts-expect-error Client component import at runtime */}
+      {require('@/components/AuthSheet').default()}
       <div
         className="rounded-2xl p-6 space-y-3"
         style={{
