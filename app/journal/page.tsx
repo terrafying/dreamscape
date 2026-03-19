@@ -186,7 +186,7 @@ export default function JournalPage() {
                 </div>
               )}
             </div>
-            <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} />
+            <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
           </div>
 
           <button

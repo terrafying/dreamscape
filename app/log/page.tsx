@@ -10,6 +10,7 @@ import ExtractionDisplay from '@/components/ExtractionDisplay'
 import BirthDataModal from '@/components/BirthDataModal'
 import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
+import ShareableDreamCard from '@/components/ShareableDreamCard'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
@@ -215,7 +216,7 @@ export default function LogPage() {
                   </div>
                 )}
               </div>
-              <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} />
+              <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
             </div>
 
             <button
@@ -285,6 +286,7 @@ export default function LogPage() {
             </div>
 
             <ExtractionDisplay extraction={extraction} natal={natal} />
+            <ShareableDreamCard dream={{ id: savedId || 'temp', date: new Date().toISOString().split('T')[0], transcript, extraction: extraction || undefined, createdAt: Date.now() }} />
           </div>
         )}
 

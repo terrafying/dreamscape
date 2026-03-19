@@ -5,6 +5,8 @@ import { useState, useRef, useEffect } from 'react'
 interface VoiceButtonProps {
   onAppend: (text: string) => void
   disabled?: boolean
+  autoStart?: boolean // start recording on mount (when supported)
+  pulseHint?: boolean // show a gentle pulse hint when idle
 }
 
 // SpeechRecognition types vary across browsers/TS lib versions
@@ -53,7 +55,7 @@ function getSpeechRecognition(): (new () => SpeechRecog) | null {
   return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null
 }
 
-export default function VoiceButton({ onAppend, disabled }: VoiceButtonProps) {
+export default function VoiceButton({ onAppend, disabled, autoStart, pulseHint }: VoiceButtonProps) {
   const [supported, setSupported] = useState(false)
 
   useEffect(() => {
@@ -61,13 +63,25 @@ export default function VoiceButton({ onAppend, disabled }: VoiceButtonProps) {
   }, [])
   const [recording, setRecording] = useState(false)
   const [interim, setInterim] = useState('')
+  const [hintOn, setHintOn] = useState(false)
   const recognitionRef = useRef<SpeechRecog | null>(null)
 
   useEffect(() => {
-    return () => {
-      recognitionRef.current?.stop()
+    // Auto-start softly after mount if requested
+    let t: any
+    if (autoStart && !disabled) {
+      t = setTimeout(() => {
+        try { start() } catch {}
+      }, 300) // small delay to allow UI settle
     }
-  }, [])
+    // Show a brief pulse hint if requested
+    if (pulseHint) {
+      const hp = setTimeout(() => setHintOn(true), 400)
+      const off = setTimeout(() => setHintOn(false), 3200)
+      return () => { clearTimeout(hp); clearTimeout(off); recognitionRef.current?.stop() }
+    }
+    return () => { clearTimeout(t); recognitionRef.current?.stop() }
+  }, [autoStart, pulseHint, disabled])
 
   const start = () => {
     const SR = getSpeechRecognition()
@@ -139,6 +153,7 @@ export default function VoiceButton({ onAppend, disabled }: VoiceButtonProps) {
           color: recording ? '#f87171' : 'var(--violet)',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.4 : 1,
+          boxShadow: !recording && hintOn ? '0 0 0 8px rgba(167,139,250,0.08)' : 'none',
         }}
       >
         {recording ? (
