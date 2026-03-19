@@ -663,6 +663,35 @@ function StartScreen({ onStart }: { onStart: () => void }) {
   )
 }
 
+// ─── ANGEL GUIDANCE ──────────────────────────────────────────────────────────
+
+function AngelGuidance({ maze, playerX, playerZ, discovered }: { maze: MazeGrid; playerX: number; playerZ: number; discovered: boolean[] }) {
+  // Find next undiscovered target
+  const targetIdx = discovered.findIndex(d => !d)
+  if (targetIdx === -1) return null
+  const node = maze.polytopeNodes[targetIdx]
+  const [tx, tz] = gridToWorld(node.x, node.y)
+  // Place angel a fraction of the way from player toward target
+  const vx = tx - playerX, vz = tz - playerZ
+  const dist = Math.max(1, Math.hypot(vx, vz))
+  const ux = vx / dist, uz = vz / dist
+  const ax = playerX + ux * Math.min(4, dist * 0.5)
+  const az = playerZ + uz * Math.min(4, dist * 0.5)
+
+  return (
+    <group position={[ax, 1.4, az]}>
+      <mesh>
+        <sphereGeometry args={[0.18, 16, 16]} />
+        <meshBasicMaterial color="#a0e6ff" transparent opacity={0.8} />
+      </mesh>
+      <mesh position={[0, 0, 0]}>
+        <ringGeometry args={[0.22, 0.28, 24]} />
+        <meshBasicMaterial color="#a0e6ff" transparent opacity={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
 export default function PuzzlePage() {
@@ -738,6 +767,32 @@ export default function PuzzlePage() {
       el.removeEventListener('pointercancel', onPointerUp)
     }
   }, [started])
+
+  useEffect(() => {
+    const onDebug = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {}
+      if (detail.action === 'dumpState') {
+        // eslint-disable-next-line no-console
+        console.log('[puzzle] state', { discovered, playerPos })
+      } else if (detail.action === 'retryPath') {
+        // Placeholder: could reset a stuck nav state
+        // eslint-disable-next-line no-console
+        console.log('[puzzle] retryPath')
+      } else if (detail.action === 'navigateTo') {
+        const id = String(detail.id || '')
+        if (id.startsWith('node-')) {
+          const idx = Number(id.split('-')[1] || '0')
+          const node = maze.polytopeNodes[idx]
+          if (node) {
+            const [x, z] = gridToWorld(node.x, node.y)
+            setPlayerPos([x, z])
+          }
+        }
+      }
+    }
+    window.addEventListener('puzzle-debug', onDebug as any)
+    return () => window.removeEventListener('puzzle-debug', onDebug as any)
+  }, [discovered, playerPos, maze])
 
   const handleDiscover = useCallback((idx: number) => {
     setDiscovered(prev => {
@@ -820,6 +875,9 @@ export default function PuzzlePage() {
         <MazeWalls maze={maze} />
         <MazeFloor maze={maze} />
         <Stars />
+
+        {/* Angel guidance (teleological object) */}
+        <AngelGuidance maze={maze} playerX={playerPos[0]} playerZ={playerPos[1]} discovered={discovered} />
 
         {/* Polytope landmarks */}
         {maze.polytopeNodes.map((node, i) => {
