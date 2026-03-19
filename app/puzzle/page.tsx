@@ -344,8 +344,8 @@ function FirstPersonController({
     const speed = 4.5 * delta
 
     let dx = 0, dz = 0
-    if (keys.has('w') || keys.has('arrowup')) dz -= 1
-    if (keys.has('s') || keys.has('arrowdown')) dz += 1
+    if (keys.has('w') || keys.has('arrowup')) dz += 1
+    if (keys.has('s') || keys.has('arrowdown')) dz -= 1
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1
     if (keys.has('d') || keys.has('arrowright')) dx += 1
 
