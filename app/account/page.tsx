@@ -13,7 +13,6 @@ export default function AccountPage() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [isPremiumPlan, setIsPremiumPlan] = useState(false)
-  const [premiumBypass, setPremiumBypass] = useState(false)
   const [billingBusy, setBillingBusy] = useState<'checkout' | 'portal' | null>(null)
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
@@ -84,7 +83,6 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    setPremiumBypass(localStorage.getItem('dreamscape_premium_bypass') === '1')
 
     const cachedPlan = localStorage.getItem('dreamscape_plan')
     if (cachedPlan === 'premium' || cachedPlan === 'free') {
@@ -96,13 +94,6 @@ export default function AccountPage() {
 
     void refreshPlanFromServer().catch(() => {})
   }, [])
-
-  const togglePremiumBypass = () => {
-    if (typeof window === 'undefined') return
-    const next = !premiumBypass
-    localStorage.setItem('dreamscape_premium_bypass', next ? '1' : '0')
-    setPremiumBypass(next)
-  }
 
   const signOut = async () => {
     await supabase?.auth.signOut()
@@ -181,15 +172,15 @@ export default function AccountPage() {
       <div className="space-y-2 rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between">
           <p className="text-sm" style={{ color: 'var(--text)' }}>Billing</p>
-          <span className="text-xs px-2 py-1 rounded-full" style={{ background: (isPremiumPlan || premiumBypass) ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)', color: (isPremiumPlan || premiumBypass) ? '#86efac' : 'var(--muted)' }}>
-            {isPremiumPlan ? 'Premium' : premiumBypass ? 'Premium (Bypass)' : 'Free'}
+          <span className="text-xs px-2 py-1 rounded-full" style={{ background: isPremiumPlan ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)', color: isPremiumPlan ? '#86efac' : 'var(--muted)' }}>
+            {isPremiumPlan ? 'Premium' : 'Free'}
           </span>
         </div>
         <p className="text-xs" style={{ color: 'var(--muted)' }}>
-          Premium unlocks unlimited archive depth, advanced longitudinal insights, and biometric correlation views.
+          Premium unlocks Anthropic &amp; OpenAI models, unlimited archive depth, and advanced longitudinal insights.
         </p>
         <div className="flex items-center gap-2">
-          {!isPremiumPlan && !premiumBypass && (
+          {!isPremiumPlan && (
             <button onClick={startCheckout} disabled={billingBusy !== null} className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--violet)', color: '#07070f', opacity: billingBusy ? 0.6 : 1 }}>
               Upgrade to Premium
             </button>
@@ -198,9 +189,6 @@ export default function AccountPage() {
             Manage Billing
           </button>
         </div>
-        <button onClick={togglePremiumBypass} className="text-xs px-3 py-2 rounded-lg" style={{ border: '1px dashed var(--border)', color: 'var(--muted)' }}>
-          Testing bypass: {premiumBypass ? 'On' : 'Off'}
-        </button>
       </div>
 
       {/* Settings */}

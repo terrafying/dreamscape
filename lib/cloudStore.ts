@@ -34,7 +34,7 @@ async function pushToCloud(userId: string, dreams: DreamLog[]): Promise<void> {
     dream_data: d as unknown as Record<string, unknown>,
   }))
   for (const row of rows) {
-    await supabase.from('user_dreams').upsert(row, {
+    await (supabase.from('user_dreams') as ReturnType<typeof supabase.from>).upsert(row as any, {
       onConflict: 'user_id,dream_id',
     })
   }
@@ -78,11 +78,11 @@ export async function syncDreams(userId: string): Promise<{ merged: DreamLog[]; 
 export async function syncDream(userId: string, dream: DreamLog): Promise<void> {
   const supabase = getSupabase()
   if (!supabase || !userId) return
-  await supabase.from('user_dreams').upsert({
+  await (supabase.from('user_dreams') as ReturnType<typeof supabase.from>).upsert({
     user_id: userId,
     dream_id: dream.id,
     dream_data: dream as unknown as Record<string, unknown>,
-  }, { onConflict: 'user_id,dream_id' })
+  } as any, { onConflict: 'user_id,dream_id' })
 }
 
 export async function syncDeleteDream(userId: string, dreamId: string): Promise<void> {

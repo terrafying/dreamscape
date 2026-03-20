@@ -1,8 +1,6 @@
+import type { LLMProvider } from '@/lib/llm'
 import type { DreamLog } from '@/lib/types'
 import { getSupabase } from '@/lib/supabaseClient'
-
-// Simple local entitlements and metering.
-// In production, back this with server-side checks tied to user auth + billing.
 
 export type Plan = 'free' | 'premium'
 
@@ -64,8 +62,12 @@ export function getEntitlements(): Entitlements {
 
 export function isPremium(): boolean {
   if (process.env.NEXT_PUBLIC_PREMIUM_BYPASS === '1') return true
-  const localBypass = typeof window !== 'undefined' && localStorage.getItem('dreamscape_premium_bypass') === '1'
-  return getEntitlements().plan === 'premium' || localBypass
+  const plan = getEntitlements().plan
+  return plan === 'premium'
+}
+
+export function requiresPremium(provider: LLMProvider): boolean {
+  return provider === 'anthropic' || provider === 'openai'
 }
 
 export function isPaywallEnforced(dreams: DreamLog[]): boolean {

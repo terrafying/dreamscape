@@ -2,17 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import type { LLMProvider } from '@/lib/llm'
+import { isPremium } from '@/lib/entitlements'
 
 interface ProviderSettingsProps {
   onChange?: (provider: LLMProvider, model: string | undefined) => void
 }
 
+const PREMIUM_PROVIDERS: LLMProvider[] = ['anthropic', 'openai']
+
 export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
   const [provider, setProvider] = useState<LLMProvider>('groq')
   const [orModel, setOrModel] = useState('nvidia/nemotron-3-super-120b-a12b:free')
   const [expanded, setExpanded] = useState(false)
+  const [premium, setPremium] = useState(false)
 
   useEffect(() => {
+    setPremium(isPremium())
     const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'groq'
     const orm = localStorage.getItem('dreamscape_or_model') || 'nvidia/nemotron-3-super-120b-a12b:free'
     setProvider(p)
@@ -20,7 +25,17 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
     onChange?.(p, p === 'openrouter' ? orm : undefined)
   }, [])
 
+  const switchToGroq = () => {
+    localStorage.setItem('dreamscape_provider', 'groq')
+    setProvider('groq')
+    onChange?.('groq', 'llama-3.3-70b-versatile')
+  }
+
   const save = (p: LLMProvider, m: string) => {
+    if (!premium && PREMIUM_PROVIDERS.includes(p)) {
+      switchToGroq()
+      return
+    }
     localStorage.setItem('dreamscape_provider', p)
     if (p === 'openrouter') {
       localStorage.setItem('dreamscape_or_model', m)
@@ -60,21 +75,29 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            {(['anthropic', 'openai', 'groq', 'openrouter'] as LLMProvider[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => save(p, p === 'openrouter' ? orModel : p === 'openai' ? 'gpt-4o-mini' : p === 'anthropic' ? 'claude-3-haiku-20240307' : 'llama-3.3-70b-versatile')}
-                className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
-                style={{
-                  background: provider === p ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${provider === p ? 'rgba(167,139,250,0.4)' : 'var(--border)'}`,
-                  color: provider === p ? 'var(--violet)' : 'var(--muted)',
-                }}
-              >
-                {p === 'anthropic' ? '☁ Anthropic' : p === 'openai' ? '☁ OpenAI' : p === 'groq' ? '☁ Groq (free)' : '☁ OpenRouter'}
-              </button>
-            ))}
+            {(['anthropic', 'openai', 'groq', 'openrouter'] as LLMProvider[]).map((p) => {
+              const locked = !premium && PREMIUM_PROVIDERS.includes(p)
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => save(p, p === 'openrouter' ? orModel : p === 'openai' ? 'gpt-4o-mini' : p === 'anthropic' ? 'claude-3-haiku-20240307' : 'llama-3.3-70b-versatile')}
+                  className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
+                  style={{
+                    background: provider === p ? 'rgba(167,139,250,0.2)' : locked ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${provider === p ? 'rgba(167,139,250,0.4)' : locked ? 'rgba(255,255,255,0.04)' : 'var(--border)'}`,
+                    color: locked ? 'rgba(200,200,200,0.25)' : provider === p ? 'var(--violet)' : 'var(--muted)',
+                    cursor: locked ? 'not-allowed' : 'pointer',
+                    opacity: locked ? 0.5 : 1,
+                  }}
+                  title={locked ? 'Requires premium — switch to Groq (free) or upgrade' : undefined}
+                >
+                  {p === 'anthropic' ? '☁ Anthropic' : p === 'openai' ? '☁ OpenAI' : p === 'groq' ? '☁ Groq (free)' : '☁ OpenRouter'}
+                  {locked && ' 🔒'}
+                </button>
+              )
+            })}
           </div>
 
           {provider === 'anthropic' && (
