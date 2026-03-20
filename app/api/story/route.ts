@@ -90,7 +90,7 @@ Chapter III: [title]
 [text]`
 
         const text = await callLLM(prompt, {
-          provider: provider ?? 'anthropic',
+          provider: provider ?? 'groq',
           model,
           maxTokens: 800,
         })

@@ -18,27 +18,22 @@ function anthropicClient() {
   return _client
 }
 
-export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): Promise<{ text: string; source: string }> {
-  const { provider = 'anthropic', model, maxTokens = 2000 } = opts
-
+async function tryCall(provider: LLMProvider, prompt: string, model: string | undefined, maxTokens: number, keys?: LLMOptions['apiKeys']): Promise<{ text: string; source: string } | null> {
   try {
     if (provider === 'openai') {
       const m = model || process.env.OPENAI_MODEL || 'gpt-4o-mini'
-      return { text: await callOpenAI(prompt, m, maxTokens, opts.apiKeys?.openai), source: `openai:${m}` }
+      return { text: await callOpenAI(prompt, m, maxTokens, keys?.openai), source: `openai:${m}` }
     }
     if (provider === 'groq') {
       const m = model || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
-      return { text: await callGroq(prompt, m, maxTokens, opts.apiKeys?.groq), source: `groq:${m}` }
+      return { text: await callGroq(prompt, m, maxTokens, keys?.groq), source: `groq:${m}` }
     }
     if (provider === 'openrouter') {
       const m = model || pickOpenRouterModel()
-      const text = await callOpenRouter(prompt, m, maxTokens, opts.apiKeys?.openrouter)
-      return { text, source: `openrouter:${m}` }
+      return { text: await callOpenRouter(prompt, m, maxTokens, keys?.openrouter), source: `openrouter:${m}` }
     }
-
-    // Anthropic default
     const m = model || 'claude-3-haiku-20240307'
-    const client = opts.apiKeys?.anthropic ? new (Anthropic as any)({ apiKey: opts.apiKeys.anthropic }) : anthropicClient()
+    const client = keys?.anthropic ? new (Anthropic as any)({ apiKey: keys.anthropic }) : anthropicClient()
     const response = await client.messages.create({
       model: m,
       max_tokens: maxTokens,
@@ -46,21 +41,31 @@ export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): 
     })
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
     return { text, source: `anthropic:${m}` }
-  } catch (err: any) {
-    const msg = String(err?.message || err)
-    if (/Rate limit|insufficient|quota|Unauthorized|401|429/i.test(msg)) {
-      if (process.env.OPENAI_API_KEY) {
-        try { const m = model || 'gpt-4o-mini'; return { text: await callOpenAI(prompt, m, maxTokens), source: `openai:${m}` } } catch {}
-      }
-      if (process.env.GROQ_API_KEY) {
-        try { const m = model || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'; return { text: await callGroq(prompt, m, maxTokens), source: `groq:${m}` } } catch {}
-      }
-      if (process.env.OPENROUTER_API_KEY) {
-        try { const m = model || pickOpenRouterModel(); return { text: await callOpenRouter(prompt, m, maxTokens), source: `openrouter:${m}` } } catch {}
-      }
-    }
-    throw err
+  } catch {
+    return null
   }
+}
+
+export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): Promise<{ text: string; source: string }> {
+  const { provider = 'groq', model, maxTokens = 2000 } = opts
+
+  const chain: LLMProvider[] = provider === 'anthropic'
+    ? ['anthropic', 'groq', 'openai', 'openrouter']
+    : provider === 'openai'
+    ? ['openai', 'groq', 'openrouter', 'anthropic']
+    : provider === 'openrouter'
+    ? ['openrouter', 'groq', 'openai', 'anthropic']
+    : ['groq', 'openai', 'openrouter', 'anthropic']
+
+  const tried = new Set<LLMProvider>()
+  for (const p of chain) {
+    if (tried.has(p)) continue
+    tried.add(p)
+    const result = await tryCall(p, prompt, model, maxTokens, opts.apiKeys)
+    if (result) return result
+  }
+
+  throw new Error('All LLM providers failed')
 }
 
 // Backward-compat shim
