@@ -1,4 +1,4 @@
-import { experimental_generateImage as generateImage } from 'ai'
+import { generateImage } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import type { DreamLog } from '@/lib/types'
 
@@ -75,13 +75,14 @@ Details: fine art illustration, cinematic composition, hyper-detailed, 8k, ether
 }
 
 export async function POST(req: Request) {
-  const { dreams, storyTitle, subtitle, provider, model } = await req.json() as CardOptions
+  const { dreams, storyTitle, subtitle, model } = await req.json() as CardOptions
 
   const isStory = !dreams?.length
   const { prompt, title } = isStory
     ? buildStoryCardPrompt({ dreams, storyTitle, subtitle })
     : buildCardPrompt({ dreams, storyTitle, subtitle })
 
+  const imgModel = (model || 'dall-e-3').replace('dall-e-', 'dall-e-')
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
@@ -91,19 +92,17 @@ export async function POST(req: Request) {
       try {
         send('status', { message: 'Rendering your dream card...' })
 
-        const imgModel = model || 'dall-e-3'
-
         const result = await generateImage({
-          model: openai.image(imgModel),
+          model: (openai as any).image(imgModel),
           prompt,
-        })
+        }) as { image?: { base64?: string; url?: string } }
 
-        const images = (result as any).images as Array<{ base64?: string; url?: string }>
-        const raw = images?.[0]?.base64 ?? images?.[0]?.url ?? ''
+        const raw = result?.image?.base64 ?? result?.image?.url ?? ''
 
         send('done', { title, base64: raw })
       } catch (err) {
-        send('error', { message: err instanceof Error ? err.message : 'Generation failed' })
+        const msg = err instanceof Error ? err.message : 'Generation failed'
+        send('error', { message: msg })
       } finally {
         controller.close()
       }

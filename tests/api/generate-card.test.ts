@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockGenerateImage = vi.hoisted(() => vi.fn())
 vi.mock('ai', () => ({
-  experimental_generateImage: mockGenerateImage,
+  generateImage: mockGenerateImage,
 }))
 
 import { POST } from '@/app/api/generate-card/route'
@@ -67,8 +67,8 @@ describe('POST /api/generate-card', () => {
 
   it('emits status then done with base64 image', async () => {
     mockGenerateImage.mockResolvedValue({
-      images: [{ base64: 'aGVsbG93b3JsZA==' }],
-    } as any)
+      image: { base64: 'aGVsbG93b3JsZA==' },
+    })
 
     const req = makeRequest({ dreams: [makeDream()] })
     const res = await POST(req)
@@ -84,7 +84,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('includes title derived from narrative_arc', async () => {
-    mockGenerateImage.mockResolvedValue({ images: [{ base64: 'test' }] } as any)
+    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
 
     const req = makeRequest({ dreams: [makeDream({ extraction: { ...makeDream().extraction!, narrative_arc: 'ascending' } })] })
     const res = await POST(req)
@@ -95,7 +95,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('derives title from storyTitle when provided', async () => {
-    mockGenerateImage.mockResolvedValue({ images: [{ base64: 'test' }] } as any)
+    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
 
     const req = makeRequest({ dreams: [], storyTitle: 'The Midnight Garden' })
     const res = await POST(req)
@@ -118,7 +118,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('passes custom model to generateImage', async () => {
-    mockGenerateImage.mockResolvedValue({ images: [{ base64: 'test' }] } as any)
+    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
 
     const req = makeRequest({ dreams: [makeDream()], model: 'dall-e-2' })
     const res = await POST(req)
@@ -130,7 +130,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('response has SSE content-type header', async () => {
-    mockGenerateImage.mockResolvedValue({ images: [{ base64: 'test' }] } as any)
+    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
 
     const req = makeRequest({ dreams: [makeDream()] })
     const res = await POST(req)
@@ -138,7 +138,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('uses story card prompt when dreams array is empty', async () => {
-    mockGenerateImage.mockResolvedValue({ images: [{ base64: 'test' }] } as any)
+    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
 
     const req = makeRequest({ dreams: [] })
     await POST(req)
@@ -151,7 +151,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('uses dream card prompt when dreams are provided', async () => {
-    mockGenerateImage.mockResolvedValue({ images: [{ base64: 'test' }] } as any)
+    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
 
     const req = makeRequest({ dreams: [makeDream()] })
     await POST(req)
