@@ -11,11 +11,15 @@ export default function AuthSyncGate() {
 
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        try {
-          await syncDreams(session.user.id)
-        } catch {
-          // Cloud sync is best-effort — don't block UI on failure
-        }
+        setTimeout(async () => {
+          try {
+            const { data: refreshed } = await supabase.auth.getUser()
+            const stripeId = refreshed?.user?.user_metadata?.stripe_customer_id
+            if (stripeId) localStorage.setItem('stripe_customer_id', stripeId)
+            await syncDreams(session.user.id)
+          } catch {
+          }
+        }, 0)
       }
     })
 

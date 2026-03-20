@@ -22,7 +22,7 @@ function startPlanRefresh(): void {
   void (async () => {
     const supabase = getSupabase()
     const session = await supabase?.auth.getSession()
-    const accessToken = session?.data.session?.access_token
+    const accessToken = session?.data?.session?.access_token
     const customer = localStorage.getItem('stripe_customer_id')
 
     const isProd = process.env.NODE_ENV === 'production'
