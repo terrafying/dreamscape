@@ -15,10 +15,16 @@ export default function AccountPage() {
   const [isPremiumPlan, setIsPremiumPlan] = useState(false)
   const [billingBusy, setBillingBusy] = useState<'checkout' | 'portal' | null>(null)
 
-  const getAuthHeaders = async (): Promise<Record<string, string>> => {
-    const session = await supabase?.auth.getSession()
-    const accessToken = session?.data?.session?.access_token
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+  const getAccessToken = async (): Promise<string | null> => {
+    const { data } = await supabase?.auth.getSession() ?? {}
+    return data?.session?.access_token ?? null
+  }
+
+  const refreshUserMetadata = async (): Promise<void> => {
+    if (!supabase) return
+    const { data } = await supabase.auth.getUser()
+    const stripeId = data?.user?.user_metadata?.stripe_customer_id as string | undefined
+    if (stripeId) localStorage.setItem('stripe_customer_id', stripeId)
   }
 
   const getDevCustomerFallback = (): string => {
@@ -29,7 +35,9 @@ export default function AccountPage() {
   }
 
   const refreshPlanFromServer = async () => {
-    const headers = await getAuthHeaders()
+    await refreshUserMetadata()
+    const accessToken = await getAccessToken()
+    const headers: Record<string, string> = accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
     const fallback = Object.keys(headers).length === 0 ? getDevCustomerFallback() : ''
     const response = await fetch(`/api/billing/status${fallback}`, { headers })
     const json = await response.json()
@@ -45,7 +53,9 @@ export default function AccountPage() {
   const startCheckout = async () => {
     try {
       setBillingBusy('checkout')
-      const headers = await getAuthHeaders()
+      await refreshUserMetadata()
+      const accessToken = await getAccessToken()
+      const headers: Record<string, string> = accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
       const response = await fetch('/api/billing/checkout', { headers })
       const json = await response.json()
       if (json?.ok && typeof json.url === 'string') {
@@ -59,9 +69,12 @@ export default function AccountPage() {
   const openBillingPortal = async () => {
     try {
       setBillingBusy('portal')
-      const headers = await getAuthHeaders()
-      const fallback = Object.keys(headers).length === 0 ? getDevCustomerFallback() : ''
-      const response = await fetch(`/api/billing/portal${fallback}`, { headers })
+      await refreshUserMetadata()
+      const accessToken = await getAccessToken()
+      const authHeaders: Record<string, string> = {}
+      if (accessToken) authHeaders.Authorization = `Bearer ${accessToken}`
+      const fallback = Object.keys(authHeaders).length === 0 ? getDevCustomerFallback() : ''
+      const response = await fetch(`/api/billing/portal${fallback}`, { headers: authHeaders })
       const json = await response.json()
       if (json?.ok && typeof json.url === 'string') {
         window.location.href = json.url
@@ -124,17 +137,17 @@ export default function AccountPage() {
       localStorage.setItem('dreamscape_sync_enabled', '1')
       const sessionId = url.searchParams.get('session_id')
       if (sessionId) {
-        getAuthHeaders().then((headers) => {
-          fetch(`/api/billing/success?session_id=${encodeURIComponent(sessionId)}`, { headers })
-          .then((r) => r.json())
-          .then((j) => {
-            if (j?.customer) localStorage.setItem('stripe_customer_id', j.customer)
-            if (j?.plan === 'premium' || j?.plan === 'free') {
-              localStorage.setItem('dreamscape_plan', j.plan)
-              setIsPremiumPlan(j.plan === 'premium')
-            }
-          })
-          .catch(() => {})
+        refreshUserMetadata().then(async () => {
+          const accessToken = await getAccessToken()
+          const headers: Record<string, string> = {}
+          if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+          const response = await fetch(`/api/billing/success?session_id=${encodeURIComponent(sessionId)}`, { headers })
+          const json = await response.json()
+          if (json?.customer) localStorage.setItem('stripe_customer_id', json.customer)
+          if (json?.plan === 'premium' || json?.plan === 'free') {
+            localStorage.setItem('dreamscape_plan', json.plan)
+            setIsPremiumPlan(json.plan === 'premium')
+          }
         }).catch(() => {})
       }
     }

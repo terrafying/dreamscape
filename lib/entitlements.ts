@@ -17,16 +17,25 @@ let isPlanRefreshStarted = false
 
 function startPlanRefresh(): void {
   if (isPlanRefreshStarted || typeof window === 'undefined') return
-  isPlanRefreshStarted = true
 
   void (async () => {
     const supabase = getSupabase()
-    const session = await supabase?.auth.getSession()
-    const accessToken = session?.data?.session?.access_token
-    const customer = localStorage.getItem('stripe_customer_id')
+    if (!supabase) return
 
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+
+    const customer = localStorage.getItem('stripe_customer_id')
     const isProd = process.env.NODE_ENV === 'production'
     if (!accessToken && !customer && isProd) return
+
+    isPlanRefreshStarted = true
+
+    const { data: { user } } = await supabase.auth.getUser()
+    const freshStripeId = user?.user_metadata?.stripe_customer_id as string | undefined
+    if (freshStripeId) {
+      localStorage.setItem('stripe_customer_id', freshStripeId)
+    }
 
     const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
     const fallback = !accessToken && !isProd && customer
