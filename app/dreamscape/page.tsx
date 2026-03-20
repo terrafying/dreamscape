@@ -1,121 +1,113 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import BinauralPlayer from '@/components/BinauralPlayer'
 import BreathworkPlayer from '@/components/BreathworkPlayer'
 import { getDreams } from '@/lib/store'
 import type { DreamLog } from '@/lib/types'
 import { apiFetch } from '@/lib/apiFetch'
 
-const VOICE_PRESETS = {
-  luna: {
-    label: 'Luna',
-    desc: 'Soft, slow, deep',
-    rate: 0.75,
-    pitch: 0.90,
-    voiceHints: ['Samantha', 'Karen', 'Moira', 'Google US English Female', 'Microsoft Aria', 'Zira'],
-    langHint: 'en',
-    genderHint: 'female',
-  },
-  ember: {
-    label: 'Ember',
-    desc: 'Warm, moderate',
-    rate: 0.85,
-    pitch: 0.95,
-    voiceHints: ['Daniel', 'David', 'Google US English Male', 'Microsoft David'],
-    langHint: 'en',
-    genderHint: 'male',
-  },
-  mist: {
-    label: 'Mist',
-    desc: 'Barely a whisper',
-    rate: 0.65,
-    pitch: 1.05,
-    voiceHints: ['Samantha', 'Karen', 'Moira', 'Google US English Female', 'Microsoft Zira'],
-    langHint: 'en',
-    genderHint: 'female',
-  },
-} as const
-type VoicePresetKey = keyof typeof VOICE_PRESETS
+interface ElevenLabsVoice {
+  id: string
+  label: string
+}
 
-// ─── Speech hook ──────────────────────────────────────────────────────────────
+interface TTSState {
+  voices: ElevenLabsVoice[]
+  activeVoice: string
+  speaking: boolean
+  paused: boolean
+  error: string | null
+}
 
-function useSpeech() {
-  const [speaking, setSpeaking] = useState(false)
-  const [paused, setPaused] = useState(false)
-  const [preset, setPresetState] = useState<VoicePresetKey>('luna')
-  const [volume, setVolumeState] = useState(0.85)
-  const utterRef = useRef<SpeechSynthesisUtterance | null>(null)
+function useTTS() {
+  const [state, setState] = useState<TTSState>({
+    voices: [],
+    activeVoice: '',
+    speaking: false,
+    paused: false,
+    error: null,
+  })
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioSrcRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const saved = localStorage.getItem('dreamscape_voice_preset') as VoicePresetKey | null
-    if (saved && saved in VOICE_PRESETS) setPresetState(saved)
-    const savedVol = localStorage.getItem('dreamscape_voice_volume')
-    if (savedVol) setVolumeState(parseFloat(savedVol))
+
+    const savedVoice = localStorage.getItem('dreamscape_elevenlabs_voice') ?? ''
+    setState((s) => ({ ...s, activeVoice: savedVoice }))
+
+    apiFetch('/api/tts/stream')
+      .then((r) => r.json())
+      .then((data: { ok: boolean; voices?: ElevenLabsVoice[]; defaultVoice?: string }) => {
+        if (data.ok && data.voices?.length) {
+          const active = savedVoice && data.voices.some((v) => v.id === savedVoice)
+            ? savedVoice
+            : (data.defaultVoice || data.voices[0].id)
+          setState((s) => ({ ...s, voices: data.voices!, activeVoice: active }))
+          if (!savedVoice) localStorage.setItem('dreamscape_elevenlabs_voice', active)
+        }
+      })
+      .catch(() => {})
   }, [])
 
-  const pickVoice = useCallback((hints: readonly string[], langHint: string, genderHint: string): SpeechSynthesisVoice | null => {
-    if (typeof window === 'undefined') return null
-    const voices = window.speechSynthesis.getVoices()
-    for (const name of hints) {
-      const v = voices.find((v) => v.name.includes(name))
-      if (v) return v
+  const speak = async (text: string) => {
+    if (!text || typeof window === 'undefined') return
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
     }
-    const gender = genderHint === 'female'
-      ? voices.find((v) => v.lang.startsWith(langHint) && (v.name.toLowerCase().includes('female') || !v.name.toLowerCase().includes('male')))
-      : voices.find((v) => v.lang.startsWith(langHint) && v.name.toLowerCase().includes('male'))
-    if (gender) return gender
-    return voices.find((v) => v.lang.startsWith(langHint + '-US')) ?? voices.find((v) => v.lang.startsWith(langHint)) ?? null
-  }, [])
+    setState((s) => ({ ...s, speaking: true, paused: false, error: null }))
 
-  const speak = useCallback((text: string) => {
-    if (typeof window === 'undefined') return
-    window.speechSynthesis.cancel()
-    const cfg = VOICE_PRESETS[preset]
-    const utt = new SpeechSynthesisUtterance(text)
-    utt.rate = cfg.rate
-    utt.pitch = cfg.pitch
-    utt.volume = volume
-    const voice = pickVoice(cfg.voiceHints, cfg.langHint, cfg.genderHint)
-    if (voice) utt.voice = voice
-    utt.onstart = () => { setSpeaking(true); setPaused(false) }
-    utt.onend = () => { setSpeaking(false); setPaused(false) }
-    utt.onerror = () => { setSpeaking(false); setPaused(false) }
-    utterRef.current = utt
-    window.speechSynthesis.speak(utt)
-  }, [preset, volume, pickVoice])
-
-  const stop = useCallback(() => {
-    window.speechSynthesis.cancel()
-    setSpeaking(false)
-    setPaused(false)
-  }, [])
-
-  const togglePause = useCallback(() => {
-    if (paused) {
-      window.speechSynthesis.resume()
-      setPaused(false)
-    } else {
-      window.speechSynthesis.pause()
-      setPaused(true)
+    try {
+      const res = await apiFetch('/api/tts/stream', {
+        method: 'POST',
+        body: JSON.stringify({ text, voiceId: state.activeVoice }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setState((s) => ({ ...s, speaking: false, error: (json as { error?: string }).error || 'TTS failed' }))
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      audioSrcRef.current = url
+      const audio = new Audio(url)
+      audioRef.current = audio
+      audio.volume = 0.85
+      audio.onended = () => {
+        setState((s) => ({ ...s, speaking: false, paused: false }))
+        if (audioSrcRef.current) { URL.revokeObjectURL(audioSrcRef.current); audioSrcRef.current = null }
+      }
+      audio.onerror = () => {
+        setState((s) => ({ ...s, speaking: false, error: 'Audio playback failed' }))
+      }
+      await audio.play()
+    } catch (err) {
+      setState((s) => ({ ...s, speaking: false, error: err instanceof Error ? err.message : 'TTS failed' }))
     }
-  }, [paused])
-
-  const setPreset = (p: VoicePresetKey) => {
-    setPresetState(p)
-    localStorage.setItem('dreamscape_voice_preset', p)
   }
 
-  const setVolume = (v: number) => {
-    setVolumeState(v)
-    localStorage.setItem('dreamscape_voice_volume', String(v))
-    if (utterRef.current) utterRef.current.volume = v
+  const stop = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    if (audioSrcRef.current) { URL.revokeObjectURL(audioSrcRef.current); audioSrcRef.current = null }
+    setState((s) => ({ ...s, speaking: false, paused: false }))
   }
 
-  useEffect(() => () => { window.speechSynthesis?.cancel() }, [])
+  const togglePause = () => {
+    if (!audioRef.current) return
+    if (state.paused) { audioRef.current.play(); setState((s) => ({ ...s, paused: false })) }
+    else { audioRef.current.pause(); setState((s) => ({ ...s, paused: true })) }
+  }
 
-  return { speaking, paused, preset, volume, speak, stop, togglePause, setPreset, setVolume }
+  const setVoice = (id: string) => {
+    setState((s) => ({ ...s, activeVoice: id }))
+    localStorage.setItem('dreamscape_elevenlabs_voice', id)
+  }
+
+  useEffect(() => () => { stop() }, [])
+
+  return { ...state, speak, stop, togglePause, setVoice }
 }
 
 const TABS = [
@@ -241,7 +233,7 @@ function StoryTab() {
   const [subtitle, setSubtitle] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const { speaking, paused, preset, volume, speak, stop, togglePause, setPreset, setVolume } = useSpeech()
+  const { speaking, paused, activeVoice, voices, speak, stop, togglePause, setVoice } = useTTS()
 
   useEffect(() => { getDreams().then(setDreams) }, [])
 
@@ -577,41 +569,29 @@ function StoryTab() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex gap-1.5">
-              {(Object.keys(VOICE_PRESETS) as VoicePresetKey[]).map((key) => {
-                const p = VOICE_PRESETS[key]
-                return (
+            {voices.length > 0 && (
+              <div className="flex gap-1.5">
+                {voices.map((v) => (
                   <button
-                    key={key}
-                    onClick={() => setPreset(key)}
+                    key={v.id}
+                    onClick={() => setVoice(v.id)}
                     className="flex-1 py-1.5 rounded-lg text-xs transition-all"
                     style={{
-                      background: preset === key ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${preset === key ? 'rgba(167,139,250,0.35)' : 'var(--border)'}`,
-                      color: preset === key ? 'var(--violet)' : 'var(--muted)',
+                      background: activeVoice === v.id ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${activeVoice === v.id ? 'rgba(167,139,250,0.35)' : 'var(--border)'}`,
+                      color: activeVoice === v.id ? 'var(--violet)' : 'var(--muted)',
                     }}
                   >
-                    {p.label}
+                    {v.label}
                   </button>
-                )
-              })}
-            </div>
-            <div className="flex items-center gap-2 px-1">
-              <span className="text-xs" style={{ color: 'var(--muted)', fontSize: '10px' }}>Vol</span>
-              <input
-                type="range"
-                min={0.2}
-                max={1}
-                step={0.05}
-                value={volume}
-                onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="flex-1"
-                style={{ accentColor: 'var(--violet)', cursor: 'pointer' }}
-              />
-              <span className="text-xs font-mono" style={{ color: 'var(--muted)', fontSize: '10px', minWidth: '24px', textAlign: 'right' }}>
-                {Math.round(volume * 100)}
-              </span>
-            </div>
+                ))}
+              </div>
+            )}
+            {voices.length === 0 && (
+              <p className="text-xs text-center" style={{ color: 'var(--muted)' }}>
+                Configure ELEVENLABS_API_KEY to enable voices
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
