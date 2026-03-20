@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-type Provider = 'anthropic' | 'openai' | 'openrouter' | 'ollama'
+type Provider = 'anthropic' | 'openai' | 'openrouter'
 
 export default function ModelDefaultsPanel() {
   const [provider, setProvider] = useState<Provider>('openrouter')

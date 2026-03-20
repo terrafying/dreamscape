@@ -1,13 +1,11 @@
 type Candidate = { id: string; score: number; coolUntil: number }
 
-// Seed candidates (will be overridden by live fetch when possible)
 const SEEDED: Candidate[] = [
-  { id: 'nvidia/nemotron-3-super-120b-a12b:free', score: 0.90, coolUntil: 0 },
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free', score: 1.0, coolUntil: 0 },
   { id: 'qwen/qwen3-next-80b-a3b-instruct:free', score: 0.70, coolUntil: 0 },
   { id: 'nvidia/nemotron-3-nano-30b-a3b:free', score: 0.65, coolUntil: 0 },
   { id: 'stepfun/step-3.5-flash:free', score: 0.60, coolUntil: 0 },
   { id: 'arcee-ai/trinity-mini:free', score: 0.55, coolUntil: 0 },
-  { id: 'openrouter/free', score: 0.50, coolUntil: 0 },
 ]
 
 const state = new Map<string, Candidate>()
@@ -17,7 +15,7 @@ let lastRefresh = 0
 async function refreshCandidatesIfStale() {
   const key = process.env.OPENROUTER_API_KEY
   const now = Date.now()
-  if (!key || now - lastRefresh < 15 * 60_000) return // 15 min cache
+  if (!key || now - lastRefresh < 15 * 60_000) return
   try {
     const res = await fetch('https://openrouter.ai/api/v1/models', {
       headers: { Authorization: `Bearer ${key}` },
@@ -26,7 +24,6 @@ async function refreshCandidatesIfStale() {
     if (!res.ok) return
     const data = await res.json() as any
     const models = Array.isArray(data?.data) ? data.data : []
-    // Heuristic: treat models with 0 cost (or :free suffix) as free
     const free: string[] = []
     for (const m of models) {
       const id = m?.id || m?.name
@@ -35,8 +32,11 @@ async function refreshCandidatesIfStale() {
       if (isFree) free.push(id)
     }
     if (free.length) {
-      // Rebuild state with nemotron-super first when present
-      const ranked = free.map((id) => ({ id, score: id.includes('nemotron-3-super-120b') ? 1.0 : 0.6, coolUntil: 0 }))
+      const ranked = free.map((id) => ({
+        id,
+        score: id.includes('nemotron-3-super-120b') ? 1.0 : 0.6,
+        coolUntil: 0,
+      }))
       state.clear()
       for (const c of ranked) state.set(c.id, c)
       lastRefresh = now
@@ -45,7 +45,6 @@ async function refreshCandidatesIfStale() {
 }
 
 export function pickOpenRouterModel(preferred?: string): string {
-  // trigger async refresh (fire and forget)
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   refreshCandidatesIfStale()
 

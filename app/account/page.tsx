@@ -36,6 +36,9 @@ export default function AccountPage() {
     if (json?.ok && (json.plan === 'premium' || json.plan === 'free')) {
       localStorage.setItem('dreamscape_plan', json.plan)
       setIsPremiumPlan(json.plan === 'premium')
+    } else if (!response.ok) {
+      localStorage.setItem('dreamscape_plan', 'free')
+      setIsPremiumPlan(false)
     }
   }
 

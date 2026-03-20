@@ -168,14 +168,14 @@ describe('POST /api/letter', () => {
       body: JSON.stringify({
         dreams: [makeDream('1', '2026-03-10')],
         date: '2026-03-16',
-        provider: 'ollama',
-        model: 'qwen2.5:32b',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
       }),
     })
     await POST(req)
     expect(mockCallLLM).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ provider: 'ollama', model: 'qwen2.5:32b' })
+      expect.objectContaining({ provider: 'openai', model: 'gpt-4o-mini' })
     )
   })
 })

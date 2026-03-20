@@ -1,13 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { pickOpenRouterModel, markOpenRouterFailure, markOpenRouterSuccess } from '@/lib/openrouter'
 
-export type LLMProvider = 'anthropic' | 'ollama' | 'openai' | 'openrouter'
+export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
 
 export interface LLMOptions {
   provider?: LLMProvider
   model?: string
   maxTokens?: number
-  json?: boolean // request JSON-mode output (Ollama format:'json', Anthropic via prompt)
-  apiKeys?: { openai?: string; anthropic?: string; openrouter?: string }
+  json?: boolean
+  apiKeys?: { openai?: string; anthropic?: string; openrouter?: string; groq?: string }
 }
 
 // Lazy singleton so tests can mock the module before instantiation
@@ -18,19 +19,19 @@ function anthropicClient() {
 }
 
 export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): Promise<{ text: string; source: string }> {
-  const { provider = 'anthropic', model, maxTokens = 2000, json = false } = opts
+  const { provider = 'anthropic', model, maxTokens = 2000 } = opts
 
   try {
-    if (provider === 'ollama') {
-      const m = model || process.env.OLLAMA_MODEL || 'qwen2.5:32b'
-      return { text: await callOllama(prompt, m, maxTokens, json), source: `ollama:${m}` }
-    }
     if (provider === 'openai') {
       const m = model || process.env.OPENAI_MODEL || 'gpt-4o-mini'
       return { text: await callOpenAI(prompt, m, maxTokens, opts.apiKeys?.openai), source: `openai:${m}` }
     }
+    if (provider === 'groq') {
+      const m = model || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
+      return { text: await callGroq(prompt, m, maxTokens, opts.apiKeys?.groq), source: `groq:${m}` }
+    }
     if (provider === 'openrouter') {
-      const m = model || process.env.OPENROUTER_MODEL || 'openrouter/free'
+      const m = model || pickOpenRouterModel()
       const text = await callOpenRouter(prompt, m, maxTokens, opts.apiKeys?.openrouter)
       return { text, source: `openrouter:${m}` }
     }
@@ -47,16 +48,15 @@ export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): 
     return { text, source: `anthropic:${m}` }
   } catch (err: any) {
     const msg = String(err?.message || err)
-    // Fallbacks on quota/unauthorized
     if (/Rate limit|insufficient|quota|Unauthorized|401|429/i.test(msg)) {
       if (process.env.OPENAI_API_KEY) {
         try { const m = model || 'gpt-4o-mini'; return { text: await callOpenAI(prompt, m, maxTokens), source: `openai:${m}` } } catch {}
       }
-      if (process.env.OPENROUTER_API_KEY) {
-        try { const m = model || 'openrouter/free'; return { text: await callOpenRouter(prompt, m, maxTokens), source: `openrouter:${m}` } } catch {}
+      if (process.env.GROQ_API_KEY) {
+        try { const m = model || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'; return { text: await callGroq(prompt, m, maxTokens), source: `groq:${m}` } } catch {}
       }
-      if (process.env.OLLAMA_BASE_URL) {
-        try { const m = process.env.OLLAMA_MODEL || 'qwen2.5:32b'; return { text: await callOllama(prompt, m, maxTokens, json), source: `ollama:${m}` } } catch {}
+      if (process.env.OPENROUTER_API_KEY) {
+        try { const m = model || pickOpenRouterModel(); return { text: await callOpenRouter(prompt, m, maxTokens), source: `openrouter:${m}` } } catch {}
       }
     }
     throw err
@@ -67,38 +67,6 @@ export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): 
 export async function callLLM(prompt: string, opts: LLMOptions = {}): Promise<string> {
   const { text } = await callLLMWithSource(prompt, opts)
   return text
-}
-
-async function callOllama(
-  prompt: string,
-  model: string,
-  maxTokens: number,
-  json: boolean
-): Promise<string> {
-  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
-
-  const body: Record<string, unknown> = {
-    model,
-    messages: [{ role: 'user', content: prompt }],
-    stream: false,
-    options: { num_predict: maxTokens },
-  }
-  if (json) body.format = 'json'
-
-  const res = await fetch(`${baseUrl}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(180_000), // 3 min — large models are slow on first run
-  })
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => '')
-    throw new Error(`Ollama error (${res.status}): ${err || 'is Ollama running? brew install ollama && ollama serve'}`)
-  }
-
-  const data = (await res.json()) as { message?: { content?: string } }
-  return data.message?.content ?? ''
 }
 
 async function callOpenAI(prompt: string, model: string, maxTokens: number, overrideKey?: string): Promise<string> {
@@ -113,19 +81,35 @@ async function callOpenAI(prompt: string, model: string, maxTokens: number, over
       temperature: 0.2,
       max_tokens: maxTokens,
     }),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(30_000),
   })
   if (!res.ok) throw new Error(`OpenAI error ${res.status}: ${await res.text()}`)
   const data = await res.json() as any
   return data.choices?.[0]?.message?.content || ''
 }
 
-import { pickOpenRouterModel, markOpenRouterFailure, markOpenRouterSuccess } from '@/lib/openrouter'
+async function callGroq(prompt: string, model: string, maxTokens: number, overrideKey?: string): Promise<string> {
+  const key = overrideKey || process.env.GROQ_API_KEY
+  if (!key) throw new Error('Missing GROQ_API_KEY')
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      max_tokens: maxTokens,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  })
+  if (!res.ok) throw new Error(`Groq error ${res.status}: ${await res.text()}`)
+  const data = await res.json() as any
+  return data.choices?.[0]?.message?.content || ''
+}
 
 async function callOpenRouter(prompt: string, model: string, maxTokens: number, overrideKey?: string): Promise<string> {
   const key = overrideKey || process.env.OPENROUTER_API_KEY
   if (!key) throw new Error('Missing OPENROUTER_API_KEY')
-  const chosen = model === 'openrouter/free' || !model ? pickOpenRouterModel() : model
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -135,18 +119,18 @@ async function callOpenRouter(prompt: string, model: string, maxTokens: number, 
       'X-Title': 'Dreamscape',
     },
     body: JSON.stringify({
-      model: chosen,
+      model,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
       max_tokens: maxTokens,
     }),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(30_000),
   })
   if (!res.ok) {
-    markOpenRouterFailure(chosen)
+    markOpenRouterFailure(model)
     throw new Error(`OpenRouter error ${res.status}: ${await res.text()}`)
   }
-  markOpenRouterSuccess(chosen)
+  markOpenRouterSuccess(model)
   const data = await res.json() as any
   return data.choices?.[0]?.message?.content || ''
 }

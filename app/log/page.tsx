@@ -92,6 +92,7 @@ export default function LogPage() {
 
     const today = new Date().toISOString().split('T')[0]
     abortRef.current = new AbortController()
+    const timeoutId = setTimeout(() => abortRef.current?.abort(), 90_000)
 
     try {
       const res = await apiFetch('/api/extract', {
@@ -153,6 +154,8 @@ export default function LogPage() {
         setStatus('error')
         setStatusMessage('Something went wrong. Please try again.')
       }
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 

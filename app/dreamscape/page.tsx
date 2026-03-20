@@ -7,43 +7,84 @@ import { getDreams } from '@/lib/store'
 import type { DreamLog } from '@/lib/types'
 import { apiFetch } from '@/lib/apiFetch'
 
+const VOICE_PRESETS = {
+  luna: {
+    label: 'Luna',
+    desc: 'Soft, slow, deep',
+    rate: 0.75,
+    pitch: 0.90,
+    voiceHints: ['Samantha', 'Karen', 'Moira', 'Google US English Female', 'Microsoft Aria', 'Zira'],
+    langHint: 'en',
+    genderHint: 'female',
+  },
+  ember: {
+    label: 'Ember',
+    desc: 'Warm, moderate',
+    rate: 0.85,
+    pitch: 0.95,
+    voiceHints: ['Daniel', 'David', 'Google US English Male', 'Microsoft David'],
+    langHint: 'en',
+    genderHint: 'male',
+  },
+  mist: {
+    label: 'Mist',
+    desc: 'Barely a whisper',
+    rate: 0.65,
+    pitch: 1.05,
+    voiceHints: ['Samantha', 'Karen', 'Moira', 'Google US English Female', 'Microsoft Zira'],
+    langHint: 'en',
+    genderHint: 'female',
+  },
+} as const
+type VoicePresetKey = keyof typeof VOICE_PRESETS
+
 // ─── Speech hook ──────────────────────────────────────────────────────────────
 
 function useSpeech() {
   const [speaking, setSpeaking] = useState(false)
   const [paused, setPaused] = useState(false)
+  const [preset, setPresetState] = useState<VoicePresetKey>('luna')
+  const [volume, setVolumeState] = useState(0.85)
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null)
 
-  // Pick a soothing voice: prefer soft female en-US voices
-  const pickVoice = useCallback((): SpeechSynthesisVoice | null => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem('dreamscape_voice_preset') as VoicePresetKey | null
+    if (saved && saved in VOICE_PRESETS) setPresetState(saved)
+    const savedVol = localStorage.getItem('dreamscape_voice_volume')
+    if (savedVol) setVolumeState(parseFloat(savedVol))
+  }, [])
+
+  const pickVoice = useCallback((hints: readonly string[], langHint: string, genderHint: string): SpeechSynthesisVoice | null => {
     if (typeof window === 'undefined') return null
     const voices = window.speechSynthesis.getVoices()
-    const preferred = ['Samantha', 'Karen', 'Moira', 'Google US English Female', 'Microsoft Aria']
-    for (const name of preferred) {
+    for (const name of hints) {
       const v = voices.find((v) => v.name.includes(name))
       if (v) return v
     }
-    return voices.find((v) => v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
-      ?? voices.find((v) => v.lang.startsWith('en-US'))
-      ?? voices.find((v) => v.lang.startsWith('en'))
-      ?? null
+    const gender = genderHint === 'female'
+      ? voices.find((v) => v.lang.startsWith(langHint) && (v.name.toLowerCase().includes('female') || !v.name.toLowerCase().includes('male')))
+      : voices.find((v) => v.lang.startsWith(langHint) && v.name.toLowerCase().includes('male'))
+    if (gender) return gender
+    return voices.find((v) => v.lang.startsWith(langHint + '-US')) ?? voices.find((v) => v.lang.startsWith(langHint)) ?? null
   }, [])
 
   const speak = useCallback((text: string) => {
     if (typeof window === 'undefined') return
     window.speechSynthesis.cancel()
+    const cfg = VOICE_PRESETS[preset]
     const utt = new SpeechSynthesisUtterance(text)
-    utt.rate = 0.82
-    utt.pitch = 0.95
-    utt.volume = 1
-    const voice = pickVoice()
+    utt.rate = cfg.rate
+    utt.pitch = cfg.pitch
+    utt.volume = volume
+    const voice = pickVoice(cfg.voiceHints, cfg.langHint, cfg.genderHint)
     if (voice) utt.voice = voice
     utt.onstart = () => { setSpeaking(true); setPaused(false) }
     utt.onend = () => { setSpeaking(false); setPaused(false) }
     utt.onerror = () => { setSpeaking(false); setPaused(false) }
     utterRef.current = utt
     window.speechSynthesis.speak(utt)
-  }, [pickVoice])
+  }, [preset, volume, pickVoice])
 
   const stop = useCallback(() => {
     window.speechSynthesis.cancel()
@@ -61,16 +102,26 @@ function useSpeech() {
     }
   }, [paused])
 
-  // Cancel on unmount
+  const setPreset = (p: VoicePresetKey) => {
+    setPresetState(p)
+    localStorage.setItem('dreamscape_voice_preset', p)
+  }
+
+  const setVolume = (v: number) => {
+    setVolumeState(v)
+    localStorage.setItem('dreamscape_voice_volume', String(v))
+    if (utterRef.current) utterRef.current.volume = v
+  }
+
   useEffect(() => () => { window.speechSynthesis?.cancel() }, [])
 
-  return { speaking, paused, speak, stop, togglePause }
+  return { speaking, paused, preset, volume, speak, stop, togglePause, setPreset, setVolume }
 }
 
 const TABS = [
+  { id: 'stories',    label: 'Stories',    icon: '◇' },
   { id: 'breathwork', label: 'Breathwork', icon: '◎' },
   { id: 'binaural',   label: 'Binaural',   icon: '◈' },
-  { id: 'stories',    label: 'Stories',    icon: '◇' },
 ] as const
 type Tab = typeof TABS[number]['id']
 
@@ -102,21 +153,127 @@ function SpeakingIcon({ active }: { active: boolean }) {
 
 // ─── Story tab ────────────────────────────────────────────────────────────────
 
+interface Chapter { title: string; body: string }
+
+function parseChapters(text: string): Chapter[] {
+  const chapters: Chapter[] = []
+  const parts = text.split(/Chapter\s+[I]{1,3}\s*:/i)
+  for (let i = 1; i < parts.length; i++) {
+    const colonIdx = parts[i].indexOf(':')
+    if (colonIdx === -1) { chapters.push({ title: `Chapter ${i}`, body: parts[i].trim() }); continue }
+    const title = parts[i].slice(0, colonIdx).trim()
+    const body = parts[i].slice(colonIdx + 1).trim()
+    chapters.push({ title: title || `Chapter ${i}`, body })
+  }
+  if (chapters.length === 0) chapters.push({ title: '', body: text.trim() })
+  return chapters
+}
+
+// ─── Ambient backdrop canvas ────────────────────────────────────────────────
+
+function AmbientCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef = useRef<number>(0)
+  const tRef = useRef<number>(0)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = 400 * dpr
+    canvas.height = 200 * dpr
+    canvas.style.width = '400px'
+    canvas.style.height = '200px'
+    const ctx = canvas.getContext('2d')!
+    ctx.scale(dpr, dpr)
+
+    const draw = () => {
+      const w = 400, h = 200
+      const t = tRef.current
+      ctx.clearRect(0, 0, w, h)
+      const cx = w / 2, cy = h / 2
+      const r1 = 70 + 20 * Math.sin(t * 0.4)
+      const r2 = 110 + 30 * Math.sin(t * 0.3 + 1.2)
+      const r3 = 160 + 40 * Math.sin(t * 0.25 + 2.5)
+      const grad1 = ctx.createRadialGradient(cx, cy, 0, cx, cy, r1)
+      grad1.addColorStop(0, 'rgba(167,139,250,0.14)')
+      grad1.addColorStop(1, 'rgba(167,139,250,0)')
+      const grad2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, r2)
+      grad2.addColorStop(0, 'rgba(96,165,250,0.08)')
+      grad2.addColorStop(1, 'rgba(96,165,250,0)')
+      const grad3 = ctx.createRadialGradient(cx, cy, 0, cx, cy, r3)
+      grad3.addColorStop(0, 'rgba(244,201,93,0.05)')
+      grad3.addColorStop(1, 'rgba(244,201,93,0)')
+      ctx.fillStyle = grad1; ctx.beginPath(); ctx.arc(cx, cy, r1, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = grad2; ctx.beginPath(); ctx.arc(cx, cy, r2, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = grad3; ctx.beginPath(); ctx.arc(cx, cy, r3, 0, Math.PI * 2); ctx.fill()
+      tRef.current += 0.016
+      rafRef.current = requestAnimationFrame(draw)
+    }
+    rafRef.current = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [])
+
+  return (
+    <div className="w-full flex justify-center mb-5">
+      <canvas
+        ref={canvasRef}
+        className="rounded-3xl opacity-70"
+        style={{ display: 'block', filter: 'blur(1px)' }}
+        aria-hidden
+      />
+    </div>
+  )
+}
+
+const STORY_KEY = 'dreamscape_story'
+
 function StoryTab() {
   const [dreams, setDreams] = useState<DreamLog[]>([])
   const [storyText, setStoryText] = useState('')
+  const [chapters, setChapters] = useState<Chapter[]>([])
+  const [activeChapter, setActiveChapter] = useState(0)
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
+  const [cardStatus, setCardStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
+  const [cardImage, setCardImage] = useState('')
+  const [cardTitle, setCardTitle] = useState('')
   const abortRef = useRef<AbortController | null>(null)
-  const { speaking, paused, speak, stop, togglePause } = useSpeech()
+  const { speaking, paused, preset, volume, speak, stop, togglePause, setPreset, setVolume } = useSpeech()
 
   useEffect(() => { getDreams().then(setDreams) }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem(STORY_KEY)
+    if (saved) {
+      try {
+        const { text, chapters: savedChapters } = JSON.parse(saved)
+        if (text && savedChapters?.length) {
+          setStoryText(text)
+          setChapters(savedChapters)
+        }
+      } catch {
+        localStorage.removeItem(STORY_KEY)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onBeforeUnload = () => abortRef.current?.abort()
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
 
   const generate = async () => {
     if (loading) { abortRef.current?.abort(); return }
     setLoading(true)
     setStoryText('')
+    setChapters([])
+    setActiveChapter(0)
     setStatus('')
+    if (typeof window !== 'undefined') localStorage.removeItem(STORY_KEY)
     abortRef.current = new AbortController()
 
     try {
@@ -156,7 +313,15 @@ function StoryTab() {
           try {
             const payload = JSON.parse(dataLine)
             if (eventType === 'status' && payload.message) setStatus(payload.message)
-            if (eventType === 'story' && payload.text) setStoryText(payload.text)
+            if (eventType === 'story' && payload.text) {
+              setStoryText(payload.text)
+              const parsed = parseChapters(payload.text)
+              setChapters(parsed)
+              setActiveChapter(0)
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(STORY_KEY, JSON.stringify({ text: payload.text, chapters: parsed }))
+              }
+            }
           } catch { /* skip */ }
         }
       }
@@ -168,17 +333,60 @@ function StoryTab() {
     }
   }
 
+  const generateCard = async () => {
+    if (cardStatus === 'generating') return
+    setCardStatus('generating')
+    setCardImage('')
+    setCardTitle('')
+    try {
+      const res = await apiFetch('/api/generate-card', {
+        method: 'POST',
+        body: JSON.stringify({ dreams, storyTitle: chapters[0]?.title }),
+      })
+      const reader = res.body!.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        const events = buf.split('\n\n')
+        buf = events.pop() ?? ''
+        for (const event of events) {
+          if (!event.trim()) continue
+          let eventType = '', dataLine = ''
+          for (const line of event.split('\n')) {
+            if (line.startsWith('event:')) eventType = line.slice(6).trim()
+            if (line.startsWith('data:')) dataLine = line.slice(5).trim()
+          }
+          if (!dataLine) continue
+          try {
+            const payload = JSON.parse(dataLine)
+            if (payload.title) setCardTitle(payload.title)
+            if (payload.base64) setCardImage(payload.base64)
+          } catch { /* skip */ }
+        }
+      }
+      if (cardImage) setCardStatus('done')
+      else setCardStatus('error')
+    } catch {
+      setCardStatus('error')
+    }
+  }
+
   const hasDreams = dreams.length > 0
+  const fullText = chapters.map(c => c.body).join(' ')
 
   return (
     <div className="space-y-5">
+      <AmbientCanvas />
+
       <div
         className="rounded-xl p-4 text-sm leading-relaxed"
-        style={{ background: 'rgba(15,15,26,0.6)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+        style={{ background: 'rgba(15,15,26,0.6)', border: '1px solid rgba(167,139,250,0.2)', color: 'var(--muted)' }}
       >
-        <span className="font-medium" style={{ color: 'var(--text)' }}>Generative Sleep Stories — </span>
-        Each story is woven from your own dream symbols, recurring themes, and emotional landscape.
-        Written to carry you gently from waking into sleep.
+        <span className="font-medium" style={{ color: 'var(--violet)' }}>Sleep Stories — </span>
+        Your dream symbols, woven into a guided narrative.
       </div>
 
       {!hasDreams && (
@@ -186,7 +394,7 @@ function StoryTab() {
           className="rounded-xl p-4 text-xs text-center"
           style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.2)', color: 'var(--muted)' }}
         >
-          Log a dream first — your story will draw from your own symbols and themes.
+          Log a dream first — your story draws from your own symbols.
         </div>
       )}
 
@@ -201,30 +409,64 @@ function StoryTab() {
           cursor: !hasDreams && !loading ? 'default' : 'pointer',
         }}
       >
-        {loading ? `◼  Stop · ${status || 'generating...'}` : '◇  Weave a Sleep Story'}
+        {loading ? `◼  Stop · ${status || 'weaving your story...'}` : '◇  Weave a Sleep Story'}
       </button>
 
-      {storyText && (
+      {chapters.length > 0 && (
         <>
+          {chapters.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {chapters.map((ch, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveChapter(i)}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs transition-all"
+                  style={{
+                    background: activeChapter === i ? 'rgba(167,139,250,0.2)' : 'rgba(15,15,26,0.6)',
+                    border: `1px solid ${activeChapter === i ? 'rgba(167,139,250,0.4)' : 'var(--border)'}`,
+                    color: activeChapter === i ? 'var(--violet)' : 'var(--muted)',
+                  }}
+                >
+                  {ch.title || `Part ${i + 1}`}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div
-            className="rounded-xl p-5 leading-loose"
+            className="rounded-2xl p-6 text-center space-y-4"
             style={{
-              background: 'rgba(15,15,26,0.7)',
-              border: '1px solid var(--border)',
-              fontFamily: 'Georgia, serif',
-              fontSize: '15px',
-              color: 'var(--text)',
-              whiteSpace: 'pre-wrap',
+              background: 'linear-gradient(160deg, rgba(12,10,28,0.95), rgba(20,14,38,0.88))',
+              border: '1px solid rgba(167,139,250,0.25)',
+              boxShadow: '0 0 40px rgba(167,139,250,0.08), inset 0 0 30px rgba(167,139,250,0.04)',
             }}
           >
-            {storyText}
+            {chapters[activeChapter]?.title && (
+              <div
+                className="text-xs font-mono uppercase tracking-widest"
+                style={{ color: 'rgba(167,139,250,0.6)', letterSpacing: '0.2em' }}
+              >
+                {chapters[activeChapter].title}
+              </div>
+            )}
+            <p
+              className="leading-relaxed"
+              style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: '16px',
+                color: 'rgba(226,232,240,0.92)',
+                lineHeight: '1.9',
+                letterSpacing: '0.01em',
+              }}
+            >
+              {chapters[activeChapter]?.body}
+            </p>
           </div>
 
-          {/* Read-aloud controls */}
           <div className="flex items-center gap-3">
             {!speaking ? (
               <button
-                onClick={() => speak(storyText)}
+                onClick={() => speak(fullText)}
                 className="flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:opacity-90"
                 style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', color: 'var(--violet)' }}
               >
@@ -238,11 +480,9 @@ function StoryTab() {
                   className="flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200"
                   style={{ background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.4)', color: 'var(--violet)' }}
                 >
-                  {paused ? (
-                    <><span style={{ fontSize: '14px' }}>▶</span> Resume</>
-                  ) : (
-                    <><SpeakingIcon active /><span>Pause</span></>
-                  )}
+                  {paused
+                    ? <><span style={{ fontSize: '14px' }}>▶</span> Resume</>
+                    : <><SpeakingIcon active /><span>Pause</span></>}
                 </button>
                 <button
                   onClick={stop}
@@ -254,6 +494,108 @@ function StoryTab() {
               </>
             )}
           </div>
+
+          <div className="space-y-2">
+            <div className="flex gap-1.5">
+              {(Object.keys(VOICE_PRESETS) as VoicePresetKey[]).map((key) => {
+                const p = VOICE_PRESETS[key]
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setPreset(key)}
+                    className="flex-1 py-1.5 rounded-lg text-xs transition-all"
+                    style={{
+                      background: preset === key ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${preset === key ? 'rgba(167,139,250,0.35)' : 'var(--border)'}`,
+                      color: preset === key ? 'var(--violet)' : 'var(--muted)',
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex items-center gap-2 px-1">
+              <span className="text-xs" style={{ color: 'var(--muted)', fontSize: '10px' }}>Vol</span>
+              <input
+                type="range"
+                min={0.2}
+                max={1}
+                step={0.05}
+                value={volume}
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="flex-1"
+                style={{ accentColor: 'var(--violet)', cursor: 'pointer' }}
+              />
+              <span className="text-xs font-mono" style={{ color: 'var(--muted)', fontSize: '10px', minWidth: '24px', textAlign: 'right' }}>
+                {Math.round(volume * 100)}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px" style={{ background: 'rgba(167,139,250,0.15)' }} />
+              <span className="text-[10px] uppercase tracking-widest" style={{ color: 'rgba(167,139,250,0.3)' }}>Dream Card</span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(167,139,250,0.15)' }} />
+            </div>
+
+            {cardStatus === 'done' && cardImage ? (
+              <div className="space-y-2">
+                <div
+                  className="rounded-2xl overflow-hidden relative"
+                  style={{ boxShadow: '0 0 30px rgba(167,139,250,0.15)' }}
+                >
+                  <img
+                    src={`data:image/png;base64,${cardImage}`}
+                    alt={cardTitle || 'Dream Card'}
+                    className="w-full block"
+                  />
+                </div>
+                {cardTitle && (
+                  <p className="text-xs text-center font-mono uppercase tracking-widest" style={{ color: 'rgba(167,139,250,0.6)', letterSpacing: '0.15em' }}>
+                    {cardTitle}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const a = document.createElement('a')
+                      a.href = `data:image/png;base64,${cardImage}`
+                      a.download = `dream-card-${Date.now()}.png`
+                      a.click()
+                    }}
+                    className="flex-1 py-2 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', color: 'var(--violet)' }}
+                  >
+                    ⬇ Save Card
+                  </button>
+                  <button
+                    onClick={generateCard}
+                    className="px-4 py-2 rounded-xl text-xs transition-opacity hover:opacity-70"
+                    style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+                  >
+                    ↻ New
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={generateCard}
+                disabled={cardStatus === 'generating'}
+                className="w-full py-2.5 rounded-xl text-xs font-medium transition-all"
+                style={{
+                  background: cardStatus === 'generating' ? 'rgba(167,139,250,0.06)' : 'rgba(167,139,250,0.10)',
+                  border: '1px solid rgba(167,139,250,0.2)',
+                  color: cardStatus === 'generating' ? 'rgba(167,139,250,0.4)' : 'var(--violet)',
+                  cursor: cardStatus === 'generating' ? 'wait' : 'pointer',
+                  opacity: cardStatus === 'generating' ? 0.6 : 1,
+                }}
+              >
+                {cardStatus === 'generating' ? '◌ Rendering...' : '✦ Generate Dream Card'}
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>
@@ -263,7 +605,7 @@ function StoryTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DreamscapePage() {
-  const [tab, setTab] = useState<Tab>('breathwork')
+  const [tab, setTab] = useState<Tab>('stories')
   const [breathPlaying, setBreathPlaying] = useState(false)
   const [binauralPlaying, setBinauralPlaying] = useState(false)
 
@@ -277,11 +619,10 @@ export default function DreamscapePage() {
           Sleep
         </h1>
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
-          Breathwork, binaural beats & healing frequencies for nervous system regulation and deep sleep.
+          Guided stories, breathwork & binaural frequencies for deep sleep.
         </p>
       </div>
 
-      {/* Mini banners for active audio on hidden tab */}
       {tab !== 'breathwork' && breathPlaying && (
         <button
           onClick={() => setTab('breathwork')}
@@ -305,7 +646,6 @@ export default function DreamscapePage() {
         </button>
       )}
 
-      {/* Tab bar */}
       <div
         className="flex rounded-xl p-0.5 gap-0.5"
         style={{ background: 'rgba(15,15,26,0.8)', border: '1px solid var(--border)' }}
@@ -323,24 +663,23 @@ export default function DreamscapePage() {
           >
             <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>{t.icon}</span>
             {t.label}
-            {t.id === 'breathwork' && breathPlaying && tab !== 'breathwork' && (
+            {t.id === 'breathwork' && breathPlaying && (
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--violet)' }} />
             )}
-            {t.id === 'binaural' && binauralPlaying && tab !== 'binaural' && (
+            {t.id === 'binaural' && binauralPlaying && (
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#60a5fa' }} />
             )}
           </button>
         ))}
       </div>
 
-      {/* Always mount audio players — hide inactive to preserve audio state */}
+      {tab === 'stories' && <StoryTab />}
       <div style={{ display: tab === 'breathwork' ? 'block' : 'none' }}>
         <BreathworkPlayer onPlayingChange={setBreathPlaying} />
       </div>
       <div style={{ display: tab === 'binaural' ? 'block' : 'none' }}>
         <BinauralPlayer onPlayingChange={setBinauralPlaying} />
       </div>
-      {tab === 'stories' && <StoryTab />}
 
       <style>{`
         @keyframes pulse-banner {

@@ -7,67 +7,39 @@ interface ProviderSettingsProps {
   onChange?: (provider: LLMProvider, model: string | undefined) => void
 }
 
-const RECOMMENDED: { name: string; sizeGB: number; note: string }[] = [
-  { name: 'qwen2.5:32b',         sizeGB: 19, note: 'best quality' },
-  { name: 'gemma3:27b',          sizeGB: 17, note: 'good quality' },
-  { name: 'mistral-small3.1:24b',sizeGB: 14, note: 'faster' },
-  { name: 'qwen2.5:14b',         sizeGB:  9, note: 'lightweight' },
-]
-
 export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
-  const [provider, setProvider] = useState<LLMProvider>('openrouter')
-  const [model, setModel] = useState('qwen2.5:32b')
-  const [orModel, setOrModel] = useState('openrouter/free')
+  const [provider, setProvider] = useState<LLMProvider>('groq')
+  const [orModel, setOrModel] = useState('nvidia/nemotron-3-super-120b-a12b:free')
   const [expanded, setExpanded] = useState(false)
-  const [availableModels, setAvailableModels] = useState<{ name: string; sizeGB: number }[]>([])
-  const [ollamaStatus, setOllamaStatus] = useState<'unknown' | 'running' | 'offline'>('unknown')
-  const [loadingModels, setLoadingModels] = useState(false)
 
   useEffect(() => {
-    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'openrouter'
-    const m = localStorage.getItem('dreamscape_model') || 'qwen2.5:32b'
-    const orm = localStorage.getItem('dreamscape_or_model') || 'openrouter/free'
+    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'groq'
+    const orm = localStorage.getItem('dreamscape_or_model') || 'nvidia/nemotron-3-super-120b-a12b:free'
     setProvider(p)
-    setModel(m)
     setOrModel(orm)
-    onChange?.(p, p === 'ollama' ? m : p === 'openrouter' ? orm : undefined)
+    onChange?.(p, p === 'openrouter' ? orm : undefined)
   }, [])
 
   const save = (p: LLMProvider, m: string) => {
     localStorage.setItem('dreamscape_provider', p)
-    if (p === 'ollama') localStorage.setItem('dreamscape_model', m)
-    if (p === 'openrouter') localStorage.setItem('dreamscape_or_model', m)
-    setProvider(p)
-    if (p === 'ollama') setModel(m)
-    if (p === 'openrouter') setOrModel(m)
-    onChange?.(p, p === 'ollama' ? m : p === 'openrouter' ? m : undefined)
-  }
-
-  const fetchModels = async () => {
-    setLoadingModels(true)
-    try {
-      const res = await fetch('/api/models')
-      const data = await res.json() as { models: { name: string; sizeGB: number }[]; running: boolean }
-      setAvailableModels(data.models)
-      setOllamaStatus(data.running ? 'running' : 'offline')
-    } catch {
-      setOllamaStatus('offline')
-    } finally {
-      setLoadingModels(false)
+    if (p === 'openrouter') {
+      localStorage.setItem('dreamscape_or_model', m)
+      setOrModel(m)
     }
+    setProvider(p)
+    onChange?.(p, p === 'openrouter' ? m : undefined)
   }
 
   const label = provider === 'anthropic'
-    ? '☁ Anthropic (auto)'
+    ? '☁ Anthropic'
     : provider === 'openai'
-    ? '☁ OpenAI (auto)'
-    : provider === 'openrouter'
-    ? `☁ OpenRouter (${orModel})`
-    : `◉ ${model}`
+    ? '☁ OpenAI'
+    : provider === 'groq'
+    ? '☁ Groq (free)'
+    : `☁ OpenRouter (${orModel.split('/').pop()})`
 
   return (
     <div className="space-y-2">
-      {/* Collapsed summary */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -78,7 +50,6 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
         <span style={{ fontSize: '9px' }}>{expanded ? '▲' : '▼'}</span>
       </button>
 
-      {/* Expanded panel */}
       {expanded && (
         <div
           className="rounded-xl p-4 space-y-4"
@@ -88,13 +59,12 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
             AI Model
           </div>
 
-          {/* Provider toggle */}
           <div className="flex gap-2 flex-wrap">
-            {(['anthropic', 'openai', 'openrouter'] as LLMProvider[]).map((p) => (
+            {(['anthropic', 'openai', 'groq', 'openrouter'] as LLMProvider[]).map((p) => (
               <button
                 key={p}
                 type="button"
-                onClick={() => save(p, p === 'openrouter' ? orModel : p === 'ollama' ? model : p === 'openai' ? 'gpt-4o-mini' : 'claude-3-haiku-20240307')}
+                onClick={() => save(p, p === 'openrouter' ? orModel : p === 'openai' ? 'gpt-4o-mini' : p === 'anthropic' ? 'claude-3-haiku-20240307' : 'llama-3.3-70b-versatile')}
                 className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
                 style={{
                   background: provider === p ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',
@@ -102,30 +72,33 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
                   color: provider === p ? 'var(--violet)' : 'var(--muted)',
                 }}
               >
-                {p === 'anthropic' ? '☁ Anthropic API' : p === 'openai' ? '☁ OpenAI' : '☁ OpenRouter'}
+                {p === 'anthropic' ? '☁ Anthropic' : p === 'openai' ? '☁ OpenAI' : p === 'groq' ? '☁ Groq (free)' : '☁ OpenRouter'}
               </button>
             ))}
           </div>
 
-          {/* Anthropic info */}
           {provider === 'anthropic' && (
             <p className="text-xs" style={{ color: 'var(--muted)' }}>
               Uses Anthropic via your <span style={{ color: 'var(--violet)' }}>ANTHROPIC_API_KEY</span> with in-app fallbacks if rate-limited.
             </p>
           )}
 
-          {/* OpenAI info */}
           {provider === 'openai' && (
             <p className="text-xs" style={{ color: 'var(--muted)' }}>
               Uses OpenAI via your <span style={{ color: 'var(--violet)' }}>OPENAI_API_KEY</span>. Model defaults to <span style={{ color: 'var(--text)' }}>gpt-4o-mini</span>.
             </p>
           )}
 
-          {/* OpenRouter config */}
+          {provider === 'groq' && (
+            <p className="text-xs" style={{ color: 'var(--muted)' }}>
+              Uses Groq via your <span style={{ color: 'var(--violet)' }}>GROQ_API_KEY</span> (14,400 req/day free). Model defaults to <span style={{ color: 'var(--text)' }}>llama-3.3-70b-versatile</span>.
+            </p>
+          )}
+
           {provider === 'openrouter' && (
             <div className="space-y-2">
               <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                Uses OpenRouter via your <span style={{ color: 'var(--violet)' }}>OPENROUTER_API_KEY</span>. Auto-rotates free models with cool-down on failures.
+                Uses OpenRouter via your <span style={{ color: 'var(--violet)' }}>OPENROUTER_API_KEY</span>. Defaults to <span style={{ color: 'var(--text)' }}>nemotron-3-super-120b</span>. Auto-rotates with cool-down on failures.
               </p>
               <div className="space-y-1">
                 <label className="text-xs" style={{ color: 'var(--muted)' }}>Model override</label>
@@ -133,15 +106,13 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
                   type="text"
                   value={orModel}
                   onChange={(e) => save('openrouter', e.target.value)}
-                  placeholder="openrouter/free"
+                  placeholder="nvidia/nemotron-3-super-120b-a12b:free"
                   className="w-full rounded-lg px-3 py-1.5 text-xs font-mono outline-none"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 />
               </div>
             </div>
           )}
-
-          {/* Ollama section removed for mobile-first simplicity */}
         </div>
       )}
     </div>

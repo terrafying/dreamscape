@@ -81,6 +81,32 @@ export default function Home() {
         </p>
       </div>
 
+      <div
+        className="rounded-2xl p-4 space-y-3 transition-all hover:opacity-95"
+        style={{
+          background: 'linear-gradient(160deg, rgba(12,10,28,0.97), rgba(20,14,38,0.90))',
+          border: '1px solid rgba(167,139,250,0.30)',
+          boxShadow: '0 0 40px rgba(167,139,250,0.10), inset 0 0 20px rgba(167,139,250,0.04)',
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm" style={{ fontFamily: 'monospace', color: 'var(--violet)' }}>◇</span>
+          <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--violet)' }}>
+            New — Sleep Stories
+          </div>
+        </div>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
+          Your dream symbols woven into a guided cinematic narrative. Breathe, listen, and drift.
+        </p>
+        <Link
+          href="/dreamscape"
+          className="inline-block rounded-xl px-4 py-2.5 text-xs font-medium transition-all hover:opacity-90"
+          style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.35)', color: 'var(--violet)' }}
+        >
+          Open Sleep Stories →
+        </Link>
+      </div>
+
       <div className="space-y-3">
         <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--muted)' }}>
           Ritual Timeline
@@ -149,7 +175,7 @@ export default function Home() {
         <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--muted)' }}>
           Quick Start
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Link
             href={isEveningWindow ? '/journal' : '/log'}
             className="rounded-lg px-3 py-3 text-center transition-colors"
@@ -158,6 +184,16 @@ export default function Home() {
             <div className="text-lg" style={{ fontFamily: 'monospace' }}>{isEveningWindow ? '☾' : '☀'}</div>
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
               {isEveningWindow ? 'Dusk Entry' : 'Dawn Log'}
+            </div>
+          </Link>
+          <Link
+            href="/dreamscape"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(167,139,250,0.06)', color: 'var(--violet)' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>◇</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--violet)', opacity: 0.8 }}>
+              Sleep Stories
             </div>
           </Link>
           <Link
@@ -175,7 +211,7 @@ export default function Home() {
             className="rounded-lg px-3 py-3 text-center transition-colors"
             style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
           >
-            <div className="text-lg" style={{ fontFamily: 'monospace' }}>◇</div>
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>✉</div>
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
               Dream Letter
             </div>

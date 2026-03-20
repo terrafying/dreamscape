@@ -68,6 +68,7 @@ export default function JournalPage() {
     abortRef.current = new AbortController()
 
     const date = new Date().toISOString().split('T')[0]
+    const timeoutId = setTimeout(() => abortRef.current?.abort(), 90_000)
 
     try {
       const res = await apiFetch('/api/journal-extract', {
@@ -128,6 +129,8 @@ export default function JournalPage() {
         setStatus('error')
         setStatusMessage('Something went wrong. Please try again.')
       }
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 

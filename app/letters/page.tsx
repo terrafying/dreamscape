@@ -85,7 +85,7 @@ export default function LettersPage() {
     const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'anthropic'
     const m = localStorage.getItem('dreamscape_model') || undefined
     setProvider(p)
-    setModel(p === 'ollama' ? m : undefined)
+    setModel(m)
   }, [])
 
   const analyzed = dreams.filter((d) => d.extraction)
