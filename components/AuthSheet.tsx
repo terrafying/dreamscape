@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getSupabase } from '@/lib/supabaseClient'
+import { accountRedirectUrl } from '@/lib/site'
 
 export default function AuthSheet() {
   const [open, setOpen] = useState(false)
@@ -28,9 +29,19 @@ export default function AuthSheet() {
   const sendMagicLink = async () => {
     if (!supabase) { setStatus('error'); return }
     setStatus('sending')
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: (typeof window !== 'undefined' ? window.location.origin : '') + '/account' } })
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: accountRedirectUrl() } })
     if (error) setStatus('error')
     else setStatus('sent')
+  }
+
+  const signInWithGoogle = async () => {
+    if (!supabase) { setStatus('error'); return }
+    setStatus('sending')
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: accountRedirectUrl() },
+    })
+    if (error) setStatus('error')
   }
 
   if (!open) return null
@@ -65,6 +76,14 @@ export default function AuthSheet() {
             {status === 'sent' ? 'Sent ✓' : status === 'sending' ? 'Sending…' : 'Send Link'}
           </button>
         </div>
+        <button
+          onClick={signInWithGoogle}
+          disabled={status === 'sending'}
+          className="w-full px-3 py-2 rounded-lg text-sm"
+          style={{ border: '1px solid var(--border)', color: 'var(--text)', opacity: status === 'sending' ? 0.6 : 1 }}
+        >
+          Continue with Google
+        </button>
         {status === 'sent' && (
           <div className="text-[11px] space-y-1" style={{ color: 'var(--muted)' }}>
             <div>We sent a login link to <span style={{ color: 'var(--text)' }}>{email}</span>.</div>

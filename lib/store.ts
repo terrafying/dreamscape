@@ -464,6 +464,6 @@ export async function seedDemoDreams(): Promise<void> {
   ]
 
   for (const dream of demos) {
-    saveDream(dream)
+    await saveDream(dream)
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { SITE_URL } from '@/lib/site'
 
 export async function GET(request: Request) {
   const key = process.env.STRIPE_SECRET_KEY
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     }, { status: 400 })
   }
   try {
-    const origin = new URL(request.url).origin
+    const origin = SITE_URL
     const body = new URLSearchParams({
       customer,
       return_url: `${origin}/account`

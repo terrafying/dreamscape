@@ -6,7 +6,7 @@ import { getDreams, getBirthData, saveBirthData, seedDemoDreams } from '@/lib/st
 import { getBiometricData, saveBiometricDataBatch } from '@/lib/biometrics'
 import { getNatalPlacements, getCurrentTransits, getDominantTransit } from '@/lib/astro'
 import { getAppleHealthSampleData } from '@/lib/integrations/health'
-import { isOverFreeLimits } from '@/lib/entitlements'
+import { isPaywallEnforced } from '@/lib/entitlements'
 import EmotionTimeline from '@/components/charts/EmotionTimeline'
 import ThemeRadar from '@/components/charts/ThemeRadar'
 import SymbolFrequency from '@/components/charts/SymbolFrequency'
@@ -683,12 +683,16 @@ export default function StrataPage() {
 
         {/* Charts */}
         <div className="space-y-8">
-          <ChartCard>
-            <BiometricChart biometrics={biometrics} dreams={withExtraction} />
-          </ChartCard>
+          {isPaywallEnforced(dreams) ? (
+            <Paywall title="Unlock Biometrics + Dream Correlations" message="Track how sleep score, HRV, and recovery move with your dream patterns over time." />
+          ) : (
+            <ChartCard>
+              <BiometricChart biometrics={biometrics} dreams={withExtraction} />
+            </ChartCard>
+          )}
 
           {/* Paywall: advanced insights beyond free limits */}
-          {isOverFreeLimits(dreams) ? (
+          {isPaywallEnforced(dreams) ? (
             <Paywall title="Unlock Health Correlation Insights" message="See how HRV, sleep score, and restfulness align with your dream patterns over weeks and months." />
           ) : (
             <div

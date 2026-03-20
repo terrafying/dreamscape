@@ -1,20 +1,54 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { getSupabase } from '@/lib/supabaseClient'
 import ApiKeysPanel from '@/components/ApiKeysPanel'
 import ModelDefaultsPanel from '@/components/ModelDefaultsPanel'
+import { accountRedirectUrl } from '@/lib/site'
 
 export default function AccountPage() {
   const supabase = getSupabase()
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [isPremiumPlan, setIsPremiumPlan] = useState(false)
+  const [premiumBypass, setPremiumBypass] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null))
   }, [supabase])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setPremiumBypass(localStorage.getItem('dreamscape_premium_bypass') === '1')
+
+    const cachedPlan = localStorage.getItem('dreamscape_plan')
+    if (cachedPlan === 'premium' || cachedPlan === 'free') {
+      setIsPremiumPlan(cachedPlan === 'premium')
+    }
+
+    const customer = localStorage.getItem('stripe_customer_id')
+    if (!customer) return
+
+    void fetch(`/api/billing/status?customer=${encodeURIComponent(customer)}`)
+      .then((response) => response.json())
+      .then((json) => {
+        if (json?.ok && (json.plan === 'premium' || json.plan === 'free')) {
+          localStorage.setItem('dreamscape_plan', json.plan)
+          setIsPremiumPlan(json.plan === 'premium')
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const togglePremiumBypass = () => {
+    if (typeof window === 'undefined') return
+    const next = !premiumBypass
+    localStorage.setItem('dreamscape_premium_bypass', next ? '1' : '0')
+    setPremiumBypass(next)
+  }
 
   const signOut = async () => {
     await supabase?.auth.signOut()
@@ -24,22 +58,36 @@ export default function AccountPage() {
   const signIn = async () => {
     if (!supabase || !email) return
     setStatus('sending')
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: (typeof window !== 'undefined' ? window.location.origin : '') + '/account' } })
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: accountRedirectUrl() } })
     setStatus(error ? 'error' : 'sent')
   }
 
-  // Post-checkout success handling: upgrade local plan and enable sync
+  const signInWithGoogle = async () => {
+    if (!supabase) return
+    setStatus('sending')
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: accountRedirectUrl() },
+    })
+    if (error) setStatus('error')
+  }
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const url = new URL(window.location.href)
     if (url.searchParams.get('checkout') === 'success') {
-      localStorage.setItem('dreamscape_plan', 'premium')
       localStorage.setItem('dreamscape_sync_enabled', '1')
       const sessionId = url.searchParams.get('session_id')
       if (sessionId) {
         fetch(`/api/billing/success?session_id=${encodeURIComponent(sessionId)}`)
           .then((r) => r.json())
-          .then((j) => { if (j?.customer) localStorage.setItem('stripe_customer_id', j.customer) })
+          .then((j) => {
+            if (j?.customer) localStorage.setItem('stripe_customer_id', j.customer)
+            if (j?.plan === 'premium' || j?.plan === 'free') {
+              localStorage.setItem('dreamscape_plan', j.plan)
+              setIsPremiumPlan(j.plan === 'premium')
+            }
+          })
           .catch(() => {})
       }
     }
@@ -67,11 +115,43 @@ export default function AccountPage() {
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="flex-1 rounded-lg px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
             <button onClick={signIn} disabled={!email || status==='sending'} className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--violet)', color: '#07070f', opacity: !email || status==='sending' ? 0.6 : 1 }}>{status==='sent' ? 'Sent ✓' : status==='sending' ? 'Sending…' : 'Send Link'}</button>
           </div>
+          <button onClick={signInWithGoogle} disabled={status==='sending'} className="w-full px-3 py-2 rounded-lg text-sm" style={{ border: '1px solid var(--border)', color: 'var(--text)', opacity: status==='sending' ? 0.6 : 1 }}>Continue with Google</button>
           {!supabase && (
             <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Admin: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable auth.</p>
           )}
         </div>
       )}
+
+      <div className="space-y-2 rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm" style={{ color: 'var(--text)' }}>Billing</p>
+          <span className="text-xs px-2 py-1 rounded-full" style={{ background: (isPremiumPlan || premiumBypass) ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)', color: (isPremiumPlan || premiumBypass) ? '#86efac' : 'var(--muted)' }}>
+            {isPremiumPlan ? 'Premium' : premiumBypass ? 'Premium (Bypass)' : 'Free'}
+          </span>
+        </div>
+        <p className="text-xs" style={{ color: 'var(--muted)' }}>
+          Premium unlocks unlimited archive depth, advanced longitudinal insights, and biometric correlation views.
+        </p>
+        <div className="flex items-center gap-2">
+          {!isPremiumPlan && !premiumBypass && (
+            <Link href="/api/billing/checkout" className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--violet)', color: '#07070f' }}>
+              Upgrade to Premium
+            </Link>
+          )}
+          <a
+            href={typeof window !== 'undefined' && localStorage.getItem('stripe_customer_id')
+              ? `/api/billing/portal?customer=${encodeURIComponent(localStorage.getItem('stripe_customer_id') as string)}`
+              : '/account'}
+            className="px-3 py-2 rounded-lg text-sm"
+            style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+          >
+            Manage Billing
+          </a>
+        </div>
+        <button onClick={togglePremiumBypass} className="text-xs px-3 py-2 rounded-lg" style={{ border: '1px dashed var(--border)', color: 'var(--muted)' }}>
+          Testing bypass: {premiumBypass ? 'On' : 'Off'}
+        </button>
+      </div>
 
       {/* Settings */}
       <div className="space-y-3">

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   getDreams,
   saveDream,
@@ -22,57 +22,53 @@ function makeDream(overrides: Partial<DreamLog> = {}): DreamLog {
   }
 }
 
-// ─── getDreams ────────────────────────────────────────────────────────────────
-
 describe('getDreams', () => {
-  it('returns empty array when storage is empty', () => {
-    expect(getDreams()).toEqual([])
+  it('returns empty array when storage is empty', async () => {
+    expect(await getDreams()).toEqual([])
   })
 
-  it('returns empty array on malformed JSON', () => {
+  it('returns empty array on malformed JSON', async () => {
     localStorage.setItem('dreamscape_dreams', '{not json}')
-    expect(getDreams()).toEqual([])
+    expect(await getDreams()).toEqual([])
   })
 
-  it('returns empty array when value is not an array', () => {
+  it('returns empty array when value is not an array', async () => {
     localStorage.setItem('dreamscape_dreams', '{"id":"x"}')
-    expect(getDreams()).toEqual([])
+    expect(await getDreams()).toEqual([])
   })
 })
 
-// ─── saveDream / getDreams roundtrip ──────────────────────────────────────────
-
 describe('saveDream', () => {
-  it('saves and retrieves a dream', () => {
+  it('saves and retrieves a dream', async () => {
     const dream = makeDream({ transcript: 'A spiral staircase.' })
-    saveDream(dream)
-    const dreams = getDreams()
+    await saveDream(dream)
+    const dreams = await getDreams()
     expect(dreams).toHaveLength(1)
     expect(dreams[0].transcript).toBe('A spiral staircase.')
   })
 
-  it('prepends new dreams (most recent first)', () => {
+  it('prepends new dreams (most recent first)', async () => {
     const a = makeDream({ id: 'a', createdAt: 1000 })
     const b = makeDream({ id: 'b', createdAt: 2000 })
-    saveDream(a)
-    saveDream(b)
-    const dreams = getDreams()
+    await saveDream(a)
+    await saveDream(b)
+    const dreams = await getDreams()
     expect(dreams[0].id).toBe('b')
     expect(dreams[1].id).toBe('a')
   })
 
-  it('updates an existing dream in-place (same id)', () => {
+  it('updates an existing dream in-place (same id)', async () => {
     const dream = makeDream({ id: 'x', transcript: 'Original.' })
-    saveDream(dream)
-    saveDream({ ...dream, transcript: 'Updated.' })
-    const dreams = getDreams()
+    await saveDream(dream)
+    await saveDream({ ...dream, transcript: 'Updated.' })
+    const dreams = await getDreams()
     expect(dreams).toHaveLength(1)
     expect(dreams[0].transcript).toBe('Updated.')
   })
 
-  it('preserves extraction when updating', () => {
+  it('preserves extraction when updating', async () => {
     const dream = makeDream({ id: 'x' })
-    saveDream(dream)
+    await saveDream(dream)
     const withExtraction: DreamLog = {
       ...dream,
       extraction: {
@@ -95,73 +91,65 @@ describe('saveDream', () => {
         recommendations: [],
       },
     }
-    saveDream(withExtraction)
-    const saved = getDreams()[0]
+    await saveDream(withExtraction)
+    const saved = (await getDreams())[0]
     expect(saved.extraction?.symbols[0].name).toBe('Water')
   })
 })
 
-// ─── deleteDream ──────────────────────────────────────────────────────────────
-
 describe('deleteDream', () => {
-  it('removes a dream by id', () => {
+  it('removes a dream by id', async () => {
     const a = makeDream({ id: 'a' })
     const b = makeDream({ id: 'b' })
-    saveDream(a)
-    saveDream(b)
-    deleteDream('a')
-    const dreams = getDreams()
+    await saveDream(a)
+    await saveDream(b)
+    await deleteDream('a')
+    const dreams = await getDreams()
     expect(dreams).toHaveLength(1)
     expect(dreams[0].id).toBe('b')
   })
 
-  it('is a no-op for unknown id', () => {
-    saveDream(makeDream({ id: 'a' }))
-    deleteDream('nonexistent')
-    expect(getDreams()).toHaveLength(1)
+  it('is a no-op for unknown id', async () => {
+    await saveDream(makeDream({ id: 'a' }))
+    await deleteDream('nonexistent')
+    expect(await getDreams()).toHaveLength(1)
   })
 })
 
-// ─── clearExampleDreams ───────────────────────────────────────────────────────
-
 describe('clearExampleDreams', () => {
-  it('removes only example dreams, preserving real ones', () => {
-    saveDream(makeDream({ id: 'real', isExample: false }))
-    saveDream(makeDream({ id: 'example', isExample: true }))
-    clearExampleDreams()
-    const dreams = getDreams()
+  it('removes only example dreams, preserving real ones', async () => {
+    await saveDream(makeDream({ id: 'real', isExample: false }))
+    await saveDream(makeDream({ id: 'example', isExample: true }))
+    await clearExampleDreams()
+    const dreams = await getDreams()
     expect(dreams).toHaveLength(1)
     expect(dreams[0].id).toBe('real')
   })
 })
 
-// ─── BirthData ────────────────────────────────────────────────────────────────
-
 describe('getBirthData / saveBirthData', () => {
-  it('returns null when nothing saved', () => {
-    expect(getBirthData()).toBeNull()
+  it('returns null when nothing saved', async () => {
+    expect(await getBirthData()).toBeNull()
   })
 
-  it('saves and retrieves birth data', () => {
+  it('saves and retrieves birth data', async () => {
     const bd: BirthData = { date: '1990-04-15', time: '14:30', location: 'New York, NY' }
-    saveBirthData(bd)
-    expect(getBirthData()).toEqual(bd)
+    await saveBirthData(bd)
+    expect(await getBirthData()).toEqual(bd)
   })
 
-  it('returns null after clearBirthData', () => {
-    saveBirthData({ date: '1990-04-15', location: 'London' })
-    clearBirthData()
-    expect(getBirthData()).toBeNull()
+  it('returns null after clearBirthData', async () => {
+    await saveBirthData({ date: '1990-04-15', location: 'London' })
+    await clearBirthData()
+    expect(await getBirthData()).toBeNull()
   })
 
-  it('overwrites on second save', () => {
-    saveBirthData({ date: '1990-04-15', location: 'Paris' })
-    saveBirthData({ date: '1992-07-04', location: 'Berlin' })
-    expect(getBirthData()?.location).toBe('Berlin')
+  it('overwrites on second save', async () => {
+    await saveBirthData({ date: '1990-04-15', location: 'Paris' })
+    await saveBirthData({ date: '1992-07-04', location: 'Berlin' })
+    expect((await getBirthData())?.location).toBe('Berlin')
   })
 })
-
-// ─── generateId ───────────────────────────────────────────────────────────────
 
 describe('generateId', () => {
   it('returns a non-empty string', () => {
@@ -175,34 +163,30 @@ describe('generateId', () => {
   })
 })
 
-// ─── seedDemoDreams ───────────────────────────────────────────────────────────
-
 describe('seedDemoDreams', () => {
-  it('seeds exactly 7 demo dreams', () => {
-    seedDemoDreams()
-    const examples = getDreams().filter((d) => d.isExample)
+  it('seeds exactly 7 demo dreams', async () => {
+    await seedDemoDreams()
+    const examples = (await getDreams()).filter((d) => d.isExample)
     expect(examples).toHaveLength(7)
   })
 
-  it('is idempotent — does not duplicate on second call', () => {
-    seedDemoDreams()
-    seedDemoDreams()
-    const examples = getDreams().filter((d) => d.isExample)
+  it('is idempotent and does not duplicate on second call', async () => {
+    await seedDemoDreams()
+    await seedDemoDreams()
+    const examples = (await getDreams()).filter((d) => d.isExample)
     expect(examples).toHaveLength(7)
   })
 
-  it('seeded dreams all have extractions', () => {
-    seedDemoDreams()
-    const examples = getDreams().filter((d) => d.isExample)
-    for (const dream of examples) {
-      expect(dream.extraction).toBeDefined()
-    }
+  it('seeded dreams all have extractions', async () => {
+    await seedDemoDreams()
+    const examples = (await getDreams()).filter((d) => d.isExample)
+    for (const dream of examples) expect(dream.extraction).toBeDefined()
   })
 
-  it('does not remove existing real dreams', () => {
-    saveDream(makeDream({ id: 'real' }))
-    seedDemoDreams()
-    const real = getDreams().find((d) => d.id === 'real')
+  it('does not remove existing real dreams', async () => {
+    await saveDream(makeDream({ id: 'real' }))
+    await seedDemoDreams()
+    const real = (await getDreams()).find((d) => d.id === 'real')
     expect(real).toBeDefined()
   })
 })

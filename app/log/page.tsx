@@ -12,6 +12,8 @@ import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
 import ShareableDreamCard from '@/components/ShareableDreamCard'
 import HQVoiceButton from '@/components/HQVoiceButton'
+import Paywall from '@/components/Paywall'
+import { isPaywallEnforced } from '@/lib/entitlements'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
@@ -60,6 +62,7 @@ export default function LogPage() {
   }, [])
 
   const natal = birthData ? getNatalPlacements(birthData) : null
+  const paywallLocked = isPaywallEnforced(dreams)
 
   const handleProviderChange = (p: LLMProvider, m: string | undefined) => {
     setProvider(p)
@@ -77,6 +80,11 @@ export default function LogPage() {
 
   const handleSubmit = async () => {
     if (!transcript.trim() || status === 'loading') return
+    if (paywallLocked) {
+      setStatus('error')
+      setStatusMessage('Free tier limit reached. Upgrade to continue interpreting new dreams.')
+      return
+    }
 
     setStatus('loading')
     setExtraction(null)
@@ -206,6 +214,7 @@ export default function LogPage() {
                 border: `1px solid ${status === 'loading' ? 'rgba(167,139,250,0.4)' : 'var(--border)'}`,
                 color: 'var(--text)',
                 minHeight: '160px',
+                opacity: paywallLocked ? 0.65 : 1,
               }}
               rows={7}
             />
@@ -221,23 +230,27 @@ export default function LogPage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
-                <HQVoiceButton onAppend={appendVoice} disabled={status === 'loading'} />
+                <VoiceButton onAppend={appendVoice} disabled={status === 'loading' || paywallLocked} autoStart pulseHint />
+                <HQVoiceButton onAppend={appendVoice} disabled={status === 'loading' || paywallLocked} />
               </div>
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={!transcript.trim() || status === 'loading'}
+              disabled={!transcript.trim() || status === 'loading' || paywallLocked}
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-all duration-200"
               style={{
-                background: transcript.trim() && status !== 'loading' ? 'var(--violet)' : 'rgba(167,139,250,0.15)',
-                color: transcript.trim() && status !== 'loading' ? '#07070f' : 'rgba(167,139,250,0.4)',
-                cursor: !transcript.trim() || status === 'loading' ? 'not-allowed' : 'pointer',
+                background: transcript.trim() && status !== 'loading' && !paywallLocked ? 'var(--violet)' : 'rgba(167,139,250,0.15)',
+                color: transcript.trim() && status !== 'loading' && !paywallLocked ? '#07070f' : 'rgba(167,139,250,0.4)',
+                cursor: !transcript.trim() || status === 'loading' || paywallLocked ? 'not-allowed' : 'pointer',
               }}
             >
-              {status === 'loading' ? 'Interpreting...' : 'Capture + Interpret ✦'}
+              {status === 'loading' ? 'Interpreting...' : paywallLocked ? 'Premium Required' : 'Capture + Interpret ✦'}
             </button>
+
+            {paywallLocked && (
+              <Paywall title="Free limit reached" message="Upgrade to keep interpreting and saving new dreams beyond the free cap." cta="Unlock Unlimited" />
+            )}
 
             <ProviderSettings onChange={handleProviderChange} />
           </div>
@@ -305,15 +318,11 @@ export default function LogPage() {
         {/* Paywall banner for free tier after limits */}
         {status === 'idle' && dreams.length > 0 && (
           <>
-            {(() => {
-              // Lazy import to avoid a circular import at top-level
-              const over = (window ? require('@/lib/entitlements') : { isOverFreeLimits: () => false }).isOverFreeLimits?.(dreams) ?? false
-              return over ? (
-                <div className="pt-2">
-                  {require('@/components/Paywall').default({ title: 'Keep your archive growing', message: 'Free tier includes up to 5 dreams and 3 weeks of history. Upgrade to unlock deeper analysis and unlimited logging.' })}
-                </div>
-              ) : null
-            })()}
+            {paywallLocked ? (
+              <div className="pt-2">
+                <Paywall title="Keep your archive growing" message="Free tier includes up to 5 dreams and 3 weeks of history. Upgrade to unlock deeper analysis and unlimited logging." />
+              </div>
+            ) : null}
 
             <div className="space-y-2 pt-2">
               <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>

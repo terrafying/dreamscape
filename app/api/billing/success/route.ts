@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { resolveServerPlan } from '@/lib/stripePlan'
 
 export async function GET(request: Request) {
   const key = process.env.STRIPE_SECRET_KEY
@@ -15,5 +16,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'Stripe error', details: text }, { status: 500 })
   }
   const json = await resp.json()
-  return NextResponse.json({ ok: true, customer: json.customer || null })
+  const customer = typeof json.customer === 'string' ? json.customer : null
+
+  if (!customer) {
+    return NextResponse.json({ ok: true, customer: null, plan: 'free' })
+  }
+
+  try {
+    const plan = await resolveServerPlan(customer, key)
+    return NextResponse.json({ ok: true, customer, plan })
+  } catch {
+    return NextResponse.json({ ok: true, customer, plan: 'free' })
+  }
 }

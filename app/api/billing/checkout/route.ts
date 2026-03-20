@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
+import { SITE_URL } from '@/lib/site'
 
-export async function GET(request: Request) {
+export async function GET() {
   const key = process.env.STRIPE_SECRET_KEY
   const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
   if (!key || !priceId) {
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const origin = new URL(request.url).origin
+    const origin = SITE_URL
     const body = new URLSearchParams({
       mode: 'subscription',
       'line_items[0][price]': priceId,

@@ -14,8 +14,29 @@ export interface Entitlements {
   }
 }
 
+let isPlanRefreshStarted = false
+
+function startPlanRefresh(): void {
+  if (isPlanRefreshStarted || typeof window === 'undefined') return
+  isPlanRefreshStarted = true
+
+  const customer = localStorage.getItem('stripe_customer_id')
+  if (!customer) return
+
+  void fetch(`/api/billing/status?customer=${encodeURIComponent(customer)}`)
+    .then((response) => response.json())
+    .then((json) => {
+      if (json?.ok && (json.plan === 'free' || json.plan === 'premium')) {
+        localStorage.setItem('dreamscape_plan', json.plan)
+      }
+    })
+    .catch(() => {
+      isPlanRefreshStarted = false
+    })
+}
+
 export function getEntitlements(): Entitlements {
-  // Placeholder: read from localStorage; default to free
+  startPlanRefresh()
   const plan = (typeof window !== 'undefined' && localStorage.getItem('dreamscape_plan')) as Plan | null
   return {
     plan: plan || 'free',
@@ -33,7 +54,13 @@ export function getEntitlements(): Entitlements {
 }
 
 export function isPremium(): boolean {
-  return getEntitlements().plan === 'premium'
+  if (process.env.NEXT_PUBLIC_PREMIUM_BYPASS === '1') return true
+  const localBypass = typeof window !== 'undefined' && localStorage.getItem('dreamscape_premium_bypass') === '1'
+  return getEntitlements().plan === 'premium' || localBypass
+}
+
+export function isPaywallEnforced(dreams: DreamLog[]): boolean {
+  return !isPremium() && isOverFreeLimits(dreams)
 }
 
 export function weeksOfHistory(dreams: DreamLog[]): number {

@@ -94,7 +94,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
               <button
                 key={p}
                 type="button"
-                onClick={() => save(p, model)}
+                onClick={() => save(p, p === 'openrouter' ? orModel : p === 'ollama' ? model : p === 'openai' ? 'gpt-4o-mini' : 'claude-3-haiku-20240307')}
                 className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
                 style={{
                   background: provider === p ? 'rgba(167,139,250,0.2)' : 'rgba(255,255,255,0.04)',

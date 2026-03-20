@@ -6,6 +6,8 @@ import type { LLMProvider } from '@/lib/llm'
 import { getDreams, getBirthData } from '@/lib/store'
 import RecommendationCards from '@/components/RecommendationCards'
 import { apiFetch } from '@/lib/apiFetch'
+import Paywall from '@/components/Paywall'
+import { isPaywallEnforced } from '@/lib/entitlements'
 
 interface StructuredLetter {
   key_patterns: { pattern: string; frequency: number; significance: string }[]
@@ -88,9 +90,10 @@ export default function LettersPage() {
 
   const analyzed = dreams.filter((d) => d.extraction)
   const canGenerate = analyzed.length >= 3
+  const premiumLocked = isPaywallEnforced(dreams)
 
   const handleGenerate = async () => {
-    if (!canGenerate || status === 'loading') return
+    if (premiumLocked || !canGenerate || status === 'loading') return
 
     setStatus('loading')
     setProse('')
@@ -152,7 +155,7 @@ export default function LettersPage() {
 
   // Personal letter handlers
   const handleGeneratePersonalLetter = () => {
-    if (!personInput.trim()) return
+    if (premiumLocked || !personInput.trim()) return
     const latestAnalyzed = analyzed.length > 0
       ? analyzed.sort((a, b) => b.date.localeCompare(a.date))[0]
       : null
@@ -195,6 +198,13 @@ export default function LettersPage() {
       {/* Status/CTA */}
       {status !== 'done' && (
         <div className="space-y-3">
+          {premiumLocked && (
+            <Paywall
+              title="Dream Letters is a Premium feature"
+              message="Unlock personalized letters and structured pattern synthesis across your dream archive."
+              cta="Unlock Dream Letters"
+            />
+          )}
           <div
             className="rounded-xl p-4 flex items-center justify-between"
             style={{ background: 'rgba(15,15,26,0.7)', border: '1px solid var(--border)' }}
@@ -204,12 +214,14 @@ export default function LettersPage() {
                 {analyzed.length} analyzed dream{analyzed.length !== 1 ? 's' : ''}
               </div>
               <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                {canGenerate
+                {premiumLocked
+                  ? 'Upgrade to generate your letter'
+                  : canGenerate
                   ? 'Ready to generate your letter'
                   : `Log ${3 - analyzed.length} more dream${3 - analyzed.length !== 1 ? 's' : ''} to unlock`}
               </div>
             </div>
-            {canGenerate && (
+            {canGenerate && !premiumLocked && (
               <div
                 className="w-2 h-2 rounded-full"
                 style={{ background: '#4ade80' }}
@@ -248,15 +260,15 @@ export default function LettersPage() {
 
           <button
             onClick={handleGenerate}
-            disabled={!canGenerate || status === 'loading'}
+            disabled={premiumLocked || !canGenerate || status === 'loading'}
             className="w-full py-3.5 rounded-2xl text-sm font-medium transition-all duration-200"
             style={{
-              background: canGenerate && status !== 'loading' ? 'var(--violet)' : 'rgba(167,139,250,0.15)',
-              color: canGenerate && status !== 'loading' ? '#07070f' : 'rgba(167,139,250,0.4)',
-              cursor: !canGenerate || status === 'loading' ? 'not-allowed' : 'pointer',
+              background: canGenerate && status !== 'loading' && !premiumLocked ? 'var(--violet)' : 'rgba(167,139,250,0.15)',
+              color: canGenerate && status !== 'loading' && !premiumLocked ? '#07070f' : 'rgba(167,139,250,0.4)',
+              cursor: !canGenerate || status === 'loading' || premiumLocked ? 'not-allowed' : 'pointer',
             }}
           >
-            {status === 'loading' ? 'Writing...' : 'Generate Letter ◇'}
+            {status === 'loading' ? 'Writing...' : premiumLocked ? 'Premium Required' : 'Generate Letter ◇'}
           </button>
         </div>
       )}
@@ -436,15 +448,15 @@ export default function LettersPage() {
 
             <button
               onClick={handleGeneratePersonalLetter}
-              disabled={!personInput.trim()}
+              disabled={premiumLocked || !personInput.trim()}
               className="w-full py-3 rounded-2xl text-sm font-medium transition-all duration-200"
               style={{
-                background: personInput.trim() ? 'var(--violet)' : 'rgba(167,139,250,0.15)',
-                color: personInput.trim() ? '#07070f' : 'rgba(167,139,250,0.4)',
-                cursor: !personInput.trim() ? 'not-allowed' : 'pointer',
+                background: personInput.trim() && !premiumLocked ? 'var(--violet)' : 'rgba(167,139,250,0.15)',
+                color: personInput.trim() && !premiumLocked ? '#07070f' : 'rgba(167,139,250,0.4)',
+                cursor: !personInput.trim() || premiumLocked ? 'not-allowed' : 'pointer',
               }}
             >
-              Generate Letter ◇
+              {premiumLocked ? 'Premium Required' : 'Generate Letter ◇'}
             </button>
           </div>
         ) : (
