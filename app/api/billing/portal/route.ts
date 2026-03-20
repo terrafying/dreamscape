@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { SITE_URL } from '@/lib/site'
+import { findStripeCustomerByEmail } from '@/lib/stripePlan'
 import { getStripeCustomerFromUser, getUserFromRequest, isNonProdEnvironment } from '@/lib/supabaseServer'
 
 export async function GET(request: Request) {
@@ -7,7 +8,13 @@ export async function GET(request: Request) {
   const user = await getUserFromRequest(request)
   const { searchParams } = new URL(request.url)
   const fallbackCustomer = searchParams.get('customer')
-  const customer = getStripeCustomerFromUser(user) ?? (isNonProdEnvironment() ? fallbackCustomer : null)
+
+  let customer = getStripeCustomerFromUser(user)
+  if (!customer && isNonProdEnvironment()) customer = fallbackCustomer
+  if (!customer && user?.email && key) {
+    const stripeCustomer = await findStripeCustomerByEmail(user.email, key)
+    if (stripeCustomer?.id) customer = stripeCustomer.id
+  }
 
   if (!key || !customer) {
     return NextResponse.json({
