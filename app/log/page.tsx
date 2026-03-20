@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import type { DreamLog, DreamExtraction, BirthData } from '@/lib/types'
 import type { LLMProvider } from '@/lib/llm'
 import { getDreams, saveDream, getBirthData, saveBirthData, generateId } from '@/lib/store'
+import { syncDream } from '@/lib/cloudStore'
+import { getSupabase } from '@/lib/supabaseClient'
 import { apiFetch } from '@/lib/apiFetch'
 import { getNatalPlacements } from '@/lib/astro'
 import ExtractionDisplay from '@/components/ExtractionDisplay'
@@ -139,6 +141,9 @@ export default function LogPage() {
             const id = generateId()
             const log: DreamLog = { id, date: today, transcript, extraction: ext, createdAt: Date.now() }
             await saveDream(log)
+            const supabase = getSupabase()
+            const session = supabase ? await supabase.auth.getSession() : null
+            if (session?.data?.session?.user) { try { await syncDream(session.data.session.user.id, log) } catch {} }
             setSavedId(id)
             const updated = await getDreams()
             setDreams(updated)

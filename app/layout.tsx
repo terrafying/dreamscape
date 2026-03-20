@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import Nav from '@/components/Nav'
+import AuthSyncGate from '@/components/AuthSyncGate'
 
 const SITE_URL = 'https://www.dreamscape.quest'
 
@@ -50,6 +51,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-dvh flex flex-col" style={{ background: 'var(--bg)' }}>
+        <AuthSyncGate />
         <main className="flex-1" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
           {children}
         </main>

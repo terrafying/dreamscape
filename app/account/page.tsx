@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getSupabase } from '@/lib/supabaseClient'
+import { syncDreams } from '@/lib/cloudStore'
 import ApiKeysPanel from '@/components/ApiKeysPanel'
 import ModelDefaultsPanel from '@/components/ModelDefaultsPanel'
 import { accountRedirectUrl } from '@/lib/site'
@@ -73,7 +74,12 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (!supabase) return
-    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email ?? null))
+    supabase.auth.getUser().then(async ({ data }) => {
+      setUserEmail(data.user?.email ?? null)
+      if (data.user) {
+        try { await syncDreams(data.user.id) } catch {}
+      }
+    })
   }, [supabase])
 
   useEffect(() => {
