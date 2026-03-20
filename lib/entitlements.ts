@@ -1,4 +1,5 @@
 import type { DreamLog } from '@/lib/types'
+import { getSupabase } from '@/lib/supabaseClient'
 
 // Simple local entitlements and metering.
 // In production, back this with server-side checks tied to user auth + billing.
@@ -20,16 +21,24 @@ function startPlanRefresh(): void {
   if (isPlanRefreshStarted || typeof window === 'undefined') return
   isPlanRefreshStarted = true
 
-  const customer = localStorage.getItem('stripe_customer_id')
-  if (!customer) return
+  void (async () => {
+    const supabase = getSupabase()
+    const session = await supabase?.auth.getSession()
+    const accessToken = session?.data.session?.access_token
+    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
 
-  void fetch(`/api/billing/status?customer=${encodeURIComponent(customer)}`)
-    .then((response) => response.json())
-    .then((json) => {
-      if (json?.ok && (json.plan === 'free' || json.plan === 'premium')) {
-        localStorage.setItem('dreamscape_plan', json.plan)
-      }
-    })
+    const customer = localStorage.getItem('stripe_customer_id')
+    const fallback = !accessToken && process.env.NODE_ENV !== 'production' && customer
+      ? `?customer=${encodeURIComponent(customer)}`
+      : ''
+
+    const response = await fetch(`/api/billing/status${fallback}`, { headers })
+    const json = await response.json()
+
+    if (json?.ok && (json.plan === 'free' || json.plan === 'premium')) {
+      localStorage.setItem('dreamscape_plan', json.plan)
+    }
+  })()
     .catch(() => {
       isPlanRefreshStarted = false
     })
