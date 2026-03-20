@@ -153,7 +153,7 @@ function SpeakingIcon({ active }: { active: boolean }) {
 
 // ─── Story tab ────────────────────────────────────────────────────────────────
 
-interface Chapter { title: string; body: string }
+interface Chapter { title: string; body: string; cardImage?: string; cardTitle?: string }
 
 function parseChapters(text: string): Chapter[] {
   const chapters: Chapter[] = []
@@ -238,6 +238,7 @@ function StoryTab() {
   const [cardStatus, setCardStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
   const [cardImage, setCardImage] = useState('')
   const [cardTitle, setCardTitle] = useState('')
+  const [subtitle, setSubtitle] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const { speaking, paused, preset, volume, speak, stop, togglePause, setPreset, setVolume } = useSpeech()
@@ -258,6 +259,8 @@ function StoryTab() {
         localStorage.removeItem(STORY_KEY)
       }
     }
+    const savedSub = localStorage.getItem('dreamscape_story_subtitle')
+    if (savedSub) setSubtitle(savedSub)
   }, [])
 
   useEffect(() => {
@@ -343,9 +346,24 @@ function StoryTab() {
               const parsed = parseChapters(payload.text)
               setChapters(parsed)
               setActiveChapter(0)
+              if (payload.subtitle) {
+                setSubtitle(payload.subtitle)
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('dreamscape_story_subtitle', payload.subtitle)
+                }
+              }
               if (typeof window !== 'undefined') {
                 localStorage.setItem(STORY_KEY, JSON.stringify({ text: payload.text, chapters: parsed }))
               }
+            }
+            if (eventType === 'done') {
+              if (payload.subtitle) {
+                setSubtitle(payload.subtitle)
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('dreamscape_story_subtitle', payload.subtitle)
+                }
+              }
+              setTimeout(() => { doGenerateCard() }, 200)
             }
           } catch { /* skip malformed SSE chunk */ }
         }
@@ -360,7 +378,7 @@ function StoryTab() {
     }
   }
 
-  const generateCard = async () => {
+  const doGenerateCard = async () => {
     if (cardStatus === 'generating') return
     setCardStatus('generating')
     setCardImage('')
@@ -369,7 +387,7 @@ function StoryTab() {
     try {
       const res = await apiFetch('/api/generate-card', {
         method: 'POST',
-        body: JSON.stringify({ dreams, storyTitle: chapters[0]?.title }),
+        body: JSON.stringify({ dreams, storyTitle: chapters[0]?.title, subtitle }),
       })
       const reader = res.body!.getReader()
       const dec = new TextDecoder()
@@ -452,6 +470,31 @@ function StoryTab() {
 
       {chapters.length > 0 && (
         <>
+          {(cardStatus === 'done' && cardImage) && (
+            <div className="space-y-3">
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ boxShadow: '0 0 40px rgba(167,139,250,0.12)' }}
+              >
+                <img
+                  src={`data:image/png;base64,${cardImage}`}
+                  alt={cardTitle || 'Dream Card'}
+                  className="w-full block"
+                />
+              </div>
+              {subtitle && (
+                <div
+                  className="rounded-xl px-4 py-3 text-xs leading-relaxed"
+                  style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.15)', color: 'rgba(167,139,250,0.8)', fontStyle: 'italic' }}
+                >
+                  {subtitle.split('\n\n').map((para, i) => (
+                    <p key={i} style={{ marginBottom: i < subtitle.split('\n\n').length - 1 ? '0.5em' : 0 }}>{para}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {chapters.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {chapters.map((ch, i) => (
@@ -578,61 +621,35 @@ function StoryTab() {
               <div className="flex-1 h-px" style={{ background: 'rgba(167,139,250,0.15)' }} />
             </div>
 
-            {cardStatus === 'done' && cardImage ? (
-              <div className="space-y-2">
-                <div
-                  className="rounded-2xl overflow-hidden relative"
-                  style={{ boxShadow: '0 0 30px rgba(167,139,250,0.15)' }}
+            <div className="flex gap-2">
+              {cardStatus === 'done' && cardImage && (
+                <button
+                  onClick={() => {
+                    const a = document.createElement('a')
+                    a.href = `data:image/png;base64,${cardImage}`
+                    a.download = `dream-card-${Date.now()}.png`
+                    a.click()
+                  }}
+                  className="flex-1 py-2 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', color: 'var(--violet)' }}
                 >
-                  <img
-                    src={`data:image/png;base64,${cardImage}`}
-                    alt={cardTitle || 'Dream Card'}
-                    className="w-full block"
-                  />
-                </div>
-                {cardTitle && (
-                  <p className="text-xs text-center font-mono uppercase tracking-widest" style={{ color: 'rgba(167,139,250,0.6)', letterSpacing: '0.15em' }}>
-                    {cardTitle}
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      const a = document.createElement('a')
-                      a.href = `data:image/png;base64,${cardImage}`
-                      a.download = `dream-card-${Date.now()}.png`
-                      a.click()
-                    }}
-                    className="flex-1 py-2 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
-                    style={{ background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.3)', color: 'var(--violet)' }}
-                  >
-                    ⬇ Save Card
-                  </button>
-                  <button
-                    onClick={generateCard}
-                    className="px-4 py-2 rounded-xl text-xs transition-opacity hover:opacity-70"
-                    style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-                  >
-                    ↻ New
-                  </button>
-                </div>
-              </div>
-            ) : (
+                  ⬇ Save
+                </button>
+              )}
               <button
-                onClick={generateCard}
+                onClick={doGenerateCard}
                 disabled={cardStatus === 'generating'}
-                className="w-full py-2.5 rounded-xl text-xs font-medium transition-all"
+                className="flex-1 py-2 rounded-xl text-xs transition-opacity hover:opacity-70"
                 style={{
                   background: cardStatus === 'generating' ? 'rgba(167,139,250,0.06)' : 'rgba(167,139,250,0.10)',
                   border: '1px solid rgba(167,139,250,0.2)',
-                  color: cardStatus === 'generating' ? 'rgba(167,139,250,0.4)' : 'var(--violet)',
-                  cursor: cardStatus === 'generating' ? 'wait' : 'pointer',
+                  color: cardStatus === 'generating' ? 'rgba(167,139,250,0.4)' : 'var(--muted)',
                   opacity: cardStatus === 'generating' ? 0.6 : 1,
                 }}
               >
-                {cardStatus === 'generating' ? '◌ Rendering...' : '✦ Generate Dream Card'}
+                {cardStatus === 'generating' ? '◌ Rendering...' : cardStatus === 'done' ? '↻ New Card' : '✦ Generate Card'}
               </button>
-            )}
+            </div>
           </div>
         </>
       )}

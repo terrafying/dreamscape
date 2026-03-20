@@ -2,6 +2,7 @@ import { callLLM, type LLMProvider } from '@/lib/llm'
 import type { DreamLog, BirthData } from '@/lib/types'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 import { checkAuth } from '@/lib/auth'
+import { buildSubtitle } from '@/lib/spiritual-content'
 
 
 function sse(event: string, data: unknown): string {
@@ -19,6 +20,10 @@ export async function POST(req: Request) {
     model?: string
   }
 
+  const recentDreams = dreams.slice(0, 6)
+  const arc = recentDreams[0]?.extraction?.narrative_arc ?? 'liminal'
+  const subtitle = buildSubtitle(recentDreams[0]?.extraction, arc)
+
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
@@ -27,9 +32,6 @@ export async function POST(req: Request) {
 
       try {
         send('status', { message: 'Drawing from your dream world...' })
-
-        // Extract recurring symbols & themes from recent dreams
-        const recentDreams = dreams.slice(0, 6)
         
         const payloadStr = JSON.stringify(recentDreams) + date + (provider || '') + (model || '')
         const cacheKey = `story_${generateCacheKey(payloadStr)}`
@@ -37,8 +39,8 @@ export async function POST(req: Request) {
 
         if (cached) {
           send('status', { message: 'Recalling your sleep story...' })
-          send('story', { text: cached })
-          send('done', {})
+          send('story', { text: cached, subtitle })
+          send('done', { subtitle })
           controller.close()
           return
         }
@@ -96,8 +98,8 @@ Chapter III: [title]
         })
 
         await setCache(cacheKey, text)
-        send('story', { text })
-        send('done', {})
+        send('story', { text, subtitle })
+        send('done', { subtitle })
       } catch (err) {
         send('error', { message: err instanceof Error ? err.message : 'Generation failed' })
       } finally {

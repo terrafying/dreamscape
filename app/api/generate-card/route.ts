@@ -5,6 +5,7 @@ import type { DreamLog } from '@/lib/types'
 interface CardOptions {
   dreams: DreamLog[]
   storyTitle?: string
+  subtitle?: string
   provider?: string
   model?: string
 }
@@ -16,16 +17,8 @@ function buildCardPrompt(opts: CardOptions): { prompt: string; title: string } {
   const tone = recent[0]?.extraction?.tone ?? 'mysterious and contemplative'
   const arc = recent[0]?.extraction?.narrative_arc ?? 'liminal'
   const emotion = recent[0]?.extraction?.emotions?.[0]?.name ?? 'wonder'
-
-  const titleMap: Record<string, string> = {
-    ascending: 'The Ascent',
-    descending: 'The Descent',
-    cyclical: 'The Return',
-    liminal: 'The Threshold',
-    transformational: 'The Becoming',
-  }
-  const title = opts.storyTitle
-    || (titleMap[arc] ?? 'The Dream')
+  const subtitle = opts.subtitle ?? ''
+  const titleText = opts.storyTitle || (arc === 'ascending' ? 'The Ascent' : arc === 'descending' ? 'The Descent' : arc === 'cyclical' ? 'The Return' : arc === 'liminal' ? 'The Threshold' : 'The Dream')
 
   const symbolDescs: Record<string, string> = {
     Library: 'an ancient floating library of silver and obsidian books, moonlight streaming through stained glass windows',
@@ -51,20 +44,29 @@ function buildCardPrompt(opts: CardOptions): { prompt: string; title: string } {
   }
   const scene = sceneMap[setting] || sceneMap.default
 
+  const titleLine = subtitle ? '' : `Title rendered in ornate calligraphy at the bottom: "${titleText}"`
+  const subtitleLine = subtitle ? `\nSubtitle rendered in delicate italic script: "${subtitle}"` : ''
+
   const prompt = `A single tarot card illustration. ${symbolDesc}, ${scene}.
+${titleLine}${subtitleLine}
 
 Style: dark atmospheric fantasy illustration. Deep indigo and midnight blue dominate. Luminescent gold, violet, and silver accents. Ethereal mist. Stars. The ${emotion.toLowerCase()} mood is palpable — ${tone}.
 
 Details: fine art illustration, cinematic composition, hyper-detailed, 8k, ethereal lighting, dreamlike atmosphere. Wide border with subtle geometric sacred geometry in silver. The composition is centered and balanced.`
 
-  return { prompt, title }
+  return { prompt, title: titleText }
 }
 
 function buildStoryCardPrompt(opts: CardOptions): { prompt: string; title: string } {
-  const title = opts.storyTitle || 'Sleep Story'
+  const titleText = opts.storyTitle || 'Sleep Story'
+  const subtitle = opts.subtitle ?? ''
+  const titleLine = subtitle ? '' : `Title rendered in ornate calligraphy at the bottom: "${titleText}"`
+  const subtitleLine = subtitle ? `\nSubtitle rendered in delicate italic script: "${subtitle}"` : ''
+
   return {
-    title,
+    title: titleText,
     prompt: `A single tarot card illustration. A serene dreamer floats in a cosmic sleep between two worlds — below, a dark peaceful earth with distant city lights; above, a violet starfield with a luminous path.
+${titleLine}${subtitleLine}
 
 Style: dark atmospheric fantasy illustration. Deep indigo and midnight blue dominate. Luminescent gold, violet, and silver accents. Ethereal mist. Stars. Peaceful, contemplative, liminal mood.
 
@@ -73,12 +75,12 @@ Details: fine art illustration, cinematic composition, hyper-detailed, 8k, ether
 }
 
 export async function POST(req: Request) {
-  const { dreams, storyTitle, provider, model } = await req.json() as CardOptions
+  const { dreams, storyTitle, subtitle, provider, model } = await req.json() as CardOptions
 
   const isStory = !dreams?.length
   const { prompt, title } = isStory
-    ? buildStoryCardPrompt({ dreams, storyTitle })
-    : buildCardPrompt({ dreams, storyTitle })
+    ? buildStoryCardPrompt({ dreams, storyTitle, subtitle })
+    : buildCardPrompt({ dreams, storyTitle, subtitle })
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
