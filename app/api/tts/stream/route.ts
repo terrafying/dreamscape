@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const raw = process.env.ELEVENLABS_VOICES
+  const raw = process.env.NEXT_PUBLIC_ELEVENLABS_VOICES
   const voices = parseVoices(raw)
   const defaultVoice = voices[0]?.id ?? ''
   return NextResponse.json({ ok: true, voices, defaultVoice })
