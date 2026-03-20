@@ -23,10 +23,13 @@ function startPlanRefresh(): void {
     const supabase = getSupabase()
     const session = await supabase?.auth.getSession()
     const accessToken = session?.data.session?.access_token
-    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
-
     const customer = localStorage.getItem('stripe_customer_id')
-    const fallback = !accessToken && process.env.NODE_ENV !== 'production' && customer
+
+    const isProd = process.env.NODE_ENV === 'production'
+    if (!accessToken && !customer && isProd) return
+
+    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
+    const fallback = !accessToken && !isProd && customer
       ? `?customer=${encodeURIComponent(customer)}`
       : ''
 
