@@ -238,6 +238,7 @@ function StoryTab() {
   const [cardStatus, setCardStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle')
   const [cardImage, setCardImage] = useState('')
   const [cardTitle, setCardTitle] = useState('')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const { speaking, paused, preset, volume, speak, stop, togglePause, setPreset, setVolume } = useSpeech()
 
@@ -273,10 +274,16 @@ function StoryTab() {
     setChapters([])
     setActiveChapter(0)
     setStatus('')
+    setErrorMsg(null)
     if (typeof window !== 'undefined') localStorage.removeItem(STORY_KEY)
     abortRef.current = new AbortController()
 
     try {
+      if (dreams.length === 0) {
+        setErrorMsg('No dreams logged yet. Log a dream first to weave your story.')
+        return
+      }
+
       const birth = typeof window !== 'undefined' ? localStorage.getItem('dreamscape_birth') : null
       const res = await apiFetch('/api/story', {
         method: 'POST',
@@ -288,7 +295,22 @@ function StoryTab() {
         signal: abortRef.current.signal,
       })
 
-      const reader = res.body!.getReader()
+      if (!res.ok) {
+        let msg = `Server error (${res.status})`
+        try {
+          const json = await res.json()
+          if (json?.error) msg = json.error
+        } catch { /* ok */ }
+        setErrorMsg(msg)
+        return
+      }
+
+      if (!res.body) {
+        setErrorMsg('No response from server. Try again.')
+        return
+      }
+
+      const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
 
@@ -312,6 +334,9 @@ function StoryTab() {
           if (!dataLine) continue
           try {
             const payload = JSON.parse(dataLine)
+            if (eventType === 'error') {
+              setErrorMsg(payload.message || 'Generation failed')
+            }
             if (eventType === 'status' && payload.message) setStatus(payload.message)
             if (eventType === 'story' && payload.text) {
               setStoryText(payload.text)
@@ -322,11 +347,13 @@ function StoryTab() {
                 localStorage.setItem(STORY_KEY, JSON.stringify({ text: payload.text, chapters: parsed }))
               }
             }
-          } catch { /* skip */ }
+          } catch { /* skip malformed SSE chunk */ }
         }
       }
     } catch (e: unknown) {
-      if (e instanceof Error && e.name !== 'AbortError') setStatus('Generation failed')
+      if (e instanceof Error && e.name !== 'AbortError') {
+        setErrorMsg(e.message || 'Generation failed. Check your API keys.')
+      }
     } finally {
       setLoading(false)
       setStatus('')
@@ -338,6 +365,7 @@ function StoryTab() {
     setCardStatus('generating')
     setCardImage('')
     setCardTitle('')
+    let img = '', title = ''
     try {
       const res = await apiFetch('/api/generate-card', {
         method: 'POST',
@@ -362,13 +390,14 @@ function StoryTab() {
           if (!dataLine) continue
           try {
             const payload = JSON.parse(dataLine)
-            if (payload.title) setCardTitle(payload.title)
-            if (payload.base64) setCardImage(payload.base64)
+            if (payload.title) title = payload.title
+            if (payload.base64) img = payload.base64
           } catch { /* skip */ }
         }
       }
-      if (cardImage) setCardStatus('done')
-      else setCardStatus('error')
+      setCardTitle(title)
+      setCardImage(img)
+      setCardStatus(img ? 'done' : 'error')
     } catch {
       setCardStatus('error')
     }
@@ -395,6 +424,15 @@ function StoryTab() {
           style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.2)', color: 'var(--muted)' }}
         >
           Log a dream first — your story draws from your own symbols.
+        </div>
+      )}
+
+      {errorMsg && (
+        <div
+          className="rounded-xl p-3 text-xs"
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
+        >
+          {errorMsg}
         </div>
       )}
 
