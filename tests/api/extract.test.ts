@@ -138,4 +138,17 @@ describe('POST /api/extract', () => {
     const prompt = mockCallLLMWithSource.mock.calls.at(-1)?.[0] as string
     expect(prompt).toContain('1990-04-15')
   })
+
+  it('passes groq provider with llama model', async () => {
+    await runExtract({
+      transcript: `Forest dream ${Date.now()}`,
+      date: '2026-03-16',
+      provider: 'groq',
+      model: 'llama-3.3-70b-versatile',
+    })
+    expect(mockCallLLMWithSource).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ provider: 'groq', model: 'llama-3.3-70b-versatile' }),
+    )
+  })
 })
