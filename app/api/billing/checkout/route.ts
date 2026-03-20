@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { SITE_URL } from '@/lib/site'
+import { getStripeCustomerFromUser, getUserFromRequest, isNonProdEnvironment } from '@/lib/supabaseServer'
 
-export async function GET() {
+export async function GET(request: Request) {
   const key = process.env.STRIPE_SECRET_KEY
   const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
   if (!key || !priceId) {
@@ -12,6 +13,11 @@ export async function GET() {
   }
 
   try {
+    const user = await getUserFromRequest(request)
+    if (!user && !isNonProdEnvironment()) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
     const origin = SITE_URL
     const body = new URLSearchParams({
       mode: 'subscription',
@@ -20,6 +26,21 @@ export async function GET() {
       success_url: `${origin}/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/account?checkout=cancel`,
     })
+
+    if (user?.id) {
+      body.set('client_reference_id', user.id)
+      body.set('metadata[user_id]', user.id)
+    }
+
+    if (user?.email) {
+      body.set('customer_email', user.email)
+    }
+
+    const existingCustomer = getStripeCustomerFromUser(user)
+    if (existingCustomer) {
+      body.set('customer', existingCustomer)
+    }
+
     const resp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
@@ -33,9 +54,10 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: 'Stripe error', details: text }, { status: 500 })
     }
     const json = await resp.json()
-    if (json.url) return NextResponse.redirect(json.url)
+    if (json.url) return NextResponse.json({ ok: true, url: json.url })
     return NextResponse.json({ ok: false, error: 'No URL from Stripe' }, { status: 500 })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Unknown error' }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }

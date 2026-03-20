@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { getSupabase } from '@/lib/supabaseClient'
 import ApiKeysPanel from '@/components/ApiKeysPanel'
 import ModelDefaultsPanel from '@/components/ModelDefaultsPanel'
@@ -14,6 +13,60 @@ export default function AccountPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [isPremiumPlan, setIsPremiumPlan] = useState(false)
   const [premiumBypass, setPremiumBypass] = useState(false)
+  const [billingBusy, setBillingBusy] = useState<'checkout' | 'portal' | null>(null)
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const session = await supabase?.auth.getSession()
+    const accessToken = session?.data.session?.access_token
+    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+  }
+
+  const getDevCustomerFallback = (): string => {
+    if (process.env.NODE_ENV === 'production') return ''
+    const customer = localStorage.getItem('stripe_customer_id')
+    if (!customer) return ''
+    return `?customer=${encodeURIComponent(customer)}`
+  }
+
+  const refreshPlanFromServer = async () => {
+    const headers = await getAuthHeaders()
+    const fallback = Object.keys(headers).length === 0 ? getDevCustomerFallback() : ''
+    const response = await fetch(`/api/billing/status${fallback}`, { headers })
+    const json = await response.json()
+    if (json?.ok && (json.plan === 'premium' || json.plan === 'free')) {
+      localStorage.setItem('dreamscape_plan', json.plan)
+      setIsPremiumPlan(json.plan === 'premium')
+    }
+  }
+
+  const startCheckout = async () => {
+    try {
+      setBillingBusy('checkout')
+      const headers = await getAuthHeaders()
+      const response = await fetch('/api/billing/checkout', { headers })
+      const json = await response.json()
+      if (json?.ok && typeof json.url === 'string') {
+        window.location.href = json.url
+      }
+    } finally {
+      setBillingBusy(null)
+    }
+  }
+
+  const openBillingPortal = async () => {
+    try {
+      setBillingBusy('portal')
+      const headers = await getAuthHeaders()
+      const fallback = Object.keys(headers).length === 0 ? getDevCustomerFallback() : ''
+      const response = await fetch(`/api/billing/portal${fallback}`, { headers })
+      const json = await response.json()
+      if (json?.ok && typeof json.url === 'string') {
+        window.location.href = json.url
+      }
+    } finally {
+      setBillingBusy(null)
+    }
+  }
 
   useEffect(() => {
     if (!supabase) return
@@ -30,17 +83,9 @@ export default function AccountPage() {
     }
 
     const customer = localStorage.getItem('stripe_customer_id')
-    if (!customer) return
+    if (!supabase && !customer) return
 
-    void fetch(`/api/billing/status?customer=${encodeURIComponent(customer)}`)
-      .then((response) => response.json())
-      .then((json) => {
-        if (json?.ok && (json.plan === 'premium' || json.plan === 'free')) {
-          localStorage.setItem('dreamscape_plan', json.plan)
-          setIsPremiumPlan(json.plan === 'premium')
-        }
-      })
-      .catch(() => {})
+    void refreshPlanFromServer().catch(() => {})
   }, [])
 
   const togglePremiumBypass = () => {
@@ -79,7 +124,8 @@ export default function AccountPage() {
       localStorage.setItem('dreamscape_sync_enabled', '1')
       const sessionId = url.searchParams.get('session_id')
       if (sessionId) {
-        fetch(`/api/billing/success?session_id=${encodeURIComponent(sessionId)}`)
+        getAuthHeaders().then((headers) => {
+          fetch(`/api/billing/success?session_id=${encodeURIComponent(sessionId)}`, { headers })
           .then((r) => r.json())
           .then((j) => {
             if (j?.customer) localStorage.setItem('stripe_customer_id', j.customer)
@@ -89,6 +135,7 @@ export default function AccountPage() {
             }
           })
           .catch(() => {})
+        }).catch(() => {})
       }
     }
   }, [])
@@ -134,19 +181,13 @@ export default function AccountPage() {
         </p>
         <div className="flex items-center gap-2">
           {!isPremiumPlan && !premiumBypass && (
-            <Link href="/api/billing/checkout" className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--violet)', color: '#07070f' }}>
+            <button onClick={startCheckout} disabled={billingBusy !== null} className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--violet)', color: '#07070f', opacity: billingBusy ? 0.6 : 1 }}>
               Upgrade to Premium
-            </Link>
+            </button>
           )}
-          <a
-            href={typeof window !== 'undefined' && localStorage.getItem('stripe_customer_id')
-              ? `/api/billing/portal?customer=${encodeURIComponent(localStorage.getItem('stripe_customer_id') as string)}`
-              : '/account'}
-            className="px-3 py-2 rounded-lg text-sm"
-            style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-          >
+          <button onClick={openBillingPortal} disabled={billingBusy !== null} className="px-3 py-2 rounded-lg text-sm" style={{ border: '1px solid var(--border)', color: 'var(--muted)', opacity: billingBusy ? 0.6 : 1 }}>
             Manage Billing
-          </a>
+          </button>
         </div>
         <button onClick={togglePremiumBypass} className="text-xs px-3 py-2 rounded-lg" style={{ border: '1px dashed var(--border)', color: 'var(--muted)' }}>
           Testing bypass: {premiumBypass ? 'On' : 'Off'}

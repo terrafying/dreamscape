@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server'
 import { SITE_URL } from '@/lib/site'
+import { getStripeCustomerFromUser, getUserFromRequest, isNonProdEnvironment } from '@/lib/supabaseServer'
 
 export async function GET(request: Request) {
   const key = process.env.STRIPE_SECRET_KEY
+  const user = await getUserFromRequest(request)
   const { searchParams } = new URL(request.url)
-  const customer = searchParams.get('customer')
+  const fallbackCustomer = searchParams.get('customer')
+  const customer = getStripeCustomerFromUser(user) ?? (isNonProdEnvironment() ? fallbackCustomer : null)
+
   if (!key || !customer) {
     return NextResponse.json({
       ok: false,
-      error: 'Missing STRIPE_SECRET_KEY or customer id'
-    }, { status: 400 })
+      error: 'Missing STRIPE_SECRET_KEY or customer id. Sign in first.'
+    }, { status: !user && !isNonProdEnvironment() ? 401 : 400 })
   }
+
   try {
     const origin = SITE_URL
     const body = new URLSearchParams({
@@ -30,9 +35,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: 'Stripe error', details: text }, { status: 500 })
     }
     const json = await resp.json()
-    if (json.url) return NextResponse.redirect(json.url)
+    if (json.url) return NextResponse.json({ ok: true, url: json.url })
     return NextResponse.json({ ok: false, error: 'No URL from Stripe' }, { status: 500 })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Unknown error' }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
