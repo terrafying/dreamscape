@@ -11,8 +11,11 @@ interface StripeSubscription {
 }
 
 interface StripeCustomer {
+  id?: string
+  email?: string
   metadata?: {
     dreamscape_plan?: string
+    user_id?: string
   }
 }
 
@@ -83,4 +86,35 @@ export async function resolveServerPlan(customerId: string, key: string): Promis
     const metadataPlan = await getPlanFromCustomerMetadata(customerId, key)
     return metadataPlan ?? 'free'
   }
+}
+
+export async function findStripeCustomerByEmail(email: string, key: string): Promise<StripeCustomer | null> {
+  try {
+    const json = await stripeJson<StripeListResponse<StripeCustomer>>(
+      `https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}&limit=5`,
+      key
+    )
+    const customers = Array.isArray(json.data) ? json.data : []
+    return customers.find((c) => c.email?.toLowerCase() === email.toLowerCase()) ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function createStripeCustomer(email: string, userId: string, key: string): Promise<StripeCustomer> {
+  const body = new URLSearchParams({
+    email,
+    'metadata[user_id]': userId,
+  })
+  return stripeJson<StripeCustomer>('https://api.stripe.com/v1/customers', key, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  })
+}
+
+export async function getOrCreateStripeCustomer(email: string, userId: string, key: string): Promise<StripeCustomer> {
+  const existing = await findStripeCustomerByEmail(email, key)
+  if (existing?.id) return existing
+  return createStripeCustomer(email, userId, key)
 }

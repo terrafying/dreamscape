@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { SITE_URL } from '@/lib/site'
 import { getStripeCustomerFromUser, getUserFromRequest, isNonProdEnvironment } from '@/lib/supabaseServer'
+import { getOrCreateStripeCustomer } from '@/lib/stripePlan'
 
 export async function GET(request: Request) {
   const key = process.env.STRIPE_SECRET_KEY
@@ -32,13 +33,15 @@ export async function GET(request: Request) {
       body.set('metadata[user_id]', user.id)
     }
 
-    if (user?.email) {
-      body.set('customer_email', user.email)
-    }
-
     const existingCustomer = getStripeCustomerFromUser(user)
     if (existingCustomer) {
       body.set('customer', existingCustomer)
+    } else if (user?.email && user?.id) {
+      const stripeCustomer = await getOrCreateStripeCustomer(user.email as string, user.id, key)
+      if (!stripeCustomer.id) throw new Error('Failed to get or create Stripe customer')
+      body.set('customer', stripeCustomer.id)
+    } else if (user?.email) {
+      body.set('customer_email', user.email)
     }
 
     const resp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -51,7 +54,7 @@ export async function GET(request: Request) {
     })
     if (!resp.ok) {
       const text = await resp.text()
-      return NextResponse.json({ ok: false, error: 'Stripe error', details: text }, { status: 500 })
+      return NextResponse.json({ ok: false, error: 'Stripe checkout failed', details: text }, { status: 500 })
     }
     const json = await resp.json()
     if (json.url) return NextResponse.json({ ok: true, url: json.url })

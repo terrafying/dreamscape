@@ -4,6 +4,9 @@ import type { DreamLog } from '@/lib/types'
 
 const SYNC_KEY = 'dreamscape_cloud_last_synced'
 
+export const SYNC_COMPLETE_EVENT = 'dreamscape:sync-complete'
+export const SYNC_ERROR_EVENT = 'dreamscape:sync-error'
+
 export function getLastSyncedAt(): number | null {
   const v = localStorage.getItem(SYNC_KEY)
   return v ? parseInt(v, 10) : null
@@ -57,7 +60,43 @@ function merge(local: DreamLog[], cloud: DreamLog[]): DreamLog[] {
   return Array.from(merged.values()).sort((a, b) => b.createdAt - a.createdAt)
 }
 
-export async function syncDreams(userId: string): Promise<{ merged: DreamLog[]; pulled: number; pushed: number }> {
+function emitSyncComplete(merged: DreamLog[], pulled: number) {
+  window.dispatchEvent(new CustomEvent(SYNC_COMPLETE_EVENT, { detail: { merged, pulled } }))
+}
+
+function emitSyncError(error: unknown) {
+  window.dispatchEvent(new CustomEvent(SYNC_ERROR_EVENT, { detail: { error } }))
+}
+
+function scheduleNextTick(fn: () => void) {
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(() => { queueMicrotask(fn) }, { timeout: 5000 })
+  } else {
+    setTimeout(() => { queueMicrotask(fn) }, 50)
+  }
+}
+
+function runSync(userId: string) {
+  scheduleNextTick(async () => {
+    try {
+      const [local, cloud] = await Promise.all([getDreams(), pullFromCloud(userId)])
+      const merged = merge(local, cloud)
+      setLastSyncedAt(Date.now())
+      for (const d of merged) await saveDream(d)
+      await pushToCloud(userId, merged)
+      const pulled = cloud.filter((c) => !local.find((l) => l.id === c.id)).length
+      emitSyncComplete(merged, pulled)
+    } catch (err) {
+      emitSyncError(err)
+    }
+  })
+}
+
+export function syncDreams(userId: string): void {
+  runSync(userId)
+}
+
+export async function syncDreamsBlocking(userId: string): Promise<{ merged: DreamLog[]; pulled: number; pushed: number }> {
   const [local, cloud] = await Promise.all([getDreams(), pullFromCloud(userId)])
   const merged = merge(local, cloud)
   setLastSyncedAt(Date.now())
