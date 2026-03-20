@@ -5,11 +5,11 @@ import { getStripeCustomerFromUser, getUserFromRequest, isNonProdEnvironment } f
 export async function GET(request: Request) {
   const key = process.env.STRIPE_SECRET_KEY
   const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
-  if (!key || !priceId) {
-    return NextResponse.json({
-      ok: false,
-      error: 'Billing is not configured. Set STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PRICE_ID.'
-    }, { status: 400 })
+  if (!key) {
+    return NextResponse.json({ ok: false, error: 'Billing not configured. Set STRIPE_SECRET_KEY in Vercel env vars.' }, { status: 500 })
+  }
+  if (!priceId) {
+    return NextResponse.json({ ok: false, error: 'Billing not configured. Set NEXT_PUBLIC_STRIPE_PRICE_ID in Vercel env vars.' }, { status: 500 })
   }
 
   try {

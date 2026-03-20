@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getSupabase } from '@/lib/supabaseClient'
-import { syncDreams } from '@/lib/cloudStore'
+import { syncDreams } from '@/lib/cloudSync'
 import ApiKeysPanel from '@/components/ApiKeysPanel'
 import ModelDefaultsPanel from '@/components/ModelDefaultsPanel'
 import { accountRedirectUrl } from '@/lib/site'

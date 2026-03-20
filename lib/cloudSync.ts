@@ -28,15 +28,12 @@ async function pullFromCloud(userId: string): Promise<DreamLog[]> {
 async function pushToCloud(userId: string, dreams: DreamLog[]): Promise<void> {
   const supabase = getSupabase()
   if (!supabase) return
-  const rows = dreams.map((d) => ({
-    user_id: userId,
-    dream_id: d.id,
-    dream_data: d as unknown as Record<string, unknown>,
-  }))
-  for (const row of rows) {
-    await (supabase.from('user_dreams') as ReturnType<typeof supabase.from>).upsert(row as any, {
-      onConflict: 'user_id,dream_id',
-    })
+  for (const d of dreams) {
+    await (supabase.from('user_dreams') as ReturnType<typeof supabase.from>).upsert({
+      user_id: userId,
+      dream_id: d.id,
+      dream_data: d as unknown as Record<string, unknown>,
+    } as any, { onConflict: 'user_id,dream_id' })
   }
 }
 
@@ -62,17 +59,12 @@ function merge(local: DreamLog[], cloud: DreamLog[]): DreamLog[] {
 
 export async function syncDreams(userId: string): Promise<{ merged: DreamLog[]; pulled: number; pushed: number }> {
   const [local, cloud] = await Promise.all([getDreams(), pullFromCloud(userId)])
-
   const merged = merge(local, cloud)
   setLastSyncedAt(Date.now())
-
   for (const d of merged) await saveDream(d)
   await pushToCloud(userId, merged)
-
-  const pushed = merged.length
   const pulled = cloud.filter((c) => !local.find((l) => l.id === c.id)).length
-
-  return { merged, pulled, pushed }
+  return { merged, pulled, pushed: merged.length }
 }
 
 export async function syncDream(userId: string, dream: DreamLog): Promise<void> {

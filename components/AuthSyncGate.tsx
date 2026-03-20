@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { getSupabase } from '@/lib/supabaseClient'
-import { syncDreams } from '@/lib/cloudStore'
+import { syncDreams } from '@/lib/cloudSync'
 
 export default function AuthSyncGate() {
   useEffect(() => {
