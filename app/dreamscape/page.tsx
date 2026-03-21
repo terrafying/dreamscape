@@ -53,10 +53,18 @@ function useTTS() {
 
   const speak = async (text: string) => {
     if (!text || typeof window === 'undefined') return
+
     if (audioRef.current) {
       audioRef.current.pause()
+      audioRef.current.onended = null
+      audioRef.current.onerror = null
       audioRef.current = null
     }
+    if (audioSrcRef.current) {
+      URL.revokeObjectURL(audioSrcRef.current)
+      audioSrcRef.current = null
+    }
+
     setState((s) => ({ ...s, speaking: true, paused: false, error: null }))
 
     try {
@@ -73,8 +81,9 @@ function useTTS() {
       const url = URL.createObjectURL(blob)
       audioSrcRef.current = url
       const audio = new Audio(url)
-      audioRef.current = audio
       audio.volume = 0.85
+      audioRef.current = audio
+
       audio.onended = () => {
         setState((s) => ({ ...s, speaking: false, paused: false }))
         if (audioSrcRef.current) { URL.revokeObjectURL(audioSrcRef.current); audioSrcRef.current = null }
@@ -89,18 +98,32 @@ function useTTS() {
   }
 
   const stop = () => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
-    if (audioSrcRef.current) { URL.revokeObjectURL(audioSrcRef.current); audioSrcRef.current = null }
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.onended = null
+      audioRef.current.onerror = null
+      audioRef.current = null
+    }
+    if (audioSrcRef.current) {
+      URL.revokeObjectURL(audioSrcRef.current)
+      audioSrcRef.current = null
+    }
     setState((s) => ({ ...s, speaking: false, paused: false }))
   }
 
   const togglePause = () => {
     if (!audioRef.current) return
-    if (state.paused) { audioRef.current.play(); setState((s) => ({ ...s, paused: false })) }
-    else { audioRef.current.pause(); setState((s) => ({ ...s, paused: true })) }
+    if (state.paused) {
+      audioRef.current.play()
+      setState((s) => ({ ...s, paused: false }))
+    } else {
+      audioRef.current.pause()
+      setState((s) => ({ ...s, paused: true }))
+    }
   }
 
   const setVoice = (id: string) => {
+    if (audioRef.current) { stop() }
     setState((s) => ({ ...s, activeVoice: id }))
     localStorage.setItem('dreamscape_elevenlabs_voice', id)
   }
