@@ -14,6 +14,15 @@ import {
   VERTS_24, EDGES_24,
 } from '@/lib/geometry4d'
 import {
+  buildAdjacency, buildFaces,
+  findPath, manifoldDistance,
+  type Face,
+} from '@/lib/manifold'
+import {
+  quantizeFreq, discoveryNeutralThirds, teleologyChord,
+  type TuningMode, type ScaleSet,
+} from '@/lib/tuning'
+import {
   generateMaze, hashString,
   CELL_SIZE, WALL_HEIGHT, WALL_THICKNESS,
   gridToWorld, worldToGrid, clampMovement,
@@ -124,6 +133,9 @@ function getAudioPrefs() {
     dampening: clampNum(d.dampening ?? 900, 100, 3000),
     droneType: (d.droneType ?? 'sine') as any,
     synthType: (d.synthType ?? 'triangle') as any,
+    tuningMode: (d.tuningMode ?? '12tet') as TuningMode,
+    refFreq: clampNum(d.refFreq ?? 220, 220, 440),
+    scaleSet: (d.scaleSet ?? 'neutral') as ScaleSet,
   }
 }
 function setAudioPrefs(p: Partial<ReturnType<typeof getAudioPrefs>>) {
@@ -142,13 +154,31 @@ function clampNum(n: number, a: number, b: number) { return Math.max(a, Math.min
 
 function updateDrone(proximity: number) {
   if (!audioRig) return
-  audioRig.drone.frequency.rampTo(55 + proximity * 200, 0.15)
+  const prefs = getAudioPrefs()
+  const baseHz = 55 + proximity * 200
+  const finalHz = prefs.tuningMode === '31edo'
+    ? quantizeFreq(baseHz, prefs.refFreq)
+    : baseHz
+  audioRig.drone.frequency.rampTo(finalHz, 0.15)
   audioRig.droneGain.gain.rampTo(0.04 + proximity * 0.22, 0.3)
 }
 
 function playDiscovery(notes: string[]) {
   if (!audioRig) return
   audioRig.synth.triggerAttackRelease(notes, '2n')
+}
+
+function playDiscoveryHz(hzArr: number[]) {
+  if (!audioRig) return
+  audioRig.synth.triggerAttackRelease(hzArr as any, '2n')
+}
+
+function getDiscoveryChord(polytopeIdx: number, baseHz: number): number[] {
+  const prefs = getAudioPrefs()
+  if (prefs.tuningMode === '31edo') {
+    return discoveryNeutralThirds(baseHz, prefs.refFreq)
+  }
+  return []
 }
 
 function playFinale() {
@@ -693,17 +723,20 @@ function StartScreen({ onStart }: { onStart: () => void }) {
 // ─── ANGEL GUIDANCE ──────────────────────────────────────────────────────────
 
 function AngelGuidance({ maze, playerX, playerZ, discovered }: { maze: MazeGrid; playerX: number; playerZ: number; discovered: boolean[] }) {
-  // Find next undiscovered target
   const targetIdx = discovered.findIndex(d => !d)
   if (targetIdx === -1) return null
   const node = maze.polytopeNodes[targetIdx]
   const [tx, tz] = gridToWorld(node.x, node.y)
-  // Place angel a fraction of the way from player toward target
   const vx = tx - playerX, vz = tz - playerZ
   const dist = Math.max(1, Math.hypot(vx, vz))
   const ux = vx / dist, uz = vz / dist
   const ax = playerX + ux * Math.min(4, dist * 0.5)
   const az = playerZ + uz * Math.min(4, dist * 0.5)
+
+  const playerGrid = worldToGrid(playerX, playerZ)
+  const nodeGrid: [number, number] = [node.x, node.y]
+  const gridDist = Math.abs(playerGrid[0] - nodeGrid[0]) + Math.abs(playerGrid[1] - nodeGrid[1])
+  const pulseScale = Math.max(0.5, Math.min(3, 0.5 + (8 - gridDist) * 0.13))
 
   return (
     <group position={[ax, 1.4, az]}>
@@ -754,6 +787,28 @@ function AudioSettings() {
               <option value="sawtooth">sawtooth</option>
             </select>
           </Labeled>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 6, paddingTop: 6 }}>
+            <div style={{ fontSize: '0.55rem', letterSpacing: '0.4em', color: 'rgba(80,120,160,0.6)', marginBottom: 4 }}>MICROTONALITY</div>
+            <Labeled label="Tuning">
+              <select value={prefs.tuningMode} onChange={(e) => update({ tuningMode: e.target.value as TuningMode })} className="text-xs">
+                <option value="12tet">12-TET</option>
+                <option value="31edo">31-EDO</option>
+              </select>
+            </Labeled>
+            <Labeled label="Ref Hz">
+              <select value={prefs.refFreq} onChange={(e) => update({ refFreq: Number(e.target.value) })} className="text-xs">
+                <option value="220">A3 = 220 Hz</option>
+                <option value="261.63">C4 = 261.63 Hz</option>
+              </select>
+            </Labeled>
+            <Labeled label="Scale">
+              <select value={prefs.scaleSet} onChange={(e) => update({ scaleSet: e.target.value as ScaleSet })} className="text-xs">
+                <option value="neutral">Neutral (±10 step)</option>
+                <option value="teleology">Teleology (symmetric)</option>
+                <option value="diatonic31">Diatonic 31-EDO</option>
+              </select>
+            </Labeled>
+          </div>
         </div>
       )}
     </div>
@@ -874,12 +929,17 @@ export default function PuzzlePage() {
   }, [discovered, playerPos, maze])
 
   const handleDiscover = useCallback((idx: number) => {
+    const prefs = getAudioPrefs()
+    if (prefs.tuningMode === '31edo') {
+      const baseHz = prefs.refFreq * (1 + idx * 0.1)
+      playDiscoveryHz(discoveryNeutralThirds(baseHz, prefs.refFreq))
+    } else {
+      playDiscovery(POLYTOPES[idx].notes)
+    }
     setDiscovered(prev => {
       if (prev[idx]) return prev
       const next = [...prev]
       next[idx] = true
-      playDiscovery(POLYTOPES[idx].notes)
-      // Check completion
       if (next.every(Boolean)) {
         setTimeout(() => {
           setComplete(true)

@@ -85,4 +85,36 @@ export interface CurrentSky {
   moonPhaseEmoji: string
   retrogrades: string[]
   dominantTransit: string
+  lunarMansion?: LunarMansion
+  aspects?: PlanetaryAspect[]
+  chiron?: ChironPlacement
+  moonHouse?: number
+  outerPlanets?: OuterPlanetTransit[]
+}
+
+export interface LunarMansion {
+  name: string
+  degree: number
+  deity: string
+  symbol: string
+  meaning: string
+}
+
+export interface PlanetaryAspect {
+  planet1: string
+  planet2: string
+  aspect: string
+  orb: number
+  meaning: string
+}
+
+export interface ChironPlacement {
+  sign: string
+  house?: number
+}
+
+export interface OuterPlanetTransit {
+  planet: string
+  sign: string
+  description: string
 }

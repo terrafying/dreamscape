@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { DreamExtraction, NatalPlacements, CurrentSky } from '@/lib/types'
 
 interface AstroPanelProps {
@@ -15,7 +16,14 @@ const SIGN_SYMBOLS: Record<string, string> = {
   Sagittarius: '♐', Capricorn: '♑', Aquarius: '♒', Pisces: '♓',
 }
 
+const HOUSE_MEANINGS: Record<number, string> = {
+  1: 'Self', 2: 'Resources', 3: 'Communication', 4: 'Home',
+  5: 'Creativity', 6: 'Health', 7: 'Partnership', 8: 'Transformation',
+  9: 'Philosophy', 10: 'Vocation', 11: 'Community', 12: 'Unconscious',
+}
+
 export default function AstroPanel({ extraction, natal, currentSky, compact }: AstroPanelProps) {
+  const [aspectsOpen, setAspectsOpen] = useState(false)
   const astro = extraction?.astro_context
 
   if (!astro && !currentSky) return null
@@ -27,6 +35,11 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
   const cosmicThemes = astro?.cosmic_themes || []
   const transitNote = astro?.transit_note || currentSky?.dominantTransit
   const natalAspects = astro?.natal_aspects?.filter(Boolean) || []
+  const lunarMansion = currentSky?.lunarMansion
+  const aspects = currentSky?.aspects || []
+  const chiron = currentSky?.chiron
+  const moonHouse = currentSky?.moonHouse
+  const outerPlanets = currentSky?.outerPlanets || []
 
   return (
     <div
@@ -77,6 +90,52 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
           </div>
         )}
       </div>
+
+      {/* Lunar Mansion + Moon House row */}
+      {(lunarMansion || moonHouse) && (
+        <div className="flex flex-wrap gap-1.5">
+          {lunarMansion && (
+            <span
+              title={`${lunarMansion.deity}: ${lunarMansion.meaning}`}
+              className="text-xs px-2 py-0.5 rounded-full"
+              style={{
+                background: 'rgba(167,139,250,0.08)',
+                color: 'var(--violet)',
+                border: '1px solid rgba(167,139,250,0.2)',
+                cursor: 'help',
+              }}
+            >
+              {lunarMansion.symbol} {lunarMansion.name}
+            </span>
+          )}
+          {moonHouse && (
+            <span
+              title={`House ${moonHouse}: ${HOUSE_MEANINGS[moonHouse] || ''}`}
+              className="text-xs px-2 py-0.5 rounded-full"
+              style={{
+                background: 'rgba(129,140,248,0.08)',
+                color: 'var(--indigo)',
+                border: '1px solid rgba(129,140,248,0.2)',
+                cursor: 'help',
+              }}
+            >
+              ☽ H{moonHouse}
+            </span>
+          )}
+          {chiron && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full"
+              style={{
+                background: 'rgba(251,191,36,0.06)',
+                color: 'var(--gold)',
+                border: '1px solid rgba(251,191,36,0.2)',
+              }}
+            >
+              ⚷ {SIGN_SYMBOLS[chiron.sign] || ''} {chiron.sign}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Retrogrades */}
       {retrogrades.length > 0 && (
@@ -130,6 +189,56 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
                   : <span style={{ color: 'var(--muted)' }}>–</span>}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transit Aspects — collapsible */}
+      {aspects.length > 0 && !compact && (
+        <div>
+          <button
+            onClick={() => setAspectsOpen(v => !v)}
+            className="text-xs font-mono uppercase tracking-wider w-full text-left flex items-center justify-between"
+            style={{ color: 'var(--indigo)' }}
+          >
+            <span>Transit Aspects ({aspects.length})</span>
+            <span>{aspectsOpen ? '▲' : '▼'}</span>
+          </button>
+          {aspectsOpen && (
+            <div className="mt-2 space-y-1.5">
+              {aspects.slice(0, 6).map((a, i) => (
+                <div key={i} className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>
+                    {a.planet1} <span style={{ color: 'var(--gold)' }}>{a.aspect}</span> {a.planet2}
+                    <span className="ml-2" style={{ color: 'var(--muted)' }}>({a.orb}°)</span>
+                  </div>
+                  <div className="text-xs leading-relaxed mt-0.5" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}>
+                    {a.meaning}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Outer Planet Transits */}
+      {outerPlanets.length > 0 && !compact && (
+        <div className="space-y-1">
+          <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+            Outer Planets
+          </div>
+          <div className="space-y-1">
+            {outerPlanets.map((op) => (
+              <div key={op.planet} className="flex items-start gap-2">
+                <span className="text-xs mt-0.5" style={{ color: 'var(--muted)', minWidth: 60 }}>
+                  {op.planet}
+                </span>
+                <span className="text-xs" style={{ color: 'var(--text)' }}>
+                  {SIGN_SYMBOLS[op.sign] || ''} {op.sign}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

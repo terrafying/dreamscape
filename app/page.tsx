@@ -175,7 +175,7 @@ export default function Home() {
         <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--muted)' }}>
           Quick Start
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Link
             href={isEveningWindow ? '/journal' : '/log'}
             className="rounded-lg px-3 py-3 text-center transition-colors"
@@ -183,7 +183,7 @@ export default function Home() {
           >
             <div className="text-lg" style={{ fontFamily: 'monospace' }}>{isEveningWindow ? '☾' : '☀'}</div>
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-              {isEveningWindow ? 'Dusk Entry' : 'Dawn Log'}
+              {isEveningWindow ? 'Dusk' : 'Dawn'}
             </div>
           </Link>
           <Link
@@ -191,9 +191,9 @@ export default function Home() {
             className="rounded-lg px-3 py-3 text-center transition-colors"
             style={{ background: 'rgba(167,139,250,0.06)', color: 'var(--violet)' }}
           >
-            <div className="text-lg" style={{ fontFamily: 'monospace' }}>◇</div>
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>◉</div>
             <div className="text-xs mt-1" style={{ color: 'var(--violet)', opacity: 0.8 }}>
-              Sleep Stories
+              Sleep
             </div>
           </Link>
           <Link
@@ -203,7 +203,7 @@ export default function Home() {
           >
             <div className="text-lg" style={{ fontFamily: 'monospace' }}>◈</div>
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-              See Insights
+              Strata
             </div>
           </Link>
           <Link
@@ -213,7 +213,27 @@ export default function Home() {
           >
             <div className="text-lg" style={{ fontFamily: 'monospace' }}>✉</div>
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-              Dream Letter
+              Letters
+            </div>
+          </Link>
+          <Link
+            href="/invoke"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>⬡</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+              Invoke
+            </div>
+          </Link>
+          <Link
+            href="/account"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>⚑</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+              Account
             </div>
           </Link>
         </div>

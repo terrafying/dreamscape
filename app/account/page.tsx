@@ -5,6 +5,7 @@ import { getSupabase } from '@/lib/supabaseClient'
 import { syncDreams } from '@/lib/cloudSync'
 import ApiKeysPanel from '@/components/ApiKeysPanel'
 import ModelDefaultsPanel from '@/components/ModelDefaultsPanel'
+import BirthDataEditor from '@/components/BirthDataEditor'
 import { accountRedirectUrl } from '@/lib/site'
 
 export default function AccountPage() {
@@ -209,6 +210,11 @@ export default function AccountPage() {
         <h2 className="text-sm uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.14em' }}>Settings</h2>
         <SyncToggle />
         <ReminderSettings />
+      </div>
+
+      {/* Natal Chart */}
+      <div className="space-y-3">
+        <BirthDataEditor />
       </div>
 
       <div className="space-y-3">

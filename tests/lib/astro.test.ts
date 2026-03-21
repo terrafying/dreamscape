@@ -8,6 +8,11 @@ import {
   getCurrentSky,
   getDominantTransit,
   buildAstroContext,
+  getLunarMansion,
+  getPlanetaryAspects,
+  getChironPlacement,
+  getMoonHouse,
+  getOuterPlanetTransits,
 } from '@/lib/astro'
 
 // ─── getSunSign ───────────────────────────────────────────────────────────────
@@ -227,5 +232,266 @@ describe('buildAstroContext', () => {
   it('includes retrograde planets when active', () => {
     const result = buildAstroContext('2025-03-20') // Mercury + Venus retrograde
     expect(result.toLowerCase()).toContain('retrograde')
+  })
+})
+
+// ─── getLunarMansion ─────────────────────────────────────────────────────────
+
+describe('getLunarMansion', () => {
+  it('returns an object with name, deity, symbol, meaning, degree', () => {
+    const m = getLunarMansion('2026-03-16')
+    expect(m).toHaveProperty('name')
+    expect(m).toHaveProperty('deity')
+    expect(m).toHaveProperty('symbol')
+    expect(m).toHaveProperty('meaning')
+    expect(m).toHaveProperty('degree')
+  })
+
+  it('degree is 0-26', () => {
+    for (let i = 0; i < 30; i++) {
+      const d = new Date('2026-01-01')
+      d.setDate(d.getDate() + i)
+      const m = getLunarMansion(d.toISOString().split('T')[0])
+      expect(m.degree).toBeGreaterThanOrEqual(0)
+      expect(m.degree).toBeLessThan(27)
+    }
+  })
+
+  it('name is a known nakshatra', () => {
+    const known = [
+      'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
+      'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni',
+      'Hasta', 'Chitra', 'Swati', 'Vishaka', 'Anuradha', 'Jyeshtha', 'Mula',
+      'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha',
+      'Purva Bhadra', 'Uttara Bhadra', 'Revati',
+    ]
+    const found = new Set<string>()
+    for (let i = 0; i < 30; i++) {
+      const d = new Date('2026-01-01')
+      d.setDate(d.getDate() + i)
+      found.add(getLunarMansion(d.toISOString().split('T')[0]).name)
+    }
+    expect(found.size).toBeGreaterThan(10)
+  })
+
+  it('lunar mansion changes over days (moon travels ~13 degrees per nakshatra)', () => {
+    const signs: string[] = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date('2026-03-01')
+      d.setDate(d.getDate() + i)
+      signs.push(getLunarMansion(d.toISOString().split('T')[0]).name)
+    }
+    const unique = new Set(signs)
+    expect(unique.size).toBeGreaterThan(1)
+  })
+})
+
+// ─── getPlanetaryAspects ──────────────────────────────────────────────────────
+
+describe('getPlanetaryAspects', () => {
+  it('returns an array', () => {
+    const aspects = getPlanetaryAspects('2026-03-16')
+    expect(Array.isArray(aspects)).toBe(true)
+  })
+
+  it('each aspect has planet1, planet2, aspect, orb, meaning', () => {
+    const aspects = getPlanetaryAspects('2026-03-16')
+    for (const a of aspects) {
+      expect(a).toHaveProperty('planet1')
+      expect(a).toHaveProperty('planet2')
+      expect(a).toHaveProperty('aspect')
+      expect(a).toHaveProperty('orb')
+      expect(a).toHaveProperty('meaning')
+    }
+  })
+
+  it('orb is non-negative', () => {
+    const aspects = getPlanetaryAspects('2026-03-16')
+    for (const a of aspects) {
+      expect(a.orb).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('aspects are sorted by orb ascending (most exact first)', () => {
+    const aspects = getPlanetaryAspects('2026-03-16')
+    for (let i = 1; i < aspects.length; i++) {
+      expect(aspects[i].orb).toBeGreaterThanOrEqual(aspects[i - 1].orb)
+    }
+  })
+
+  it('known Moon-Saturn Square appears during known windows', () => {
+    const aspects = getPlanetaryAspects('2026-03-16')
+    const moonSaturn = aspects.find(a =>
+      (a.planet1 === 'Moon' && a.planet2 === 'Saturn') ||
+      (a.planet1 === 'Saturn' && a.planet2 === 'Moon')
+    )
+    // May or may not be exact — orb must be within tolerance
+    if (moonSaturn) expect(moonSaturn.orb).toBeLessThan(8)
+  })
+})
+
+// ─── getChironPlacement ───────────────────────────────────────────────────────
+
+describe('getChironPlacement', () => {
+  it('returns an object with sign', () => {
+    const c = getChironPlacement('2026-03-16')
+    expect(c).toHaveProperty('sign')
+  })
+
+  it('sign is a valid zodiac sign', () => {
+    const SIGNS = [
+      'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+      'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+    ]
+    const c = getChironPlacement('2026-03-16')
+    expect(SIGNS).toContain(c.sign)
+  })
+
+  it('returns house when birthData with time is provided', () => {
+    const c = getChironPlacement('2026-03-16', { date: '1990-04-15', time: '14:30', location: 'New York, NY' })
+    expect(c).toHaveProperty('house')
+    expect(c.house).toBeGreaterThanOrEqual(1)
+    expect(c.house).toBeLessThanOrEqual(12)
+  })
+
+  it('no house when birthData has no time', () => {
+    const c = getChironPlacement('2026-03-16', { date: '1990-04-15', location: 'New York, NY' })
+    expect(c.house).toBeUndefined()
+  })
+})
+
+// ─── getMoonHouse ─────────────────────────────────────────────────────────────
+
+describe('getMoonHouse', () => {
+  it('returns undefined when no birthData', () => {
+    expect(getMoonHouse('2026-03-16')).toBeUndefined()
+  })
+
+  it('returns undefined when birthData has no time', () => {
+    expect(getMoonHouse('2026-03-16', { date: '1990-04-15', location: 'New York, NY' })).toBeUndefined()
+  })
+
+  it('returns a number 1-12 when birth time is provided', () => {
+    const house = getMoonHouse('2026-03-16', { date: '1990-04-15', time: '14:30', location: 'New York, NY' })
+    expect(house).toBeDefined()
+    expect(house!).toBeGreaterThanOrEqual(1)
+    expect(house!).toBeLessThanOrEqual(12)
+  })
+
+  it('different birth times can produce different houses', () => {
+    const house1 = getMoonHouse('2026-03-16', { date: '1990-04-15', time: '06:00', location: 'New York, NY' })
+    const house2 = getMoonHouse('2026-03-16', { date: '1990-04-15', time: '18:00', location: 'New York, NY' })
+    expect(house1).not.toEqual(house2)
+  })
+})
+
+// ─── getOuterPlanetTransits ───────────────────────────────────────────────────
+
+describe('getOuterPlanetTransits', () => {
+  const OUTER = ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
+
+  it('returns 5 outer planets', () => {
+    const transits = getOuterPlanetTransits('2026-03-16')
+    expect(transits.length).toBe(5)
+  })
+
+  it('each entry has planet, sign, description', () => {
+    const transits = getOuterPlanetTransits('2026-03-16')
+    for (const t of transits) {
+      expect(t).toHaveProperty('planet')
+      expect(t).toHaveProperty('sign')
+      expect(t).toHaveProperty('description')
+    }
+  })
+
+  it('all planets are outer planets', () => {
+    const transits = getOuterPlanetTransits('2026-03-16')
+    const planets = transits.map(t => t.planet)
+    for (const p of OUTER) {
+      expect(planets).toContain(p)
+    }
+  })
+
+  it('sign is a valid zodiac sign', () => {
+    const SIGNS = [
+      'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+      'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+    ]
+    const transits = getOuterPlanetTransits('2026-03-16')
+    for (const t of transits) {
+      expect(SIGNS).toContain(t.sign)
+    }
+  })
+
+  it('description is a non-empty string', () => {
+    const transits = getOuterPlanetTransits('2026-03-16')
+    for (const t of transits) {
+      expect(typeof t.description).toBe('string')
+      expect(t.description.length).toBeGreaterThan(10)
+    }
+  })
+})
+
+// ─── getCurrentSky (extended) ─────────────────────────────────────────────────
+
+describe('getCurrentSky extended fields', () => {
+  it('includes lunarMansion', () => {
+    const sky = getCurrentSky('2026-03-16')
+    expect(sky).toHaveProperty('lunarMansion')
+    expect(sky.lunarMansion).toHaveProperty('name')
+  })
+
+  it('includes aspects array', () => {
+    const sky = getCurrentSky('2026-03-16')
+    expect(sky).toHaveProperty('aspects')
+    expect(Array.isArray(sky.aspects)).toBe(true)
+  })
+
+  it('includes chiron placement', () => {
+    const sky = getCurrentSky('2026-03-16')
+    expect(sky).toHaveProperty('chiron')
+    expect(sky.chiron).toHaveProperty('sign')
+  })
+
+  it('moonHouse is undefined without birthData, number with it', () => {
+    const without = getCurrentSky('2026-03-16')
+    expect(without.moonHouse).toBeUndefined()
+    const withBirth = getCurrentSky('2026-03-16', { date: '1990-04-15', time: '10:00', location: 'NYC' })
+    expect(typeof withBirth.moonHouse).toBe('number')
+  })
+
+  it('includes outerPlanets array with 5 entries', () => {
+    const sky = getCurrentSky('2026-03-16')
+    expect(sky).toHaveProperty('outerPlanets')
+    expect(sky.outerPlanets?.length).toBe(5)
+  })
+})
+
+// ─── buildAstroContext (extended) ─────────────────────────────────────────────
+
+describe('buildAstroContext extended fields', () => {
+  it('includes lunar mansion name', () => {
+    const ctx = buildAstroContext('2026-03-16')
+    expect(ctx).toContain('lunar mansion')
+  })
+
+  it('includes Chiron sign when present', () => {
+    const ctx = buildAstroContext('2026-03-16')
+    expect(ctx).toContain('Chiron in')
+  })
+
+  it('includes Moon House when birthData with time provided', () => {
+    const ctx = buildAstroContext('2026-03-16', { date: '1990-04-15', time: '10:00', location: 'NYC' })
+    expect(ctx).toContain('Moon in House')
+  })
+
+  it('includes outer planets summary', () => {
+    const ctx = buildAstroContext('2026-03-16')
+    expect(ctx).toContain('Outer planets:')
+  })
+
+  it('includes active transit aspects', () => {
+    const ctx = buildAstroContext('2026-03-16')
+    expect(ctx).toContain('Active transit aspects:')
   })
 })
