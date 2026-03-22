@@ -148,23 +148,74 @@ export default function Home() {
         className="rounded-xl p-4 space-y-3"
         style={{ background: 'rgba(15,15,30,0.74)', border: '1px solid rgba(167,139,250,0.22)' }}
       >
-        <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--violet)' }}>
-          Current Sky
+        <div className="flex items-center justify-between">
+          <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--violet)' }}>
+            Current Sky
+          </div>
+          {currentSky.retrogrades.length > 0 && (
+            <div className="flex gap-1">
+              {currentSky.retrogrades.map(r => (
+                <span key={r} className="text-xs px-2 py-0.5 rounded-full font-mono" style={{ background: 'rgba(251,191,36,0.1)', color: 'var(--gold)', border: '1px solid rgba(251,191,36,0.3)' }}>
+                  ℞ {r}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="space-y-2 text-sm">
+
+        <div className="space-y-1.5 text-sm">
           <p style={{ color: 'var(--text)' }}>
-            {isEveningWindow ? 'Tonight' : 'Today'}: {currentSky.moonPhaseEmoji} {currentSky.moonPhase}, Moon in {currentSky.moonSign}, Sun in {currentSky.sunSign}
+            {isEveningWindow ? 'Tonight' : 'Today'}: {currentSky.moonPhaseEmoji} {currentSky.moonPhase} in {currentSky.moonSign}
+            {currentSky.lunarMansion && (
+              <span style={{ color: 'var(--violet)' }}>
+                {' · '}{currentSky.lunarMansion.symbol} {currentSky.lunarMansion.name}
+              </span>
+            )}
           </p>
-          <p style={{ color: 'var(--muted)' }}>
-            {currentSky.retrogrades.length > 0 ? `Active retrogrades: ${currentSky.retrogrades.join(', ')}` : 'No major retrogrades active now.'}
-          </p>
-          <p className="italic" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}>
-            {currentSky.dominantTransit}
-          </p>
-          <p style={{ color: 'var(--text)' }}>
-            {isEveningWindow ? 'At waking' : 'Tomorrow night'}: {nextSky.moonPhaseEmoji} {nextSky.moonPhase} with Moon in {nextSky.moonSign}.
+          <p style={{ color: 'var(--muted)', fontSize: '12px' }}>
+            ☀ Sun in {currentSky.sunSign}
+            {currentSky.moonHouse && (
+              <span style={{ color: 'var(--indigo)' }}> · ☽ House {currentSky.moonHouse}</span>
+            )}
           </p>
         </div>
+
+        {currentSky.aspects && currentSky.aspects.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {currentSky.aspects.slice(0, 3).map((a, i) => (
+              <span
+                key={i}
+                className="text-xs px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(167,139,250,0.08)', color: 'var(--violet)', border: '1px solid rgba(167,139,250,0.2)' }}
+              >
+                {a.planet1} {a.aspect} {a.planet2}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {currentSky.outerPlanets && currentSky.outerPlanets.length > 0 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--muted)' }}>
+            {currentSky.outerPlanets.map(op => {
+              const signSym = { Aries:'♈', Taurus:'♉', Gemini:'♊', Cancer:'♋', Leo:'♌', Virgo:'♍', Libra:'♎', Scorpio:'♏', Sagittarius:'♐', Capricorn:'♑', Aquarius:'♒', Pisces:'♓' }[op.sign] ?? ''
+              return <span key={op.planet}>{op.planet} {signSym} {op.sign}</span>
+            })}
+          </div>
+        )}
+
+        {currentSky.chiron && (
+          <p className="text-xs" style={{ color: 'var(--gold)' }}>
+            ⚷ Chiron in {currentSky.chiron.sign}
+          </p>
+        )}
+
+        <p className="italic text-xs leading-relaxed" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}>
+          {currentSky.dominantTransit}
+        </p>
+
+        <p className="text-xs" style={{ color: 'var(--muted)', borderTop: '1px solid rgba(167,139,250,0.1)', paddingTop: '8px' }}>
+          {isEveningWindow ? 'At waking' : 'Tomorrow night'}: {nextSky.moonPhaseEmoji} {nextSky.moonPhase} in {nextSky.moonSign}.
+        </p>
       </div>
 
       {/* Quick Start */}

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import type { DreamLog, BirthData, BiometricData } from '@/lib/types'
 import { getDreams, getBirthData, saveBirthData, seedDemoDreams } from '@/lib/store'
 import { getBiometricData, saveBiometricDataBatch } from '@/lib/biometrics'
-import { getNatalPlacements, getCurrentTransits, getDominantTransit } from '@/lib/astro'
+import { getNatalPlacements, getCurrentSky } from '@/lib/astro'
 import { getAppleHealthSampleData } from '@/lib/integrations/health'
 import { isPaywallEnforced } from '@/lib/entitlements'
 import EmotionTimeline from '@/components/charts/EmotionTimeline'
@@ -363,17 +363,7 @@ export default function StrataPage() {
 
   const natal = birthData ? getNatalPlacements(birthData) : null
   const today = new Date().toISOString().split('T')[0]
-  const transits = getCurrentTransits(today)
-  const dominant = getDominantTransit(today)
-
-  const currentSky = {
-    sunSign: transits.sunSign,
-    moonSign: transits.moonSign,
-    moonPhase: transits.moonPhase,
-    moonPhaseEmoji: transits.moonPhaseEmoji,
-    retrogrades: transits.retrogrades,
-    dominantTransit: dominant,
-  }
+  const currentSky = getCurrentSky(today, birthData)
 
   const handleLoadDemo = async () => {
     await seedDemoDreams()

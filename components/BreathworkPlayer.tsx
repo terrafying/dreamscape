@@ -20,7 +20,7 @@ const SHAPES = [
 
 type PhaseType = 'inhale' | 'inhale2' | 'hold' | 'exhale' | 'hold-out' | 'retention'
 
-interface Phase { type: PhaseType; seconds: number; label: string }
+interface Phase { type: PhaseType; seconds: number; label: string; guidance?: string }
 
 interface BreathPattern {
   id: string
@@ -155,6 +155,62 @@ const PATTERNS: BreathPattern[] = [
       { type: 'exhale', seconds: 0.25, label: 'Sharp pump out' },
     ],
   },
+  {
+    id: 'jhana1',
+    name: 'First Jhana',
+    icon: '🕯',
+    tagline: 'Applied and sustained thought — the gateway absorption.',
+    category: 'Meditate',
+    color: '#fbbf24',
+    sequence: [
+      {
+        type: 'inhale', seconds: 12, label: 'Settle in',
+        guidance: 'Sit comfortably. Bring attention to the breath at the nostrils — the cool sensation of the in-breath, the warmth of the out. Let the breath find its own natural rhythm. As thoughts arise, note them gently and return to the breath. The mind is restless at first — this is normal. With each return, the mind grows calmer.',
+      },
+    ],
+  },
+  {
+    id: 'jhana2',
+    name: 'Second Jhana',
+    icon: '◈',
+    tagline: 'Rapture and pleasure — internal brightness, one-pointedness.',
+    category: 'Meditate',
+    color: '#fb923c',
+    sequence: [
+      {
+        type: 'inhale', seconds: 12, label: 'Settle deeper',
+        guidance: 'The breath has grown still and subtle. Let attention move from the nostrils to the whole body — you may feel warmth, tingling, or a sense of lightness. Rapture begins as small waves of pleasure washing through the body. You are aware of the breath, but the breath is no longer the object — pleasure is. Rest here. If the mind wanders, return to the feeling of warmth.',
+      },
+    ],
+  },
+  {
+    id: 'jhana3',
+    name: 'Third Jhana',
+    icon: '◇',
+    tagline: 'Fading rapture — equanimity toward the pleasant.',
+    category: 'Meditate',
+    color: '#a78bfa',
+    sequence: [
+      {
+        type: 'inhale', seconds: 12, label: 'Rest in equanimity',
+        guidance: 'The rapture is fading now. What remains is a quiet, pleasurable equanimity — neither excited nor dull. You may feel like you are resting in perfect balance. The breath has become very subtle, almost imperceptible. This is the third jhana: the equanimity that arises when pleasure is no longer clung to. Simply rest. Do nothing. Be.',
+      },
+    ],
+  },
+  {
+    id: 'jhana4',
+    name: 'Fourth Jhana',
+    icon: '◻',
+    tagline: 'Pure equanimity — neither pleasure nor pain. The mind is one.',
+    category: 'Meditate',
+    color: '#94a3b8',
+    sequence: [
+      {
+        type: 'inhale', seconds: 12, label: 'Pure equanimity',
+        guidance: 'Neither pleasure nor pain. Neither good nor bad. The mind is perfectly clean, perfectly still, perfectly aware. There is no object of attention — only awareness itself. Rest here. If any sensation arises — warmth, cold, a thought — do not grasp, do not repel. Let it pass through awareness like light through glass. The mind has come to rest in its own nature.',
+      },
+    ],
+  },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -272,7 +328,8 @@ function drawScene(
 export default function BreathworkPlayer({ onPlayingChange }: { onPlayingChange?: (p: boolean) => void } = {}) {
   const [playing, setPlaying] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState(0)
-  const [display, setDisplay] = useState({ label: '', countdown: 0, cycleCount: 0, stage: 'normal' })
+  const [showGuidance, setShowGuidance] = useState(false)
+  const [display, setDisplay] = useState({ label: '', countdown: 0, cycleCount: 0, stage: 'normal' as string, guidance: '' as string })
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
@@ -339,7 +396,7 @@ export default function BreathworkPlayer({ onPlayingChange }: { onPlayingChange?
     if (cd !== lastCdRef.current || s.stage !== lastStageRef.current) {
       lastCdRef.current = cd
       lastStageRef.current = s.stage
-      setDisplay({ label: cp.label, countdown: cd, cycleCount: s.cycleCount, stage: s.stage })
+      setDisplay({ label: cp.label, countdown: cd, cycleCount: s.cycleCount, stage: s.stage, guidance: cp.guidance ?? '' })
     }
 
     rafRef.current = requestAnimationFrame(loop)
@@ -354,7 +411,7 @@ export default function BreathworkPlayer({ onPlayingChange }: { onPlayingChange?
       onPlayingChange?.(false)
       lastCdRef.current = -1
       lastStageRef.current = ''
-      setDisplay({ label: '', countdown: 0, cycleCount: 0, stage: 'normal' })
+      setDisplay({ label: '', countdown: 0, cycleCount: 0, stage: 'normal', guidance: '' })
       const ctx = canvasRef.current?.getContext('2d')
       if (ctx) ctx.clearRect(0, 0, SZ, SZ)
     } else {
@@ -365,7 +422,7 @@ export default function BreathworkPlayer({ onPlayingChange }: { onPlayingChange?
       setPlaying(true)
       onPlayingChange?.(true)
       const fp = PATTERNS[selectedIdx].sequence[0]
-      setDisplay({ label: fp.label, countdown: Math.ceil(fp.seconds), cycleCount: 0, stage: 'normal' })
+      setDisplay({ label: fp.label, countdown: Math.ceil(fp.seconds), cycleCount: 0, stage: 'normal', guidance: fp.guidance ?? '' })
       rafRef.current = requestAnimationFrame(loop)
     }
   }
@@ -442,7 +499,31 @@ export default function BreathworkPlayer({ onPlayingChange }: { onPlayingChange?
                     ? 'recovery'
                     : `cycle ${display.cycleCount + 1}`}
                 </span>
+                {display.guidance && (
+                  <button
+                    onClick={() => setShowGuidance(v => !v)}
+                    className="ml-1 text-xs px-2 py-0.5 rounded-full"
+                    style={{ border: `1px solid ${pat.color}40`, color: pat.color, opacity: 0.7 }}
+                  >
+                    {showGuidance ? 'hide' : 'guide'}
+                  </button>
+                )}
               </div>
+              {showGuidance && display.guidance && (
+                <div
+                  className="mt-3 px-4 py-3 rounded-xl text-sm text-left max-w-xs mx-auto"
+                  style={{
+                    background: `${pat.color}0a`,
+                    border: `1px solid ${pat.color}25`,
+                    color: 'var(--text)',
+                    fontFamily: 'Georgia, serif',
+                    fontStyle: 'italic',
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {display.guidance}
+                </div>
+              )}
             </>
           )}
         </div>
