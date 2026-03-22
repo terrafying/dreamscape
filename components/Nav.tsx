@@ -29,6 +29,7 @@ export default function Nav() {
     ritualTab,
     { href: '/dreamscape', label: 'Sleep', icon: '◉' },
     { href: '/strata', label: 'Strata', icon: '◈' },
+    { href: '/shared', label: 'Community', icon: '◇' },
   ]
 
   return (

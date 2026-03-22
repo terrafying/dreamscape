@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import { getSupabase } from '@/lib/supabaseClient'
 import { syncDreams } from '@/lib/cloudSync'
 import ApiKeysPanel from '@/components/ApiKeysPanel'
@@ -13,6 +14,7 @@ export default function AccountPage() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [isPremiumPlan, setIsPremiumPlan] = useState(false)
   const [billingBusy, setBillingBusy] = useState<'checkout' | 'portal' | null>(null)
 
@@ -89,6 +91,7 @@ export default function AccountPage() {
     if (!supabase) return
     supabase.auth.getUser().then(async ({ data }) => {
       setUserEmail(data.user?.email ?? null)
+      setUserId(data.user?.id ?? null)
       if (data.user) {
         try { await syncDreams(data.user.id) } catch {}
       }
@@ -205,6 +208,9 @@ export default function AccountPage() {
         </div>
       </div>
 
+      {/* Dreamer Profile */}
+      {userId && <DreamerProfile userId={userId} />}
+
       {/* Settings */}
       <div className="space-y-3">
         <h2 className="text-sm uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.14em' }}>Settings</h2>
@@ -296,8 +302,127 @@ function ReminderSettings() {
         <button onClick={save} className="px-3 py-1.5 rounded-full text-xs" style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}>Save</button>
       </div>
       <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
-        Note: Browser notifications only fire when the app is open. For system-level reminders, we’ll add iOS/Android push later.
+        Note: Browser notifications only fire when the app is open. For system-level reminders, we'll add iOS/Android push later.
       </p>
+    </div>
+  )
+}
+
+function DreamerProfile({ userId }: { userId?: string }) {
+  const [handle, setHandle] = useState('')
+  const [handleStatus, setHandleStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const supabase = getSupabase() as any
+  const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!userId || !supabase) return
+    const load = async () => {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('handle')
+        .eq('user_id', userId)
+        .single()
+      if (profile && typeof profile.handle === 'string') {
+        setHandle(profile.handle)
+      }
+    }
+    load()
+  }, [userId, supabase])
+
+  const checkHandle = async (h: string) => {
+    if (!h.trim()) { setHandleStatus('idle'); return }
+    setHandleStatus('checking')
+    try {
+      const res = await fetch(`/api/profile/${encodeURIComponent(h)}`)
+      const json = await res.json()
+      if (res.ok && json.profile) {
+        if (json.profile.user_id === userId) setHandleStatus('idle')
+        else setHandleStatus('taken')
+      } else {
+        setHandleStatus('available')
+      }
+    } catch {
+      setHandleStatus('error')
+    }
+  }
+
+  const handleChange = (v: string) => {
+    setHandle(v)
+    setHandleStatus('idle')
+    setSaved(false)
+    if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
+    checkTimerRef.current = setTimeout(() => checkHandle(v), 500)
+  }
+
+  const handleSave = async () => {
+    if (!handle.trim() || !supabase || !userId) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ handle: handle.trim() })
+      .eq('user_id', userId)
+    setSaving(false)
+    if (!error) {
+      setSaved(true)
+      setHandleStatus('idle')
+      setTimeout(() => setSaved(false), 2500)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.14em' }}>Dreamer Profile</h2>
+      <div className="rounded-xl px-4 py-4 space-y-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+              Handle
+            </span>
+            <span className="text-xs" style={{
+              color: handleStatus === 'available' ? '#86efac' : handleStatus === 'taken' || handleStatus === 'error' ? '#f87171' : 'var(--muted)',
+            }}>
+              {handleStatus === 'checking' ? 'checking…' : handleStatus === 'available' ? 'Available ✓' : handleStatus === 'taken' ? 'Taken ✗' : handleStatus === 'error' ? 'Error' : ''}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm" style={{ color: 'var(--muted)' }}>@</span>
+            <input
+              value={handle}
+              onChange={e => handleChange(e.target.value)}
+              className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+              style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${handleStatus === 'taken' || handleStatus === 'error' ? '#f87171' : 'var(--border)'}`, color: 'var(--text)' }}
+              maxLength={30}
+            />
+          </div>
+          <p className="text-[10px]" style={{ color: 'var(--muted)' }}>
+            Your public name on the community feed.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving || handleStatus === 'taken' || !handle.trim()}
+            className="flex-1 py-2 rounded-xl text-sm font-medium"
+            style={{
+              background: saving || handleStatus === 'taken' || !handle.trim() ? 'rgba(167,139,250,0.08)' : 'var(--violet)',
+              color: saving || handleStatus === 'taken' || !handle.trim() ? 'var(--muted)' : '#07070f',
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <Link
+            href="/shared"
+            className="px-3 py-2 rounded-xl text-xs"
+            style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+          >
+            Browse
+          </Link>
+        </div>
+        {saved && <p className="text-xs text-center" style={{ color: '#86efac' }}>Handle saved ✓</p>}
+      </div>
     </div>
   )
 }

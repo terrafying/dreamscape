@@ -13,6 +13,7 @@ import BirthDataModal from '@/components/BirthDataModal'
 import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
 import ShareableDreamCard from '@/components/ShareableDreamCard'
+import ShareSheet from '@/components/ShareSheet'
 import HQVoiceButton from '@/components/HQVoiceButton'
 import Paywall from '@/components/Paywall'
 import { isPaywallEnforced } from '@/lib/entitlements'
@@ -49,6 +50,7 @@ export default function LogPage() {
   const [provider, setProvider] = useState<LLMProvider>('anthropic')
   const [model, setModel] = useState<string | undefined>(undefined)
   const [streak, setStreak] = useState(0)
+  const [shareDream, setShareDream] = useState<DreamLog | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -337,11 +339,16 @@ export default function LogPage() {
                 Recent
               </div>
               {dreams.slice(0, 5).map((dream) => (
-                <DreamEntry key={dream.id} dream={dream} onSelect={() => {
-                  setTranscript(dream.transcript)
-                  setExtraction(dream.extraction || null)
-                  setStatus(dream.extraction ? 'done' : 'idle')
-                }} />
+                <DreamEntry
+                  key={dream.id}
+                  dream={dream}
+                  onSelect={() => {
+                    setTranscript(dream.transcript)
+                    setExtraction(dream.extraction || null)
+                    setStatus(dream.extraction ? 'done' : 'idle')
+                  }}
+                  onShare={dream.extraction ? () => setShareDream(dream) : undefined}
+                />
               ))}
             </div>
           </>
@@ -357,12 +364,20 @@ export default function LogPage() {
             ✦ Add birth chart for deeper astrological context
           </button>
         )}
+
+        {shareDream && (
+          <ShareSheet
+            dream={shareDream}
+            onClose={() => setShareDream(null)}
+            onShared={() => setShareDream(null)}
+          />
+        )}
       </div>
     </>
   )
 }
 
-function DreamEntry({ dream, onSelect }: { dream: DreamLog; onSelect: () => void }) {
+function DreamEntry({ dream, onSelect, onShare }: { dream: DreamLog; onSelect: () => void; onShare?: () => void }) {
   const ext = dream.extraction
   const topEmotion = ext?.emotions?.[0]
   const dominantTheme = ext?.themes?.[0]
@@ -391,7 +406,19 @@ function DreamEntry({ dream, onSelect }: { dream: DreamLog; onSelect: () => void
           <p className="text-sm truncate" style={{ color: 'var(--text)' }}>{dream.transcript.slice(0, 80)}...</p>
           {dominantTheme && <p className="text-xs mt-0.5" style={{ color: 'var(--violet)' }}>{dominantTheme.name}</p>}
         </div>
-        <span className="text-sm" style={{ color: 'var(--muted)' }}>›</span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {onShare && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare() }}
+              className="p-1 rounded text-xs"
+              style={{ color: 'rgba(167,139,250,0.5)' }}
+              title="Share to community"
+            >
+              ◇
+            </button>
+          )}
+          <span className="text-sm" style={{ color: 'var(--muted)' }}>›</span>
+        </div>
       </div>
     </button>
   )

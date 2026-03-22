@@ -119,26 +119,77 @@ export interface OuterPlanetTransit {
   description: string
 }
 
-// ─── Natal Chart ─────────────────────────────────────────────────────────────────
-
 export interface NatalPlanetPosition {
   planet: string
   sign: string
-  degree: number       // 0–29 degrees within sign
-  longitude: number    // 0–359 absolute ecliptic longitude
+  degree: number
+  longitude: number
   symbol: string
 }
 
 export interface NatalAspect {
   planet1: string
   planet2: string
-  aspect: string       // Conjunction | Square | Trine | Opposition | Sextile
+  aspect: string
   orb: number
 }
 
 export interface NatalChartData {
   planets: NatalPlanetPosition[]
   aspects: NatalAspect[]
-  houseCusps: number[]  // 12 values, 0–359 degrees
-  ascendant: number    // longitude of house 1 cusp
+  houseCusps: number[]
+  ascendant: number
+}
+
+export interface UserProfile {
+  id: string
+  user_id: string
+  handle: string
+  avatar_seed?: string
+  sun_sign?: string
+  moon_sign?: string
+  rising_sign?: string
+  created_at: string
+}
+
+export interface SharedDream {
+  id: string
+  user_id: string
+  dream_id: string
+  dream_data: DreamLog
+  symbols: string[]
+  themes: string[]
+  emotions: string[]
+  share_handle: string
+  created_at: string
+}
+
+export interface SharedDreamWithCounts extends SharedDream {
+  reactions: { emoji: string; count: number }[]
+  interpretation_count: number
+  is_following: boolean
+  my_reactions: string[]
+}
+
+export interface DreamReaction {
+  id: string
+  dream_id: string
+  user_id: string
+  emoji: string
+  created_at: string
+}
+
+export interface DreamInterpretation {
+  id: string
+  dream_id: string
+  user_id: string
+  handle: string
+  text: string
+  created_at: string
+}
+
+export interface Follow {
+  follower_id: string
+  following_id: string
+  created_at: string
 }
