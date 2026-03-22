@@ -118,3 +118,27 @@ export interface OuterPlanetTransit {
   sign: string
   description: string
 }
+
+// ─── Natal Chart ─────────────────────────────────────────────────────────────────
+
+export interface NatalPlanetPosition {
+  planet: string
+  sign: string
+  degree: number       // 0–29 degrees within sign
+  longitude: number    // 0–359 absolute ecliptic longitude
+  symbol: string
+}
+
+export interface NatalAspect {
+  planet1: string
+  planet2: string
+  aspect: string       // Conjunction | Square | Trine | Opposition | Sextile
+  orb: number
+}
+
+export interface NatalChartData {
+  planets: NatalPlanetPosition[]
+  aspects: NatalAspect[]
+  houseCusps: number[]  // 12 values, 0–359 degrees
+  ascendant: number    // longitude of house 1 cusp
+}

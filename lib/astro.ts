@@ -1,4 +1,4 @@
-import type { BirthData, NatalPlacements, CurrentSky, LunarMansion, PlanetaryAspect, ChironPlacement } from './types'
+import type { BirthData, NatalPlacements, CurrentSky, LunarMansion, PlanetaryAspect, ChironPlacement, NatalPlanetPosition, NatalAspect, NatalChartData } from './types'
 
 // ─── Sun Signs ───────────────────────────────────────────────────────────────
 
@@ -173,6 +173,132 @@ export function getNatalPlacements(birthData: BirthData): NatalPlacements {
   }
 
   return { sunSign, moonSign, risingSign }
+}
+
+const PLANET_SYMBOLS: Record<string, string> = {
+  Sun: '☉', Moon: '☽', Mercury: '☿', Venus: '♀', Mars: '♂',
+  Jupiter: '♃', Saturn: '♄', Uranus: '♅', Neptune: '♆', Pluto: '♇', Chiron: '⚷',
+}
+
+const NATAL_PLANETS = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto', 'Chiron']
+
+const ASPECT_COLORS: Record<string, string> = {
+  Conjunction: '#fbbf24',
+  Square: '#f87171',
+  Trine: '#60a5fa',
+  Opposition: '#c084fc',
+  Sextile: '#34d399',
+}
+
+export function getNatalPlanetPositions(birthData: BirthData): NatalPlanetPosition[] {
+  const date = new Date(`${birthData.date}T12:00:00Z`)
+  return NATAL_PLANETS.map((planet) => {
+    const longitude = getPlanetLongitude(date, planet)
+    const idx = Math.floor(longitude / 30) % 12
+    const sign = ZODIAC_SIGNS[idx]
+    const degree = Math.round(longitude % 30)
+    return {
+      planet,
+      sign,
+      degree,
+      longitude,
+      symbol: PLANET_SYMBOLS[planet] ?? planet[0],
+    }
+  })
+}
+
+function jdFromDate(date: Date): number {
+  const y = date.getUTCFullYear()
+  const m = date.getUTCMonth() + 1
+  const d = date.getUTCDate() + (date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600) / 24
+  const jd = (1461 * (y + 4800 + (m - 14) / 12)) / 4 +
+    (367 * (m - 2 - 12 * ((m - 14) / 12))) / 12 -
+    (3 * Math.floor((y + 4900 + (m - 14) / 12) / 100)) / 4 + d - 32075
+  return jd
+}
+
+function calcObliquity(jd: number): number {
+  const t = (jd - 2451545.0) / 36525
+  const eps0 = 84381.448 - 4680.93 * t - 1.55 * t * t + 1999.25 * t * t * t - 51.38 * t * t * t * t - 249.67 * t * t * t * t * t - 39.05 * t * t * t * t * t * t
+  return eps0 / 3600
+}
+
+function getNatalHouseCusps(birthData: BirthData): { houseCusps: number[]; ascendant: number } {
+  const baseDate = new Date(`${birthData.date}T12:00:00Z`)
+  let hour = 12
+  if (birthData.time) {
+    const [h, m] = birthData.time.split(':').map(Number)
+    hour = h + m / 60
+  }
+  const date = new Date(`${birthData.date}T${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.round((hour % 1) * 60)).padStart(2, '0')}:00Z`)
+  const jd = jdFromDate(date)
+  const t = (jd - 2451545.0) / 36525
+  const gmst = 280.46061837 + 360.98564736629 * (jd - 2451545) + 0.000387933 * t * t - t * t * t / 38710000
+  const lst = ((gmst % 360) + 360) % 360
+  const ramc = lst
+  const eps = calcObliquity(jd)
+  const sinE = Math.sin(eps * Math.PI / 180)
+  const cosE = Math.cos(eps * Math.PI / 180)
+  const tanE = sinE / cosE
+  const lat = birthData.lat ?? 40.7128
+  const sinL = Math.sin(lat * Math.PI / 180)
+  const cosL = Math.cos(lat * Math.PI / 180)
+  const tanL = sinL / cosL
+  const raMC = ramc
+  const dMC = Math.asin(Math.sin(raMC * Math.PI / 180) * sinE) * 180 / Math.PI
+  const ramcRad = raMC * Math.PI / 180
+  const asc = Math.atan2(-cosL * Math.sin(ramcRad), sinL * Math.cos(ramcRad) - cosL * tanE) * 180 / Math.PI
+  const ascendant = ((asc % 360) + 360) % 360
+  const houseCusps = new Array(12).fill(0)
+  houseCusps[0] = ascendant
+  houseCusps[9] = ramc
+  houseCusps[3] = ((ramc + 180) % 360 + 360) % 360
+  houseCusps[6] = ((ascendant + 180) % 360 + 360) % 360
+  for (let i = 1; i <= 9; i++) {
+    if (i === 3 || i === 6 || i === 9) continue
+    const house = i
+    const h = house <= 3 ? house - 1 : house <= 6 ? house - 1 : house <= 9 ? house - 1 : house - 1
+    const sign = house <= 3 ? 1 : house <= 6 ? -1 : house <= 9 ? 1 : -1
+    const aRad = ramcRad
+    const asc2 = ascendant * Math.PI / 180
+    const n = 30 * (house - 1)
+    const nRad = n * Math.PI / 180
+    const m = Math.sin(nRad) * Math.sin(aRad) * sinE + Math.cos(nRad) * cosE
+    const l = Math.cos(nRad) * Math.sin(aRad) - Math.sin(nRad) * cosE / sinE
+    const value = Math.atan2(m, l) * 180 / Math.PI
+    houseCusps[i] = ((value % 360) + 360) % 360
+  }
+  return { houseCusps, ascendant }
+}
+
+export function getNatalAspects(planets: NatalPlanetPosition[]): NatalAspect[] {
+  const aspects: NatalAspect[] = []
+  for (let i = 0; i < planets.length; i++) {
+    for (let j = i + 1; j < planets.length; j++) {
+      const diff = Math.abs(planets[i].longitude - planets[j].longitude)
+      const normDiff = Math.min(diff, 360 - diff)
+      for (const def of ASPECT_DEFINITIONS) {
+        const orb = Math.abs(normDiff - def.angle)
+        if (orb <= def.orb) {
+          aspects.push({
+            planet1: planets[i].planet,
+            planet2: planets[j].planet,
+            aspect: def.name,
+            orb: Math.round(orb * 10) / 10,
+          })
+          break
+        }
+      }
+    }
+  }
+  return aspects
+}
+
+export function getNatalChartData(birthData: BirthData): NatalChartData {
+  const planets = getNatalPlanetPositions(birthData)
+  const aspects = getNatalAspects(planets)
+  const { houseCusps, ascendant } = getNatalHouseCusps(birthData)
+  return { planets, aspects, houseCusps, ascendant }
 }
 
 // ─── Dominant Transit Description ─────────────────────────────────────────────

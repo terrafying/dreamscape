@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import type { BirthData } from '@/lib/types'
 import { getBirthData, saveBirthData } from '@/lib/store'
-import { getNatalPlacements } from '@/lib/astro'
+import { getNatalPlacements, getNatalChartData } from '@/lib/astro'
+import NatalChartWheel from './NatalChartWheel'
 
 const SIGN_SYMBOLS: Record<string, string> = {
   Aries: '♈', Taurus: '♉', Gemini: '♊', Cancer: '♋',
@@ -43,6 +44,7 @@ export default function BirthDataEditor({ compact = false }: BirthDataEditorProp
   }, [])
 
   const natal = data ? getNatalPlacements(data) : null
+  const natalChart = data ? getNatalChartData(data) : null
 
   function parseDate(raw: string): string | null {
     const s = raw.trim()
@@ -150,6 +152,12 @@ export default function BirthDataEditor({ compact = false }: BirthDataEditorProp
             </div>
           ))}
         </div>
+
+        {natalChart && (
+          <div className="mt-4">
+            <NatalChartWheel data={natalChart} />
+          </div>
+        )}
 
         {saved && (
           <p className="text-xs text-center" style={{ color: '#86efac' }}>Saved ✓</p>
