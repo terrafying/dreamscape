@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import type { SharedDreamWithCounts } from '@/lib/types'
+import { SITE_URL } from '@/lib/site'
 
 const REACTION_EMOJIS = ['💭', '🔮', '💜']
 
@@ -34,11 +36,25 @@ interface SharedDreamCardProps {
 }
 
 export default function SharedDreamCard({ dream, onReact, myReactions = [] }: SharedDreamCardProps) {
+  const [copied, setCopied] = useState(false)
   const transcript = (dream.dream_data as { transcript?: string })?.transcript ?? ''
   const mood = dreamMood(dream.dream_data as { extraction?: { emotions?: { name: string }[]; tone?: string } })
   const arc = dreamArc(dream.dream_data as { extraction?: { narrative_arc?: string } })
   const symbols = dream.symbols.slice(0, 4)
   const truncated = transcript.length > 100 ? transcript.slice(0, 100) + '…' : transcript
+
+  const handleShare = async () => {
+    const text = `@${dream.share_handle} shared a dream:\n"${truncated}"\n\nExplore at ${SITE_URL}/dream/${dream.id}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ text, url: `${SITE_URL}/dream/${dream.id}` })
+      } catch { }
+    } else {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
 
   const reactionMap: Record<string, number> = {}
   for (const r of dream.reactions) {
@@ -144,6 +160,13 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
 
         <div className="flex-1" />
 
+        <button
+          onClick={handleShare}
+          className="text-xs px-2 py-1 rounded-lg"
+          style={{ border: '1px solid var(--border)', color: copied ? '#86efac' : 'var(--muted)' }}
+        >
+          {copied ? 'Copied!' : 'Share'}
+        </button>
         <Link
           href={`/dream/${dream.id}`}
           className="text-xs px-2 py-1 rounded-lg"

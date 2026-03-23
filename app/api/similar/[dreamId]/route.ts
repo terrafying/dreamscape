@@ -42,6 +42,11 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  type ScoredDream = {
+    id: string; user_id: string; dream_id: string; dream_data: unknown
+    symbols: string[]; themes: string[]; emotions: string[]
+    share_handle: string; created_at: string; similarity: number
+  }
   const scored = (candidates ?? []).map((d: {
     id: string
     user_id: string
@@ -69,8 +74,43 @@ export async function GET(
     return { ...d, similarity: Math.round(total * 100) / 100 }
   })
 
-  scored.sort((a: { similarity: number }, b: { similarity: number }) => b.similarity - a.similarity)
-  const top = scored.slice(0, limit)
+  scored.sort((a: ScoredDream, b: ScoredDream) => b.similarity - a.similarity)
+  const top: ScoredDream[] = scored.slice(0, limit)
 
-  return NextResponse.json({ ok: true, dreams: top })
+  const topIds = top.map(d => d.id)
+  const [reactionsRes, interpRes, myReactionsRes] = await Promise.all([
+    topIds.length
+      ? supabase.from('dream_reactions').select('dream_id, emoji').in('dream_id', topIds)
+      : Promise.resolve({ data: [], error: null }),
+    topIds.length
+      ? supabase.from('dream_interpretations').select('dream_id').in('dream_id', topIds)
+      : Promise.resolve({ data: [], error: null }),
+    topIds.length && user
+      ? supabase.from('dream_reactions').select('dream_id, emoji').in('dream_id', topIds).eq('user_id', user.id)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  const reactionsMap: Record<string, { emoji: string; count: number }[]> = {}
+  for (const r of (reactionsRes?.data ?? []) as { dream_id: string; emoji: string }[]) {
+    if (!reactionsMap[r.dream_id]) reactionsMap[r.dream_id] = []
+    const existing = reactionsMap[r.dream_id].find(e => e.emoji === r.emoji)
+    if (existing) existing.count++
+    else reactionsMap[r.dream_id].push({ emoji: r.emoji, count: 1 })
+  }
+
+  const interpCount: Record<string, number> = {}
+  for (const i of (interpRes?.data ?? []) as { dream_id: string }[]) {
+    interpCount[i.dream_id] = (interpCount[i.dream_id] ?? 0) + 1
+  }
+
+  const withCounts = top.map((d: typeof top[0]) => ({
+    ...d,
+    reactions: reactionsMap[d.id] ?? [],
+    interpretation_count: interpCount[d.id] ?? 0,
+    my_reactions: (myReactionsRes?.data ?? [])
+      .filter((r: { dream_id: string }) => r.dream_id === d.id)
+      .map((r: { emoji: string }) => r.emoji),
+  }))
+
+  return NextResponse.json({ ok: true, dreams: withCounts })
 }

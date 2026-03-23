@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
   const dreamIds = (dreams ?? []).map((d: { id: string }) => d.id)
 
-  const [reactionsRes, interpRes] = await Promise.all([
+  const [reactionsRes, interpRes, myReactionsRes] = await Promise.all([
     dreamIds.length
       ? supabase
           .from('dream_reactions')
@@ -45,6 +45,13 @@ export async function GET(request: Request) {
           .from('dream_interpretations')
           .select('dream_id')
           .in('dream_id', dreamIds)
+      : Promise.resolve({ data: [], error: null }),
+    dreamIds.length && user
+      ? supabase
+          .from('dream_reactions')
+          .select('dream_id, emoji')
+          .in('dream_id', dreamIds)
+          .eq('user_id', user.id)
       : Promise.resolve({ data: [], error: null }),
   ])
 
@@ -83,6 +90,9 @@ export async function GET(request: Request) {
     created_at: d.created_at,
     reactions: reactionsMap[d.id] ?? [],
     interpretation_count: interpCount[d.id] ?? 0,
+    my_reactions: (myReactionsRes?.data ?? [])
+      .filter((r: { dream_id: string }) => r.dream_id === d.id)
+      .map((r: { emoji: string }) => r.emoji),
   }))
 
   return NextResponse.json({

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { DreamLog } from '@/lib/types'
 import { apiFetch } from '@/lib/apiFetch'
+import { SITE_URL } from '@/lib/site'
 
 interface Props {
   dream: DreamLog
@@ -14,6 +15,20 @@ export default function ShareSheet({ dream, onClose, onShared }: Props) {
   const [sharing, setSharing] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [sharedOutside, setSharedOutside] = useState(false)
+
+  const handleShareOutside = async () => {
+    const text = `A dream from dreamscape.quest:\n"${dream.transcript.slice(0, 200)}..."\n\nExplore at ${SITE_URL}/dream/${dream.id}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ text, url: `${SITE_URL}/dream/${dream.id}` })
+        setSharedOutside(true)
+      } catch { }
+    } else {
+      await navigator.clipboard.writeText(text)
+      setSharedOutside(true)
+    }
+  }
 
   const handleShare = async () => {
     if (sharing) return
@@ -60,11 +75,25 @@ export default function ShareSheet({ dream, onClose, onShared }: Props) {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span style={{ color: '#86efac' }}>✓</span>
-              <p className="text-sm" style={{ color: '#86efac)' }}>Dream shared to the community!</p>
+              <p className="text-sm" style={{ color: '#86efac' }}>Dream shared to the community!</p>
             </div>
             <p className="text-xs" style={{ color: 'var(--muted)' }}>
               Others can now see your dream symbols and interpretation in the community feed.
             </p>
+            {!sharedOutside ? (
+              <button
+                onClick={handleShareOutside}
+                className="w-full py-3 rounded-xl text-sm font-medium"
+                style={{ border: '1px solid rgba(167,139,250,0.3)', color: 'var(--text)', background: 'rgba(167,139,250,0.08)' }}
+              >
+                Share Outside Dreamscape
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 justify-center">
+                <span style={{ color: '#86efac' }}>✓</span>
+                <p className="text-sm" style={{ color: '#86efac' }}>Link copied!</p>
+              </div>
+            )}
             <button
               onClick={onClose}
               className="w-full py-3 rounded-xl text-sm font-medium"
