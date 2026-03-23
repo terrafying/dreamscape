@@ -228,7 +228,10 @@ export default function AccountPage() {
         <ApiKeysPanel />
         <ModelDefaultsPanel />
         <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
-          BYO keys are not paywalled yet (MVP). Later we’ll offer using our managed keys as a Premium feature.
+          BYO keys are not paywalled yet (MVP). Later we'll offer using our managed keys as a Premium feature.
+        </p>
+        <p className="text-[10px]" style={{ color: 'var(--muted)', opacity: 0.7 }}>
+          Your data is anonymized and never shared with third parties.
         </p>
       </div>
     </div>
@@ -313,19 +316,22 @@ function DreamerProfile({ userId }: { userId?: string }) {
   const [handleStatus, setHandleStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const supabase = getSupabase() as any
   const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!userId || !supabase) return
     const load = async () => {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('user_profiles')
         .select('handle')
         .eq('user_id', userId)
         .single()
       if (profile && typeof profile.handle === 'string') {
         setHandle(profile.handle)
+      } else if (error) {
+        setSaveError('Profile not found — try signing out and back in.')
       }
     }
     load()
@@ -352,6 +358,7 @@ function DreamerProfile({ userId }: { userId?: string }) {
     setHandle(v)
     setHandleStatus('idle')
     setSaved(false)
+    setSaveError('')
     if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
     checkTimerRef.current = setTimeout(() => checkHandle(v), 500)
   }
@@ -359,12 +366,15 @@ function DreamerProfile({ userId }: { userId?: string }) {
   const handleSave = async () => {
     if (!handle.trim() || !supabase || !userId) return
     setSaving(true)
+    setSaveError('')
     const { error } = await supabase
       .from('user_profiles')
       .update({ handle: handle.trim() })
       .eq('user_id', userId)
     setSaving(false)
-    if (!error) {
+    if (error) {
+      setSaveError(error.message || 'Failed to save handle')
+    } else {
       setSaved(true)
       setHandleStatus('idle')
       setTimeout(() => setSaved(false), 2500)
@@ -422,6 +432,9 @@ function DreamerProfile({ userId }: { userId?: string }) {
           </Link>
         </div>
         {saved && <p className="text-xs text-center" style={{ color: '#86efac' }}>Handle saved ✓</p>}
+        {saveError && (
+          <p className="text-xs text-center" style={{ color: '#f87171' }}>{saveError}</p>
+        )}
       </div>
     </div>
   )

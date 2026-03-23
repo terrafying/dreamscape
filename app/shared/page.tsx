@@ -83,8 +83,20 @@ export default function SharedFeedPage() {
 
   useEffect(() => {
     const supabase = getSupabase()
-    if (!supabase) { setSignedIn(false); return }
-    supabase.auth.getUser().then(({ data }) => setSignedIn(!!data.user))
+    if (!supabase) {
+      const syncEnabled = typeof window !== 'undefined' && localStorage.getItem('dreamscape_sync_enabled') === '1'
+      setSignedIn(syncEnabled)
+      return
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setSignedIn(true)
+      } else {
+        supabase.auth.getUser().then(({ data: userData }) => {
+          setSignedIn(!!userData.user)
+        })
+      }
+    })
   }, [])
 
   if (signedIn === null) return null

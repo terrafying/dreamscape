@@ -35,10 +35,8 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
   const cosmicThemes = astro?.cosmic_themes || []
   const transitNote = astro?.transit_note || currentSky?.dominantTransit
   const natalAspects = astro?.natal_aspects?.filter(Boolean) || []
-  const lunarMansion = currentSky?.lunarMansion
   const aspects = currentSky?.aspects || []
   const chiron = currentSky?.chiron
-  const moonHouse = currentSky?.moonHouse
   const outerPlanets = currentSky?.outerPlanets || []
 
   return (
@@ -91,51 +89,7 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
         )}
       </div>
 
-      {/* Lunar Mansion + Moon House row */}
-      {(lunarMansion || moonHouse) && (
-        <div className="flex flex-wrap gap-1.5">
-          {lunarMansion && (
-            <span
-              title={`${lunarMansion.deity}: ${lunarMansion.meaning}`}
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                background: 'rgba(167,139,250,0.08)',
-                color: 'var(--violet)',
-                border: '1px solid rgba(167,139,250,0.2)',
-                cursor: 'help',
-              }}
-            >
-              {lunarMansion.symbol} {lunarMansion.name}
-            </span>
-          )}
-          {moonHouse && (
-            <span
-              title={`House ${moonHouse}: ${HOUSE_MEANINGS[moonHouse] || ''}`}
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                background: 'rgba(129,140,248,0.08)',
-                color: 'var(--indigo)',
-                border: '1px solid rgba(129,140,248,0.2)',
-                cursor: 'help',
-              }}
-            >
-              ☽ H{moonHouse}
-            </span>
-          )}
-          {chiron && (
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                background: 'rgba(251,191,36,0.06)',
-                color: 'var(--gold)',
-                border: '1px solid rgba(251,191,36,0.2)',
-              }}
-            >
-              ⚷ {SIGN_SYMBOLS[chiron.sign] || ''} {chiron.sign}
-            </span>
-          )}
-        </div>
-      )}
+
 
       {/* Retrogrades */}
       {retrogrades.length > 0 && (

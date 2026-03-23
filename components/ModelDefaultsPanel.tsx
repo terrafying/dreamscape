@@ -2,28 +2,32 @@
 
 import { useEffect, useState } from 'react'
 
-type Provider = 'anthropic' | 'openai' | 'openrouter'
+type Provider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
 
 export default function ModelDefaultsPanel() {
-  const [provider, setProvider] = useState<Provider>('openrouter')
-  const [orModel, setOrModel] = useState('openrouter/free')
+  const [provider, setProvider] = useState<Provider>('groq')
+  const [orModel, setOrModel] = useState('nvidia/nemotron-3-super-120b-a12b:free')
+  const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const p = (localStorage.getItem('dreamscape_provider') as Provider) || 'openrouter'
-    const orm = localStorage.getItem('dreamscape_or_model') || 'openrouter/free'
+    const p = (localStorage.getItem('dreamscape_provider') as Provider) || 'groq'
+    const orm = localStorage.getItem('dreamscape_or_model') || 'nvidia/nemotron-3-super-120b-a12b:free'
+    const gm = localStorage.getItem('dreamscape_groq_model') || 'llama-3.3-70b-versatile'
     setProvider(p)
     setOrModel(orm)
+    setGroqModel(gm)
   }, [])
 
   const save = () => {
     localStorage.setItem('dreamscape_provider', provider)
     localStorage.setItem('dreamscape_or_model', orModel)
+    localStorage.setItem('dreamscape_groq_model', groqModel)
   }
 
   const usingKeys = (() => {
     if (typeof window === 'undefined') return false
-    try { const k = JSON.parse(localStorage.getItem('dreamscape_api_keys') || '{}'); return !!(k.openai || k.openrouter || k.anthropic || k.deepgram) } catch { return false }
+    try { const k = JSON.parse(localStorage.getItem('dreamscape_api_keys') || '{}'); return !!(k.openai || k.openrouter || k.anthropic || k.groq || k.deepgram) } catch { return false }
   })()
 
   return (
@@ -37,6 +41,7 @@ export default function ModelDefaultsPanel() {
       <div className="grid gap-2">
         <label className="text-xs" style={{ color: 'var(--muted)' }}>Default Provider</label>
         <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)} className="text-xs rounded px-2 py-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)', width: 'fit-content' }}>
+          <option value="groq">Groq (free)</option>
           <option value="openrouter">OpenRouter</option>
           <option value="openai">OpenAI</option>
           <option value="anthropic">Anthropic</option>
@@ -44,7 +49,13 @@ export default function ModelDefaultsPanel() {
         {provider === 'openrouter' && (
           <>
             <label className="text-xs" style={{ color: 'var(--muted)' }}>OpenRouter Model</label>
-            <input type="text" value={orModel} onChange={(e) => setOrModel(e.target.value)} placeholder="openrouter/free" className="rounded px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            <input type="text" value={orModel} onChange={(e) => setOrModel(e.target.value)} placeholder="nvidia/nemotron-3-super-120b-a12b:free" className="rounded px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          </>
+        )}
+        {provider === 'groq' && (
+          <>
+            <label className="text-xs" style={{ color: 'var(--muted)' }}>Groq Model</label>
+            <input type="text" value={groqModel} onChange={(e) => setGroqModel(e.target.value)} placeholder="llama-3.3-70b-versatile" className="rounded px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
           </>
         )}
         <div className="flex justify-end pt-1">

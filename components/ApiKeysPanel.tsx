@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 export default function ApiKeysPanel() {
   const [open, setOpen] = useState(false)
-  const [keys, setKeys] = useState({ openai: '', openrouter: '', anthropic: '', deepgram: '' })
+  const [keys, setKeys] = useState({ openai: '', openrouter: '', anthropic: '', groq: '', deepgram: '' })
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -17,7 +17,7 @@ export default function ApiKeysPanel() {
   }
 
   const clear = () => {
-    setKeys({ openai: '', openrouter: '', anthropic: '', deepgram: '' })
+    setKeys({ openai: '', openrouter: '', anthropic: '', groq: '', deepgram: '' })
     localStorage.removeItem('dreamscape_api_keys')
   }
 
@@ -32,6 +32,7 @@ export default function ApiKeysPanel() {
           <KeyField label="OpenAI" value={keys.openai} onChange={(v) => setKeys(k => ({ ...k, openai: v }))} placeholder="sk-..." />
           <KeyField label="OpenRouter" value={keys.openrouter} onChange={(v) => setKeys(k => ({ ...k, openrouter: v }))} placeholder="sk-or-..." />
           <KeyField label="Anthropic" value={keys.anthropic} onChange={(v) => setKeys(k => ({ ...k, anthropic: v }))} placeholder="sk-ant-..." />
+          <KeyField label="Groq" value={keys.groq} onChange={(v) => setKeys(k => ({ ...k, groq: v }))} placeholder="gsk_..." />
           <KeyField label="Deepgram" value={keys.deepgram} onChange={(v) => setKeys(k => ({ ...k, deepgram: v }))} placeholder="dg_..." />
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={clear} className="text-xs px-2 py-1 rounded" style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}>Clear</button>
