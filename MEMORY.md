@@ -163,7 +163,7 @@ If the button appears dead, inspect the client code first for swallowed SSE erro
 - `components/DreamDetailClient.tsx` holds client detail logic
 - `app/api/og/[id]/route.ts` creates SVG OG images without new deps
 
-## Puzzle / Hyperdimensional Manifold
+## Puzzle / Hyperfold Sigil
 
 Main file:
 - `app/puzzle/page.tsx`
@@ -173,15 +173,103 @@ Math helpers:
 - `lib/manifold.ts`
 - `lib/tuning.ts`
 
-Current direction:
-- old maze/corridor navigation has been replaced by a room-slice prototype based on a tesseract
-- a room corresponds to a graph vertex
-- adjacent vertices are reached through portal-like folds
-- Q/E move the active slice through W
-- R rotates the active SO(4) plane
-- guidance comes from manifold graph distance, not grid distance
+Visual components:
+- `components/puzzle/DreamMotes.tsx` — 180 floating particles, 3 color populations, drift on sine waves
+- `components/puzzle/SigilFloor.tsx` — procedural sacred geometry per vertex (concentric rings, star polygons, radiating spokes)
 
-This is now a true manifold-navigation prototype rather than a normal maze with 4D decoration.
+Current state:
+- Room-slice prototype on a tesseract manifold; each room is a graph vertex
+- Adjacent vertices reached through portal-like folds (WASD or swipe)
+- Q/E shift slice through W; R rotates active SO(4) plane; pinch-to-slice on mobile
+- Post-processing: Bloom + ChromaticAberration + Vignette via @react-three/postprocessing@2.19.1 + postprocessing@6.36.3 (pinned for three.js 0.164 compat)
+- Touch navigation: swipe-to-fold, pinch-to-slice, mobile d-pad buttons
+- Audio: 31-EDO arpeggiator (Tone.js Loop at 48bpm), notes built from vertex index + discovery count. Drone + synth + arp all clean up on page unmount via cleanupAudio()
+- Audio presets: Ethereal / Deep / Silent with Advanced mixer toggle
+- Canvas has zIndex:1, HUD elements at zIndex:30-50 to prevent click-blocking
+- Floor sigils unique per vertex, portals have star polygon sigil marks + shimmer
+- Guidance orb drifts gently (not aggressive pulse)
+- Start screen titled "HYPERFOLD SIGIL" with animated 2D canvas sigil background
+- Discovery text: "SIGIL MANIFESTED" / "The Fold Remembers"
+
+## Dream Oracle / Tarot Reading
+
+- `components/DreamOracle.tsx` — three-card tarot spread (422 lines)
+  - Card 1 "The Symbol": top extraction symbol → tarot via findTarotCard()
+  - Card 2 "The Current": dominant emotion + moon sign → astrological note
+  - Card 3 "The Guidance": goetic resonance or recommendation
+  - CSS 3D flip animation (rotateY, 700ms, cubic-bezier), staggered at 0/600/1200ms
+  - autoReveal deferred by requestAnimationFrame + 400ms to ensure cards paint face-down first
+- `app/reading/page.tsx` — dedicated Reading tab, full-screen oracle experience
+  - Loads user's dreams, lets them pick which to read
+  - Shows interpretation + Invoke CTA after reveal completes
+
+## Symbol Tooltips
+
+- `components/SymbolTooltip.tsx` — tappable pill with popover
+  - Shows: symbol name/category/meaning, salience %, tarot association (name/number/principle/meaning)
+  - Wired into ExtractionDisplay.tsx (wraps sym.name in symbol list)
+  - `SymbolPillList` export for bulk rendering
+  - Close on outside click or Escape
+
+## Interactive Natal Chart
+
+- `components/NatalChartWheel.tsx` (377 lines)
+  - Tappable planets (r=20 invisible hit targets), aspects (strokeWidth=14), house cusps (strokeWidth=12)
+  - Toggle selection, pulse animation via @keyframes wheelPulse
+  - Interpretation panel below SVG: planet sign/degree/house/aspects, aspect type/orb, house meaning/planets
+  - Lives on the strata page (moved from account/altar)
+
+## Celestial Guidance
+
+- `components/AstroPanel.tsx` — CelestialGuidance component at bottom
+  - Moon sign guidance (12 signs × actionable advice)
+  - Moon phase guidance (8 phases × forward-looking text)
+  - Retrograde warnings, strongest aspect meaning, Chiron healing note
+  - "What this means for you" section
+
+## Growth Features
+
+### Weekly Dream Letter
+- `lib/email.ts` — Resend wrapper, sendWeeklyDigest() with dark cosmic HTML template
+- `app/api/cron/weekly-letter/route.ts` — Vercel cron (Sundays 8am ET / 13:00 UTC)
+- Queries users with weekly_digest=true, fetches past 7 days dreams, sends digest
+- Requires: RESEND_API_KEY, RESEND_FROM_EMAIL, CRON_SECRET
+
+### Transit Alerts
+- `lib/transits.ts` — getNotableTransits() detects retrogrades, moons, eclipses, ingresses, aspects
+- `app/api/cron/transit-alerts/route.ts` — daily cron (6am ET / 11:00 UTC)
+- Personalizes with natal chart when available, dedupes same-day alerts
+
+### Notification System
+- `app/api/notifications/route.ts` — GET (list 20) + PATCH (mark read)
+- `components/NotificationBell.tsx` — bell icon in Nav with unread badge, dropdown panel, 60s polling
+- Notification types: transit_alert, weekly_digest, new_follower, dream_reaction, circle_invite, circle_dream
+
+### Dream Circles
+- `app/api/circles/` — full CRUD: create, list, detail+feed, delete, invite, share, join
+- `app/circles/page.tsx` — circle list + create form
+- `app/circles/[id]/page.tsx` — detail with member list, invite generation, dream feed
+- `app/invite/[code]/page.tsx` — public invite redemption page
+- Invite codes: 8-char alphanumeric, 7-day expiry, configurable max_uses
+- Circle max 5 members by default
+
+### One-Click Sharing
+- `components/ShareableDreamCard.tsx` — canvas→blob→File, navigator.share({files}) for Instagram Stories
+- Falls back to navigator.share({text, url}) then to image download
+- Dream card includes transcript excerpt, interpretation, share URL
+
+## Growth Schema
+
+Migration: `supabase/migrations/003_growth_schema.sql`
+Tables: email_preferences, notifications, dream_circles, circle_members, circle_invites, circle_dreams
+All with RLS. Tables created before policies (forward-reference fix for circle_members).
+
+## Cron Configuration
+
+`vercel.json` — two cron schedules:
+- `/api/cron/weekly-letter` at 0 13 * * 0 (Sunday 8am ET)
+- `/api/cron/transit-alerts` at 0 11 * * * (daily 6am ET)
+Both require CRON_SECRET Bearer token authorization.
 
 ## Files That Matter Most
 
@@ -189,22 +277,42 @@ This is now a true manifold-navigation prototype rather than a normal maze with 
 - `lib/auth.ts` — shared API-key auth
 - `lib/supabaseClient.ts` — client singleton
 - `lib/supabaseServer.ts` — bearer-token user validation
+- `lib/email.ts` — Resend email sending
+- `lib/transits.ts` — transit detection + alert generation
 - `app/shared/page.tsx` — community page auth UX
 - `app/account/page.tsx` — handle save + validation
-- `app/dreamscape/page.tsx` — sleep story and dream card client flow
+- `app/dreamscape/page.tsx` — sleep story and dream card client flow (TTS cleans up on unmount)
+- `app/reading/page.tsx` — tarot reading tab
+- `app/circles/page.tsx` — dream circles
 - `app/api/feed/route.ts` and `app/api/feed/friends/route.ts` — social feeds
+- `app/api/circles/` — circle CRUD + invite + share + join
+- `app/api/cron/` — weekly-letter + transit-alerts
+- `app/api/notifications/route.ts` — notification read/mark
 - `app/api/profile/[handle]/route.ts` — public profile lookup
-- `app/puzzle/page.tsx` — hyperdimensional puzzle implementation
+- `app/puzzle/page.tsx` — hyperfold sigil puzzle
+
+## Navigation
+
+Bottom tab bar (Nav.tsx): Altar → Dusk/Dawn (time-aware) → Reading → Sleep → Strata
+Community (/shared) accessible from altar quick-start grid, not main nav.
+NotificationBell integrated into Nav with separator.
 
 ## Design Notes
 
-- Dark UI, violet-forward palette
+- Dark UI, violet-forward palette (cosmic-bg #07070f, violet #a78bfa, indigo #818cf8, gold #fbbf24)
 - Georgia / serif for mystical headings, monospace for labels and telemetry
 - Social and puzzle features both lean on luminous wireframes, low-opacity glows, and restrained overlays
+- Occult aesthetic: sigils, star polygons, sacred geometry, tarot card flip animations
+- Voice recording: deferred mic access (user clicks button first, no autoStart)
 
 ## Open Risks / Useful Reminders
 
 - Local sync does not automatically equal valid community auth.
 - When adding new protected routes, decide explicitly whether they use Supabase user auth or shared API-key auth.
 - The community feature is still sensitive to mismatches between client session state and route-level bearer token expectations.
-- The puzzle math helpers are more reusable than the current page structure; if the system grows, extract room-slice logic from `app/puzzle/page.tsx` into dedicated libs/components.
+- The puzzle page is ~1600 lines — should extract components (RoomShell, PortalGlyph, arpeggiator, etc.) if it grows further.
+- @react-three/postprocessing pinned at 2.19.1 and postprocessing at 6.36.3 for three.js 0.164 compat. v3 requires R3F 9 + three 0.168+.
+- Biometrics removed from strata (BiometricChart, health insights, sample data). Files still exist in lib/biometrics.ts and components/BiometricChart.tsx but are no longer imported.
+- Cron routes need CRON_SECRET env var set in Vercel dashboard.
+- Resend needs RESEND_API_KEY + verified sender domain for email delivery.
+- Agent cost config at ~/.config/opencode/oh-my-opencode.json — sonnet as default, nemotron free for quick/writing, gpt-5.4 reserved for oracle/ultrabrain only.
