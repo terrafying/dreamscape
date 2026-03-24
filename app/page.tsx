@@ -21,6 +21,7 @@ export default function Home() {
   const currentSky = getCurrentSky(dateKey(0))
   const nextSky = getCurrentSky(dateKey(1))
 
+
   const flow = [
     {
       step: 'Dusk Opening',
@@ -218,6 +219,32 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Liminal Space — Hyperfold Puzzle */}
+      <Link
+        href="/puzzle"
+        className="block rounded-xl p-4 transition-all duration-500 hover:brightness-110"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 40%, rgba(30, 15, 60, 0.35) 0%, rgba(15, 15, 26, 0.5) 100%)',
+          border: '1px solid rgba(120, 80, 200, 0.12)',
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <span
+            className="text-sm"
+            style={{ color: 'rgba(167, 139, 250, 0.5)', fontFamily: 'monospace' }}
+          >&#x2B21;</span>
+          <div className="flex-1">
+            <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'rgba(167, 139, 250, 0.45)', letterSpacing: '0.2em' }}>
+              Hyperfold Sigil
+            </div>
+            <div className="text-xs mt-0.5" style={{ color: 'rgba(148, 163, 184, 0.35)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+              Explore the space between rooms while you sleep
+            </div>
+          </div>
+          <span className="text-xs" style={{ color: 'rgba(167, 139, 250, 0.2)' }}>&#x203A;</span>
+        </div>
+      </Link>
+
       {/* Quick Start */}
       <div
         className="rounded-xl p-4 space-y-3"
@@ -278,11 +305,21 @@ export default function Home() {
             </div>
           </Link>
           <Link
+            href="/shared"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>&#x25C7;</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+              Community
+            </div>
+          </Link>
+          <Link
             href="/account"
             className="rounded-lg px-3 py-3 text-center transition-colors"
             style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
           >
-            <div className="text-lg" style={{ fontFamily: 'monospace' }}>⚑</div>
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>&#x2691;</div>
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
               Account
             </div>

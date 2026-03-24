@@ -128,7 +128,20 @@ function useTTS() {
     localStorage.setItem('dreamscape_elevenlabs_voice', id)
   }
 
-  useEffect(() => () => { stop() }, [])
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.onended = null
+        audioRef.current.onerror = null
+        audioRef.current = null
+      }
+      if (audioSrcRef.current) {
+        URL.revokeObjectURL(audioSrcRef.current)
+        audioSrcRef.current = null
+      }
+    }
+  }, [])
 
   return { ...state, speak, stop, togglePause, setVoice }
 }
@@ -398,12 +411,25 @@ function StoryTab() {
     setCardStatus('generating')
     setCardImage('')
     setCardTitle('')
+    setErrorMsg(null)
     let img = '', title = ''
     try {
       const res = await apiFetch('/api/generate-card', {
         method: 'POST',
         body: JSON.stringify({ dreams, storyTitle: chapters[0]?.title, subtitle }),
       })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        const message = (json as { error?: string }).error || `Dream card failed (${res.status})`
+        setErrorMsg(message)
+        setCardStatus('error')
+        return
+      }
+      if (!res.body) {
+        setErrorMsg('Dream card stream was empty. Try again.')
+        setCardStatus('error')
+        return
+      }
       const reader = res.body!.getReader()
       const dec = new TextDecoder()
       let buf = ''
@@ -423,6 +449,11 @@ function StoryTab() {
           if (!dataLine) continue
           try {
             const payload = JSON.parse(dataLine)
+            if (eventType === 'error') {
+              setErrorMsg(payload.message || 'Dream card generation failed')
+              setCardStatus('error')
+              return
+            }
             if (payload.title) title = payload.title
             if (payload.base64) img = payload.base64
           } catch { /* skip */ }
@@ -430,8 +461,14 @@ function StoryTab() {
       }
       setCardTitle(title)
       setCardImage(img)
-      setCardStatus(img ? 'done' : 'error')
+      if (img) {
+        setCardStatus('done')
+      } else {
+        setErrorMsg('Dream card returned no image. Try again.')
+        setCardStatus('error')
+      }
     } catch {
+      setErrorMsg('Dream card generation failed. Check image model credentials and try again.')
       setCardStatus('error')
     }
   }
@@ -644,13 +681,14 @@ function StoryTab() {
                 disabled={cardStatus === 'generating'}
                 className="flex-1 py-2 rounded-xl text-xs transition-opacity hover:opacity-70"
                 style={{
-                  background: cardStatus === 'generating' ? 'rgba(167,139,250,0.06)' : 'rgba(167,139,250,0.10)',
-                  border: '1px solid rgba(167,139,250,0.2)',
-                  color: cardStatus === 'generating' ? 'rgba(167,139,250,0.4)' : 'var(--muted)',
+                  background: cardStatus === 'generating' ? 'rgba(167,139,250,0.06)' : 'rgba(167,139,250,0.16)',
+                  border: '1px solid rgba(167,139,250,0.3)',
+                  color: cardStatus === 'generating' ? 'rgba(167,139,250,0.4)' : 'var(--violet)',
                   opacity: cardStatus === 'generating' ? 0.6 : 1,
+                  cursor: cardStatus === 'generating' ? 'default' : 'pointer',
                 }}
               >
-                {cardStatus === 'generating' ? '◌ Rendering...' : cardStatus === 'done' ? '↻ New Card' : '✦ Generate Card'}
+                {cardStatus === 'generating' ? '◌ Rendering...' : cardStatus === 'done' ? '↻ New Card' : cardStatus === 'error' ? '↻ Retry Card' : '✦ Generate Card'}
               </button>
             </div>
           </div>

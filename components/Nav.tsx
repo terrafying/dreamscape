@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import NotificationBell from '@/components/NotificationBell'
 
 function isEveningHour(): boolean {
   const h = new Date().getHours()
@@ -27,9 +28,9 @@ export default function Nav() {
   const tabs = [
     { href: '/', label: 'Altar', icon: '✦' },
     ritualTab,
+    { href: '/reading', label: 'Reading', icon: '✧' },
     { href: '/dreamscape', label: 'Sleep', icon: '◉' },
     { href: '/strata', label: 'Strata', icon: '◈' },
-    { href: '/shared', label: 'Community', icon: '◇' },
   ]
 
   return (
@@ -43,38 +44,43 @@ export default function Nav() {
       }}
       aria-label="Primary navigation"
     >
-      {tabs.map((tab) => {
-        const active = path === tab.href || path.startsWith(tab.href + '/')
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className="relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200"
-            style={{
-              color: active ? 'var(--text)' : 'var(--muted)',
-              background: active
-                ? 'linear-gradient(180deg, rgba(167,139,250,0.15), rgba(167,139,250,0.04))'
-                : 'transparent',
-            }}
-          >
-            <span className="text-lg leading-none" style={{ fontFamily: 'monospace' }}>
-              {tab.icon}
-            </span>
-            <span
-              className="text-xs font-medium tracking-wider uppercase"
-              style={{ fontSize: '10px', letterSpacing: '0.1em' }}
+      <div className="flex min-w-0 flex-1 items-stretch">
+        {tabs.map((tab) => {
+          const active = path === tab.href || path.startsWith(tab.href + '/')
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200"
+              style={{
+                color: active ? 'var(--text)' : 'var(--muted)',
+                background: active
+                  ? 'linear-gradient(180deg, rgba(167,139,250,0.15), rgba(167,139,250,0.04))'
+                  : 'transparent',
+              }}
             >
-              {tab.label}
-            </span>
-            {active && (
+              <span className="text-lg leading-none" style={{ fontFamily: 'monospace' }}>
+                {tab.icon}
+              </span>
               <span
-                className="absolute bottom-0 w-8 h-0.5 rounded-full"
-                style={{ background: 'var(--violet)' }}
-              />
-            )}
-          </Link>
-        )
-      })}
+                className="text-xs font-medium tracking-wider uppercase"
+                style={{ fontSize: '10px', letterSpacing: '0.1em' }}
+              >
+                {tab.label}
+              </span>
+              {active && (
+                <span
+                  className="absolute bottom-0 w-8 h-0.5 rounded-full"
+                  style={{ background: 'var(--violet)' }}
+                />
+              )}
+            </Link>
+          )
+        })}
+      </div>
+      <div style={{ borderLeft: '1px solid var(--border)' }}>
+        <NotificationBell />
+      </div>
     </nav>
   )
 }

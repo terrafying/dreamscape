@@ -339,6 +339,7 @@ function DreamerProfile({ userId }: { userId?: string }) {
 
   const checkHandle = async (h: string) => {
     if (!h.trim()) { setHandleStatus('idle'); return }
+    if (h.trim().length < 4) { setHandleStatus('idle'); return }
     setHandleStatus('checking')
     try {
       const res = await fetch(`/api/profile/${encodeURIComponent(h)}`)
@@ -364,13 +365,12 @@ function DreamerProfile({ userId }: { userId?: string }) {
   }
 
   const handleSave = async () => {
-    if (!handle.trim() || !supabase || !userId) return
+    if (!handle.trim() || handle.trim().length < 4 || !supabase || !userId) return
     setSaving(true)
     setSaveError('')
     const { error } = await supabase
       .from('user_profiles')
-      .update({ handle: handle.trim() })
-      .eq('user_id', userId)
+      .upsert({ user_id: userId, handle: handle.trim() }, { onConflict: 'user_id' })
     setSaving(false)
     if (error) {
       setSaveError(error.message || 'Failed to save handle')
@@ -393,7 +393,7 @@ function DreamerProfile({ userId }: { userId?: string }) {
             <span className="text-xs" style={{
               color: handleStatus === 'available' ? '#86efac' : handleStatus === 'taken' || handleStatus === 'error' ? '#f87171' : 'var(--muted)',
             }}>
-              {handleStatus === 'checking' ? 'checking…' : handleStatus === 'available' ? 'Available ✓' : handleStatus === 'taken' ? 'Taken ✗' : handleStatus === 'error' ? 'Error' : ''}
+              {handle.trim().length < 4 && handle.trim().length > 0 ? `${4 - handle.trim().length} more` : handleStatus === 'checking' ? 'checking…' : handleStatus === 'available' ? 'Available ✓' : handleStatus === 'taken' ? 'Taken ✗' : handleStatus === 'error' ? 'Error' : ''}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -407,16 +407,16 @@ function DreamerProfile({ userId }: { userId?: string }) {
             />
           </div>
           <p className="text-[10px]" style={{ color: 'var(--muted)' }}>
-            Your public name on the community feed.
+            Your public name on the community feed (4–30 characters).
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleSave}
-            disabled={saving || handleStatus === 'taken' || !handle.trim()}
+            disabled={saving || handleStatus === 'taken' || !handle.trim() || handle.trim().length < 4}
             className="flex-1 py-2 rounded-xl text-sm font-medium"
             style={{
-              background: saving || handleStatus === 'taken' || !handle.trim() ? 'rgba(167,139,250,0.08)' : 'var(--violet)',
+              background: saving || handleStatus === 'taken' || !handle.trim() || handle.trim().length < 4 ? 'rgba(167,139,250,0.08)' : 'var(--violet)',
               color: saving || handleStatus === 'taken' || !handle.trim() ? 'var(--muted)' : '#07070f',
               opacity: saving ? 0.6 : 1,
             }}

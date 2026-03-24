@@ -22,6 +22,88 @@ const HOUSE_MEANINGS: Record<number, string> = {
   9: 'Philosophy', 10: 'Vocation', 11: 'Community', 12: 'Unconscious',
 }
 
+const MOON_GUIDANCE: Record<string, string> = {
+  Aries: 'Act on instinct today. Hesitation costs more than imperfection.',
+  Taurus: 'Slow down. What feels solid and earthy is trustworthy right now.',
+  Gemini: 'Follow the most interesting thread. Curiosity is your compass today.',
+  Cancer: 'Tend to what needs nurturing. Home — inner or outer — wants attention.',
+  Leo: 'Express what you usually hold back. Visibility is not vanity today.',
+  Virgo: 'Attend to the small things. Precision work brings disproportionate reward.',
+  Libra: 'Seek balance, but don\'t force symmetry. One side may need more weight.',
+  Scorpio: 'Look beneath the surface. What you find there is more useful than what\'s visible.',
+  Sagittarius: 'Aim further than seems reasonable. The reach itself changes you.',
+  Capricorn: 'Build something. Structure and discipline are resources, not constraints.',
+  Aquarius: 'Trust the unconventional idea. What seems strange today becomes obvious tomorrow.',
+  Pisces: 'Let boundaries soften. Intuition is more reliable than logic right now.',
+}
+
+const PHASE_GUIDANCE: Record<string, string> = {
+  'New Moon': 'Set intentions. The darkness is fertile ground for new beginnings.',
+  'Waxing Crescent': 'Take the first small step. Momentum builds from action, not planning.',
+  'First Quarter': 'Push through resistance. Challenges today are tests of commitment.',
+  'Waxing Gibbous': 'Refine your approach. What\'s almost right needs adjustment, not abandonment.',
+  'Full Moon': 'Illuminate what\'s been hidden. Revelations arrive whether you\'re ready or not.',
+  'Waning Gibbous': 'Share what you\'ve learned. Teaching integrates knowledge.',
+  'Third Quarter': 'Release what no longer serves. Letting go is not losing.',
+  'Waning Crescent': 'Rest and reflect. The cycle is completing; honor what it brought.',
+}
+
+function CelestialGuidance({
+  moonPhase,
+  moonSign,
+  retrogrades,
+  aspects,
+  chiron,
+}: {
+  moonPhase?: string
+  moonSign?: string
+  retrogrades: string[]
+  aspects: Array<{ planet1: string; planet2: string; aspect: string; orb: number; meaning: string }>
+  chiron?: { sign: string; house?: number } | null
+}) {
+  const lines: string[] = []
+
+  if (moonSign && MOON_GUIDANCE[moonSign]) {
+    lines.push(MOON_GUIDANCE[moonSign])
+  }
+  if (moonPhase && PHASE_GUIDANCE[moonPhase]) {
+    lines.push(PHASE_GUIDANCE[moonPhase])
+  }
+  if (retrogrades.length > 0) {
+    const planets = retrogrades.join(' and ')
+    lines.push(`${planets} retrograde asks you to revisit rather than advance. Review before committing.`)
+  }
+  if (aspects.length > 0) {
+    const strongest = aspects[0]
+    if (strongest.meaning) lines.push(strongest.meaning)
+  }
+  if (chiron) {
+    lines.push(`Chiron in ${chiron.sign}${chiron.house ? ` (House ${chiron.house})` : ''} \u2014 healing comes through what you've avoided. Approach it gently.`)
+  }
+
+  if (lines.length === 0) return null
+
+  return (
+    <div
+      className="rounded-lg p-3 space-y-2"
+      style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.1)' }}
+    >
+      <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'rgba(167, 139, 250, 0.5)' }}>
+        What this means for you
+      </div>
+      {lines.map((line, i) => (
+        <p
+          key={i}
+          className="text-xs leading-relaxed"
+          style={{ color: 'rgba(226, 232, 240, 0.55)', fontFamily: 'Georgia, serif' }}
+        >
+          {line}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 export default function AstroPanel({ extraction, natal, currentSky, compact }: AstroPanelProps) {
   const [aspectsOpen, setAspectsOpen] = useState(false)
   const astro = extraction?.astro_context
@@ -239,6 +321,14 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
           ))}
         </div>
       )}
+
+      <CelestialGuidance
+        moonPhase={moonPhase}
+        moonSign={moonSign}
+        retrogrades={retrogrades}
+        aspects={aspects}
+        chiron={chiron}
+      />
     </div>
   )
 }

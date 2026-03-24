@@ -9,6 +9,7 @@ import { getSupabase } from '@/lib/supabaseClient'
 import { apiFetch } from '@/lib/apiFetch'
 import { getNatalPlacements } from '@/lib/astro'
 import ExtractionDisplay from '@/components/ExtractionDisplay'
+import DreamOracle from '@/components/DreamOracle'
 import BirthDataModal from '@/components/BirthDataModal'
 import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
@@ -240,7 +241,7 @@ export default function LogPage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <VoiceButton onAppend={appendVoice} disabled={status === 'loading' || paywallLocked} autoStart pulseHint />
+                <VoiceButton onAppend={appendVoice} disabled={status === 'loading' || paywallLocked} pulseHint />
                 <HQVoiceButton onAppend={appendVoice} disabled={status === 'loading' || paywallLocked} />
               </div>
             </div>
@@ -320,7 +321,32 @@ export default function LogPage() {
               {transcript.length > 200 ? transcript.slice(0, 200) + '...' : transcript}
             </div>
 
+            <DreamOracle extraction={extraction} autoReveal />
+
             <ExtractionDisplay extraction={extraction} natal={natal} />
+
+            {extraction.goetic_resonance && (
+              <a
+                href={`/invoke?spirit=${encodeURIComponent(extraction.goetic_resonance.spirit)}`}
+                className="flex items-center gap-3 rounded-xl p-4 transition-all duration-300 hover:brightness-110"
+                style={{
+                  background: 'rgba(139, 92, 246, 0.06)',
+                  border: '1px solid rgba(139, 92, 246, 0.18)',
+                }}
+              >
+                <span style={{ fontSize: 18, color: 'rgba(167, 139, 250, 0.7)' }}>&#x2726;</span>
+                <div className="flex-1">
+                  <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'rgba(167, 139, 250, 0.6)' }}>
+                    Invoke {extraction.goetic_resonance.spirit}
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: 'rgba(148, 163, 184, 0.5)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+                    {extraction.goetic_resonance.reason}
+                  </div>
+                </div>
+                <span className="text-xs" style={{ color: 'rgba(167, 139, 250, 0.35)' }}>&#x203A;</span>
+              </a>
+            )}
+
             <ShareableDreamCard dream={{ id: savedId || 'temp', date: new Date().toISOString().split('T')[0], transcript, extraction: extraction || undefined, createdAt: Date.now() }} />
           </div>
         )}

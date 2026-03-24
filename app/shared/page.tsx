@@ -82,21 +82,24 @@ export default function SharedFeedPage() {
   const { dreams, loading, hasMore, error, handleReact } = useFeed(tab, page, setPage)
 
   useEffect(() => {
-    const supabase = getSupabase()
-    if (!supabase) {
+    const checkAuth = async () => {
+      const supabase = getSupabase()
+      if (supabase) {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (sessionData?.session?.user) {
+          setSignedIn(true)
+          return
+        }
+        const { data: userData } = await supabase.auth.getUser()
+        if (userData?.user) {
+          setSignedIn(true)
+          return
+        }
+      }
       const syncEnabled = typeof window !== 'undefined' && localStorage.getItem('dreamscape_sync_enabled') === '1'
       setSignedIn(syncEnabled)
-      return
     }
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) {
-        setSignedIn(true)
-      } else {
-        supabase.auth.getUser().then(({ data: userData }) => {
-          setSignedIn(!!userData.user)
-        })
-      }
-    })
+    checkAuth()
   }, [])
 
   if (signedIn === null) return null

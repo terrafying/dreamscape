@@ -14,8 +14,17 @@ export async function GET(
     .eq('handle', params.handle)
     .single()
 
-  if (error || !profile) {
+  if (error && error.code && error.code.includes('PGRST')) {
+    console.error('Profile fetch error:', error)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+
+  if (!profile) {
     return NextResponse.json({ error: 'Dreamer not found' }, { status: 404 })
+  }
+
+  if (error) {
+    console.error('Profile fetch warning:', error)
   }
 
   const [followersRes, followingRes, dreamsRes] = await Promise.all([

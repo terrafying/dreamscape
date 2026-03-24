@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { DreamExtraction } from '@/lib/types'
 import AstroPanel from './AstroPanel'
 import RecommendationCards from './RecommendationCards'
+import SymbolTooltip from './SymbolTooltip'
 
 interface ExtractionDisplayProps {
   extraction: DreamExtraction
@@ -100,7 +101,9 @@ export default function ExtractionDisplay({ extraction, natal }: ExtractionDispl
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{sym.name}</span>
+                    <SymbolTooltip symbol={{ name: sym.name, meaning: sym.meaning, category: sym.category, salience: sym.salience }}>
+                      {sym.name}
+                    </SymbolTooltip>
                     <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(167,139,250,0.1)', color: 'var(--muted)' }}>
                       {sym.category}
                     </span>

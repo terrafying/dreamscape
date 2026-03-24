@@ -194,7 +194,7 @@ export default function JournalPage() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} autoStart pulseHint />
+              <VoiceButton onAppend={appendVoice} disabled={status === 'loading'} pulseHint />
               <HQVoiceButton onAppend={appendVoice} disabled={status === 'loading'} />
             </div>
           </div>

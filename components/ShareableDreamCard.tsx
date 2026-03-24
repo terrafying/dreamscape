@@ -6,6 +6,14 @@ import type { DreamLog } from '@/lib/types'
 export default function ShareableDreamCard({ dream }: { dream: DreamLog }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
+  const getBlob = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const c = canvasRef.current
+      if (!c) return resolve(null)
+      c.toBlob((blob) => resolve(blob), 'image/png')
+    })
+  }
+
   const saveImage = () => {
     const c = canvasRef.current
     if (!c) return
@@ -13,6 +21,33 @@ export default function ShareableDreamCard({ dream }: { dream: DreamLog }) {
     link.download = `dream-${dream.date}.png`
     link.href = c.toDataURL('image/png')
     link.click()
+  }
+
+  const shareNative = async () => {
+    const blob = await getBlob()
+    if (!blob) return saveImage()
+
+    const file = new File([blob], `dream-${dream.date}.png`, { type: 'image/png' })
+    const shareUrl = `${window.location.origin}/dream/${dream.id}`
+    const shareText = dream.extraction?.interpretation
+      ? `"${dream.extraction.interpretation.slice(0, 120)}..." — my dream reading on Dreamscape`
+      : `A dream from ${dream.date} — Dreamscape`
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: shareText, url: shareUrl })
+        return
+      } catch {}
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: shareText, url: shareUrl })
+        return
+      } catch {}
+    }
+
+    saveImage()
   }
 
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
@@ -51,10 +86,12 @@ export default function ShareableDreamCard({ dream }: { dream: DreamLog }) {
       wrapText(ctx, interp, 24, h - 90, w - 48, 18)
     }
 
-    // Footer
     ctx.fillStyle = '#94a3b8'
     ctx.font = '12px monospace'
-    ctx.fillText('dreamscape.quest', 24, h - 24)
+    const shareUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/dream/${dream.id}`
+      : `dreamscape.quest/dream/${dream.id}`
+    ctx.fillText(shareUrl, 24, h - 24)
   }
 
   const onCanvas = (el: HTMLCanvasElement | null) => {
@@ -81,13 +118,34 @@ export default function ShareableDreamCard({ dream }: { dream: DreamLog }) {
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
         <canvas ref={onCanvas}></canvas>
       </div>
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}/dream/${dream.id}`
+            navigator.clipboard?.writeText(url).catch(() => {})
+          }}
+          className="px-3 py-1.5 rounded-full text-xs cursor-pointer"
+          style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+        >
+          Copy Link
+        </button>
         <button
           onClick={saveImage}
-          className="px-3 py-1.5 rounded-full text-xs"
+          className="px-3 py-1.5 rounded-full text-xs cursor-pointer"
           style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
         >
           Save Image
+        </button>
+        <button
+          onClick={shareNative}
+          className="px-3 py-1.5 rounded-full text-xs cursor-pointer transition-all duration-200"
+          style={{
+            background: 'rgba(167, 139, 250, 0.1)',
+            border: '1px solid rgba(167, 139, 250, 0.3)',
+            color: '#a78bfa',
+          }}
+        >
+          Share
         </button>
       </div>
     </div>
