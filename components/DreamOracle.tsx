@@ -109,20 +109,35 @@ export default function DreamOracle({
   const [revealed, setRevealed] = useState(false)
   const [flipped, setFlipped] = useState<Set<number>>(new Set())
   const [modalOpen, setModalOpen] = useState<number | null>(null)
+  const [revealMode, setRevealMode] = useState<'auto' | 'manual'>('auto')
   const touchStartX = useRef(0)
 
   const triggerReveal = useCallback(() => {
     if (revealed) return
     setRevealed(true)
-    FLIP_DELAYS.forEach((delay, idx) => {
-      setTimeout(() => {
-        setFlipped((prev) => new Set([...prev, idx]))
-      }, delay)
-    })
-    if (onComplete) {
-      setTimeout(onComplete, FLIP_DELAYS[2] + FLIP_DURATION)
+    if (revealMode === 'auto') {
+      FLIP_DELAYS.forEach((delay, idx) => {
+        setTimeout(() => {
+          setFlipped((prev) => new Set([...prev, idx]))
+        }, delay)
+      })
+      if (onComplete) {
+        setTimeout(onComplete, FLIP_DELAYS[2] + FLIP_DURATION)
+      }
     }
-  }, [revealed, onComplete])
+  }, [revealed, revealMode, onComplete])
+
+  const revealCard = useCallback((idx: number) => {
+    if (!revealed) {
+      setRevealed(true)
+    }
+    setFlipped((prev) => new Set([...prev, idx]))
+    if (flipped.size === cards.length - 1) {
+      if (onComplete) {
+        setTimeout(onComplete, FLIP_DURATION)
+      }
+    }
+  }, [revealed, flipped.size, cards.length, onComplete])
 
   useEffect(() => {
     if (!autoReveal) return
@@ -159,6 +174,40 @@ export default function DreamOracle({
   return (
     <>
       <div className="w-full space-y-6">
+        {!revealed && (
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => {
+                setRevealMode('auto')
+                triggerReveal()
+              }}
+              className="px-6 py-2.5 rounded-lg text-sm font-mono tracking-wider cursor-pointer transition-all duration-300 hover:brightness-110"
+              style={{
+                background: 'rgba(167,139,250,0.12)',
+                color: '#a78bfa',
+                border: '1px solid rgba(167,139,250,0.3)',
+                boxShadow: '0 0 20px rgba(167,139,250,0.08)',
+              }}
+            >
+              Auto Reveal
+            </button>
+            <button
+              onClick={() => {
+                setRevealMode('manual')
+                setRevealed(true)
+              }}
+              className="px-6 py-2.5 rounded-lg text-sm font-mono tracking-wider cursor-pointer transition-all duration-300 hover:brightness-110"
+              style={{
+                background: 'rgba(167,139,250,0.08)',
+                color: 'rgba(167,139,250,0.6)',
+                border: '1px solid rgba(167,139,250,0.2)',
+              }}
+            >
+              Click to Reveal
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-6">
           {cards.map((card, idx) => (
             <div
@@ -174,14 +223,24 @@ export default function DreamOracle({
                   transition: `transform ${FLIP_DURATION}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,
                   transform: flipped.has(idx) ? 'rotateY(180deg)' : 'rotateY(0deg)',
                 }}
-                onClick={() => handleCardClick(idx)}
+                onClick={() => {
+                  if (revealed && revealMode === 'manual' && !flipped.has(idx)) {
+                    revealCard(idx)
+                  } else if (flipped.has(idx)) {
+                    handleCardClick(idx)
+                  }
+                }}
                 role="button"
                 tabIndex={0}
                 aria-label={`Oracle card: ${card.label}`}
                 onKeyDown={(e) => {
-                  if ((e.key === 'Enter' || e.key === ' ') && flipped.has(idx)) {
+                  if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    handleCardClick(idx)
+                    if (revealed && revealMode === 'manual' && !flipped.has(idx)) {
+                      revealCard(idx)
+                    } else if (flipped.has(idx)) {
+                      handleCardClick(idx)
+                    }
                   }
                 }}
               >
@@ -192,20 +251,11 @@ export default function DreamOracle({
           ))}
         </div>
 
-        {!revealed && (
+        {revealed && revealMode === 'manual' && flipped.size < cards.length && (
           <div className="flex justify-center">
-            <button
-              onClick={triggerReveal}
-              className="px-6 py-2.5 rounded-lg text-sm font-mono tracking-wider cursor-pointer transition-all duration-300 hover:brightness-110"
-              style={{
-                background: 'rgba(167,139,250,0.12)',
-                color: '#a78bfa',
-                border: '1px solid rgba(167,139,250,0.3)',
-                boxShadow: '0 0 20px rgba(167,139,250,0.08)',
-              }}
-            >
-              Reveal Reading
-            </button>
+            <p className="text-xs" style={{ color: 'rgba(167,139,250,0.5)', fontStyle: 'italic' }}>
+              Click cards to reveal ({flipped.size}/{cards.length})
+            </p>
           </div>
         )}
       </div>
