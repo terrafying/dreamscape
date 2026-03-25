@@ -589,7 +589,7 @@ export default function StrataPage() {
         {/* Astro Panel */}
         <AstroPanel natal={natal} currentSky={currentSky} />
 
-        {birthData?.time && (
+        {birthData && (
           <NatalChartWheel data={getNatalChartData(birthData)} />
         )}
 

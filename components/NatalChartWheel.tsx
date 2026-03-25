@@ -55,18 +55,32 @@ type Selection =
   | null
 
 const HOUSE_MEANINGS: Record<number, string> = {
-  1: 'Self',
-  2: 'Resources',
-  3: 'Communication',
-  4: 'Home',
-  5: 'Creativity',
-  6: 'Health',
-  7: 'Partnership',
-  8: 'Transformation',
-  9: 'Philosophy',
-  10: 'Vocation',
-  11: 'Community',
-  12: 'Unconscious',
+  1: 'Self — identity, appearance, how you present to the world',
+  2: 'Resources — values, possessions, self-worth, what you hold dear',
+  3: 'Communication — siblings, learning, daily mind, short journeys',
+  4: 'Home — roots, family, foundation, the unconscious, endings',
+  5: 'Creativity — children, romance, play, creative expression, joy',
+  6: 'Health — daily work, service, routines, health, practical matters',
+  7: 'Partnership — marriage, relationships, open enemies, one-to-one bonds',
+  8: 'Transformation — shared resources, occult, depth, death and rebirth',
+  9: 'Philosophy — higher mind, travel, spirituality, dreams, wisdom',
+  10: 'Vocation — career, public image, authority, ambition, legacy',
+  11: 'Community — friends, hopes, wishes, group identity, networks',
+  12: 'Unconscious — hidden self, institutions, secrets, self-undoing',
+}
+
+const PLANET_MEANINGS: Record<string, string> = {
+  Sun: 'Core identity, ego, will, creative life force, what drives you',
+  Moon: 'Emotional nature, inner needs, instincts, how you process feelings',
+  Mercury: 'Communication, thought, learning, curiosity, how you think and speak',
+  Venus: 'Love, attraction, values, pleasure, what you desire in relationships',
+  Mars: 'Drive, passion, anger, sexuality, how you assert yourself and take action',
+  Jupiter: 'Expansion, luck, growth, optimism, where you find abundance',
+  Saturn: 'Discipline, limits, responsibility, where you build lasting structures',
+  Uranus: 'Innovation, rebellion, sudden change, where you break free',
+  Neptune: 'Dreams, illusion, spirituality, where you dissolve boundaries',
+  Pluto: 'Power, transformation, death and rebirth, where you regenerate',
+  Chiron: 'The wounded healer — where you heal others through your own wounds',
 }
 
 function arcDistance(from: number, to: number): number {
@@ -326,20 +340,28 @@ export default function NatalChartWheel({ data }: Props) {
                 <span style={{ fontSize: 18, marginRight: 6 }}>{PLANET_SYMBOLS[selectedPlanet.planet] ?? selectedPlanet.planet[0]}</span>
                 {selectedPlanet.planet}
               </div>
-              <div className="text-xs" style={{ fontFamily: 'monospace' }}>
+              <div className="text-xs" style={{ fontFamily: 'monospace', color: 'rgba(200,200,220,0.7)' }}>
                 {selectedPlanet.sign} {selectedPlanet.degree}° • House {getHouseForLongitude(selectedPlanet.longitude, houseCusps)}
               </div>
-              <div className="text-xs">
-                Aspects to {selectedPlanet.planet}:
-                <ul className="mt-1 list-disc pl-4" style={{ fontFamily: 'monospace' }}>
-                  {aspects
-                    .filter(asp => asp.planet1 === selectedPlanet.planet || asp.planet2 === selectedPlanet.planet)
-                    .map((asp, idx) => {
-                      const other = asp.planet1 === selectedPlanet.planet ? asp.planet2 : asp.planet1
-                      return <li key={`${asp.aspect}-${other}-${idx}`}>{asp.aspect} {other} (orb {round2(asp.orb)}°)</li>
-                    })}
-                </ul>
+              <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,240,0.8)' }}>
+                <strong>{PLANET_MEANINGS[selectedPlanet.planet] || selectedPlanet.planet}</strong>
               </div>
+              <div className="text-xs leading-relaxed" style={{ color: 'rgba(200,200,220,0.7)', fontStyle: 'italic' }}>
+                In {selectedPlanet.sign}: Your {selectedPlanet.planet.toLowerCase()} expresses through {selectedPlanet.sign.toLowerCase()} qualities.
+              </div>
+              {aspects.filter(asp => asp.planet1 === selectedPlanet.planet || asp.planet2 === selectedPlanet.planet).length > 0 && (
+                <div className="text-xs">
+                  <div style={{ color: 'rgba(167,139,250,0.7)', marginBottom: 4 }}>Aspects:</div>
+                  <ul className="list-disc pl-4" style={{ fontFamily: 'monospace', color: 'rgba(200,200,220,0.7)' }}>
+                    {aspects
+                      .filter(asp => asp.planet1 === selectedPlanet.planet || asp.planet2 === selectedPlanet.planet)
+                      .map((asp, idx) => {
+                        const other = asp.planet1 === selectedPlanet.planet ? asp.planet2 : asp.planet1
+                        return <li key={`${asp.aspect}-${other}-${idx}`}>{asp.aspect} {other} (orb {round2(asp.orb)}°)</li>
+                      })}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
@@ -356,18 +378,25 @@ export default function NatalChartWheel({ data }: Props) {
           {selection.type === 'house' && selectedHouse && (
             <div className="space-y-2">
               <div className="text-sm" style={{ color: 'rgba(233,213,255,0.95)' }}>
-                House {selectedHouse}: {HOUSE_MEANINGS[selectedHouse]}
+                House {selectedHouse}
               </div>
-              <div className="text-xs">Planets in this house:</div>
-              <ul className="list-disc pl-4 text-xs" style={{ fontFamily: 'monospace' }}>
-                {planets
-                  .filter(p => getHouseForLongitude(p.longitude, houseCusps) === selectedHouse)
-                  .map(p => (
-                    <li key={p.planet}>
-                      {PLANET_SYMBOLS[p.planet] ?? p.planet[0]} {p.planet} ({p.sign} {p.degree}°)
-                    </li>
-                  ))}
-              </ul>
+              <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,240,0.8)' }}>
+                <strong>{HOUSE_MEANINGS[selectedHouse]}</strong>
+              </div>
+              {planets.filter(p => getHouseForLongitude(p.longitude, houseCusps) === selectedHouse).length > 0 && (
+                <div className="text-xs">
+                  <div style={{ color: 'rgba(167,139,250,0.7)', marginBottom: 4 }}>Planets here:</div>
+                  <ul className="list-disc pl-4" style={{ fontFamily: 'monospace', color: 'rgba(200,200,220,0.7)' }}>
+                    {planets
+                      .filter(p => getHouseForLongitude(p.longitude, houseCusps) === selectedHouse)
+                      .map(p => (
+                        <li key={p.planet}>
+                          {PLANET_SYMBOLS[p.planet] ?? p.planet[0]} {p.planet} ({p.sign} {p.degree}°)
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

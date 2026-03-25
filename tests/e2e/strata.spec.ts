@@ -71,3 +71,28 @@ test('demo dreams persist on page reload', async ({ page }) => {
   await page.reload()
   await expect(page.getByText('7 analyzed dreams')).toBeVisible()
 })
+
+test('natal chart wheel renders when birth data exists (without time)', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('dreamscape_birth', JSON.stringify({
+      date: '1990-04-15',
+      location: 'New York, NY',
+    }))
+  })
+  await page.goto('/strata')
+  // The SVG with aria-label="Natal chart wheel" should be visible
+  await expect(page.locator('svg[aria-label="Natal chart wheel"]')).toBeVisible()
+})
+
+test('natal chart wheel renders when birth data exists (with time)', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('dreamscape_birth', JSON.stringify({
+      date: '1990-04-15',
+      time: '14:30',
+      location: 'New York, NY',
+    }))
+  })
+  await page.goto('/strata')
+  // The SVG with aria-label="Natal chart wheel" should be visible
+  await expect(page.locator('svg[aria-label="Natal chart wheel"]')).toBeVisible()
+})
