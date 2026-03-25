@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { DreamExtraction } from '@/lib/types'
 import { findTarotCard, selectAstrologicalNote } from '@/lib/spiritual-content'
 
@@ -108,7 +108,8 @@ export default function DreamOracle({
   const cards = useMemo(() => buildOracleCards(extraction), [extraction])
   const [revealed, setRevealed] = useState(false)
   const [flipped, setFlipped] = useState<Set<number>>(new Set())
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [modalOpen, setModalOpen] = useState<number | null>(null)
+  const touchStartX = useRef(0)
 
   const triggerReveal = useCallback(() => {
     if (revealed) return
@@ -131,67 +132,97 @@ export default function DreamOracle({
     return () => cancelAnimationFrame(raf)
   }, [autoReveal, triggerReveal])
 
-  const toggleExpand = useCallback((idx: number) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx)
-      else next.add(idx)
-      return next
-    })
-  }, [])
+  const handleCardClick = useCallback((idx: number) => {
+    if (flipped.has(idx)) {
+      setModalOpen(idx)
+    }
+  }, [flipped])
+
+  const handleModalTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleModalTouchEnd = (e: React.TouchEvent, idx: number) => {
+    const touchEndX = e.changedTouches[0].clientX
+    const diff = touchStartX.current - touchEndX
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && idx < cards.length - 1) {
+        setModalOpen(idx + 1)
+      } else if (diff < 0 && idx > 0) {
+        setModalOpen(idx - 1)
+      } else {
+        setModalOpen(null)
+      }
+    }
+  }
 
   return (
-    <div className="w-full space-y-6">
-      <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-6">
-        {cards.map((card, idx) => (
-          <div
-            key={idx}
-            className="w-full max-w-[240px] sm:w-[220px]"
-            style={{ perspective: '1000px' }}
-          >
+    <>
+      <div className="w-full space-y-6">
+        <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-6">
+          {cards.map((card, idx) => (
             <div
-              className="relative w-full cursor-pointer"
+              key={idx}
+              className="w-full max-w-xs sm:w-64"
+              style={{ perspective: '1000px' }}
+            >
+              <div
+                className="relative w-full cursor-pointer"
+                style={{
+                  aspectRatio: '2 / 3',
+                  transformStyle: 'preserve-3d',
+                  transition: `transform ${FLIP_DURATION}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,
+                  transform: flipped.has(idx) ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                }}
+                onClick={() => handleCardClick(idx)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Oracle card: ${card.label}`}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && flipped.has(idx)) {
+                    e.preventDefault()
+                    handleCardClick(idx)
+                  }
+                }}
+              >
+                <CardBack />
+                <CardFront card={card} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {!revealed && (
+          <div className="flex justify-center">
+            <button
+              onClick={triggerReveal}
+              className="px-6 py-2.5 rounded-lg text-sm font-mono tracking-wider cursor-pointer transition-all duration-300 hover:brightness-110"
               style={{
-                aspectRatio: '2 / 3',
-                transformStyle: 'preserve-3d',
-                transition: `transform ${FLIP_DURATION}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,
-                transform: flipped.has(idx) ? 'rotateY(180deg)' : 'rotateY(0deg)',
-              }}
-              onClick={() => flipped.has(idx) && toggleExpand(idx)}
-              role="button"
-              tabIndex={0}
-              aria-label={`Oracle card: ${card.label}`}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  if (flipped.has(idx)) toggleExpand(idx)
-                }
+                background: 'rgba(167,139,250,0.12)',
+                color: '#a78bfa',
+                border: '1px solid rgba(167,139,250,0.3)',
+                boxShadow: '0 0 20px rgba(167,139,250,0.08)',
               }}
             >
-              <CardBack />
-              <CardFront card={card} isExpanded={expanded.has(idx)} />
-            </div>
+              Reveal Reading
+            </button>
           </div>
-        ))}
+        )}
       </div>
 
-      {!revealed && (
-        <div className="flex justify-center">
-          <button
-            onClick={triggerReveal}
-            className="px-6 py-2.5 rounded-lg text-sm font-mono tracking-wider cursor-pointer transition-all duration-300 hover:brightness-110"
-            style={{
-              background: 'rgba(167,139,250,0.12)',
-              color: '#a78bfa',
-              border: '1px solid rgba(167,139,250,0.3)',
-              boxShadow: '0 0 20px rgba(167,139,250,0.08)',
-            }}
-          >
-            Reveal Reading
-          </button>
-        </div>
+      {modalOpen !== null && (
+        <CardModal
+          card={cards[modalOpen]}
+          cardIndex={modalOpen}
+          totalCards={cards.length}
+          onClose={() => setModalOpen(null)}
+          onNext={() => modalOpen < cards.length - 1 && setModalOpen(modalOpen + 1)}
+          onPrev={() => modalOpen > 0 && setModalOpen(modalOpen - 1)}
+          onTouchStart={handleModalTouchStart}
+          onTouchEnd={(e) => handleModalTouchEnd(e, modalOpen)}
+        />
       )}
-    </div>
+    </>
   )
 }
 
@@ -297,13 +328,7 @@ function CardBack() {
   )
 }
 
-function CardFront({
-  card,
-  isExpanded,
-}: {
-  card: OracleCard
-  isExpanded: boolean
-}) {
+function CardFront({ card }: { card: OracleCard }) {
   return (
     <div
       className="absolute inset-0 rounded-xl overflow-hidden flex flex-col"
@@ -313,136 +338,252 @@ function CardFront({
         background: 'rgba(8,5,18,0.95)',
         border: '1px solid rgba(167,139,250,0.25)',
         boxShadow: '0 0 20px rgba(139,92,246,0.06)',
-        padding: '16px',
+        padding: '20px',
       }}
     >
-      {/* Position label */}
       <div
         className="font-mono uppercase tracking-widest shrink-0"
         style={{
           fontSize: '0.5rem',
           color: '#a78bfa',
           letterSpacing: '0.2em',
-          marginBottom: '8px',
+          marginBottom: '10px',
         }}
       >
         {card.label}
       </div>
 
-      {/* Card name */}
       <div
         className="shrink-0 leading-tight"
         style={{
-          fontSize: '1.1rem',
+          fontSize: '1.2rem',
           color: '#e2e8f0',
           fontFamily: 'Georgia, serif',
           fontWeight: 500,
-          marginBottom: '10px',
+          marginBottom: '12px',
         }}
       >
         {card.name}
       </div>
 
-      {/* Divider */}
       <div
         className="w-full shrink-0"
         style={{
           height: '1px',
           background:
             'linear-gradient(to right, transparent, rgba(167,139,250,0.3), transparent)',
-          marginBottom: '12px',
+          marginBottom: '14px',
         }}
       />
 
-      {/* Body — no scrolling, just content */}
-      <div className="flex-1 flex flex-col">
-        {!isExpanded && (
-          <>
-            <p
-              style={{
-                fontSize: '0.8rem',
-                color: '#94a3b8',
-                fontFamily: 'Georgia, serif',
-                fontStyle: 'italic',
-                lineHeight: '1.6',
-                margin: 0,
-              }}
-            >
-              {card.body}
-            </p>
+      <p
+        className="flex-1"
+        style={{
+          fontSize: '0.85rem',
+          color: '#94a3b8',
+          fontFamily: 'Georgia, serif',
+          fontStyle: 'italic',
+          lineHeight: '1.6',
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        {card.body}
+      </p>
 
-            {/* Footnote */}
-            {card.footnote && (
-              <div
-                className="font-mono mt-auto pt-2"
-                style={{
-                  fontSize: '0.6rem',
-                  color: 'rgba(167,139,250,0.6)',
-                  letterSpacing: '0.1em',
-                  fontStyle: 'normal',
-                }}
-              >
-                {card.footnote}
-              </div>
-            )}
-          </>
-        )}
+      {card.footnote && (
+        <div
+          className="font-mono mt-auto pt-3"
+          style={{
+            fontSize: '0.6rem',
+            color: 'rgba(167,139,250,0.6)',
+            letterSpacing: '0.1em',
+            fontStyle: 'normal',
+          }}
+        >
+          {card.footnote}
+        </div>
+      )}
 
-        {/* Expanded view — full text */}
-        {isExpanded && card.expandedText && (
+      <div
+        className="text-center font-mono shrink-0 mt-3"
+        style={{
+          fontSize: '0.55rem',
+          color: 'rgba(167,139,250,0.5)',
+          letterSpacing: '0.15em',
+        }}
+      >
+        TAP FOR MORE
+      </div>
+    </div>
+  )
+}
+
+function CardModal({
+  card,
+  cardIndex,
+  totalCards,
+  onClose,
+  onNext,
+  onPrev,
+  onTouchStart,
+  onTouchEnd,
+}: {
+  card: OracleCard
+  cardIndex: number
+  totalCards: number
+  onClose: () => void
+  onNext: () => void
+  onPrev: () => void
+  onTouchStart: (e: React.TouchEvent) => void
+  onTouchEnd: (e: React.TouchEvent) => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.7)' }}
+      onClick={onClose}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <div
+        className="relative w-full max-w-md rounded-2xl overflow-hidden"
+        style={{
+          background: 'rgba(8,5,18,0.98)',
+          border: '1px solid rgba(167,139,250,0.3)',
+          maxHeight: '90vh',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:bg-white/10"
+          style={{ color: 'rgba(167,139,250,0.6)' }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
+        <div className="p-6 space-y-4 overflow-y-auto" style={{ maxHeight: '90vh' }}>
           <div
+            className="font-mono uppercase tracking-widest"
             style={{
-              fontSize: '0.75rem',
-              color: '#cbd5e1',
-              fontFamily: 'Georgia, serif',
-              lineHeight: '1.7',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
+              fontSize: '0.6rem',
+              color: '#a78bfa',
+              letterSpacing: '0.2em',
             }}
           >
-            <p style={{ margin: 0, marginBottom: '8px' }}>
-              {card.body}
-            </p>
+            {card.label}
+          </div>
+
+          <div
+            style={{
+              fontSize: '1.5rem',
+              color: '#e2e8f0',
+              fontFamily: 'Georgia, serif',
+              fontWeight: 500,
+            }}
+          >
+            {card.name}
+          </div>
+
+          <div
+            style={{
+              height: '1px',
+              background:
+                'linear-gradient(to right, transparent, rgba(167,139,250,0.3), transparent)',
+            }}
+          />
+
+          <p
+            style={{
+              fontSize: '0.95rem',
+              color: '#94a3b8',
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              lineHeight: '1.7',
+              margin: 0,
+            }}
+          >
+            {card.body}
+          </p>
+
+          {card.expandedText && (
             <div
               style={{
-                paddingTop: '8px',
+                paddingTop: '16px',
                 borderTop: '1px solid rgba(167,139,250,0.15)',
+                fontSize: '0.9rem',
+                color: '#cbd5e1',
+                fontFamily: 'Georgia, serif',
+                lineHeight: '1.8',
               }}
             >
               {card.expandedText}
             </div>
-            {card.footnote && (
-              <div
-                className="font-mono mt-auto pt-2"
-                style={{
-                  fontSize: '0.6rem',
-                  color: 'rgba(167,139,250,0.6)',
-                  letterSpacing: '0.1em',
-                  fontStyle: 'normal',
-                }}
-              >
-                {card.footnote}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* "more" indicator */}
-      {card.expandedText && (
-        <div
-          className="text-center font-mono shrink-0"
-          style={{
-            fontSize: '0.55rem',
-            color: 'rgba(167,139,250,0.5)',
-            letterSpacing: '0.15em',
-            marginTop: '8px',
-          }}
-        >
-          {isExpanded ? 'TAP TO COLLAPSE' : 'TAP FOR MORE'}
+          {card.footnote && (
+            <div
+              className="font-mono"
+              style={{
+                fontSize: '0.7rem',
+                color: 'rgba(167,139,250,0.6)',
+                letterSpacing: '0.1em',
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid rgba(167,139,250,0.1)',
+              }}
+            >
+              {card.footnote}
+            </div>
+          )}
         </div>
-      )}
+
+        <div
+          className="flex items-center justify-between p-4 border-t"
+          style={{ borderColor: 'rgba(167,139,250,0.1)' }}
+        >
+          <button
+            onClick={onPrev}
+            disabled={cardIndex === 0}
+            className="px-3 py-1.5 rounded text-xs font-mono transition-all"
+            style={{
+              color: cardIndex === 0 ? 'rgba(167,139,250,0.2)' : 'rgba(167,139,250,0.6)',
+              border: `1px solid ${cardIndex === 0 ? 'rgba(167,139,250,0.1)' : 'rgba(167,139,250,0.2)'}`,
+              opacity: cardIndex === 0 ? 0.5 : 1,
+              cursor: cardIndex === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            ← Prev
+          </button>
+
+          <div
+            style={{
+              fontSize: '0.7rem',
+              color: 'rgba(167,139,250,0.5)',
+              fontFamily: 'monospace',
+            }}
+          >
+            {cardIndex + 1} / {totalCards}
+          </div>
+
+          <button
+            onClick={onNext}
+            disabled={cardIndex === totalCards - 1}
+            className="px-3 py-1.5 rounded text-xs font-mono transition-all"
+            style={{
+              color: cardIndex === totalCards - 1 ? 'rgba(167,139,250,0.2)' : 'rgba(167,139,250,0.6)',
+              border: `1px solid ${cardIndex === totalCards - 1 ? 'rgba(167,139,250,0.1)' : 'rgba(167,139,250,0.2)'}`,
+              opacity: cardIndex === totalCards - 1 ? 0.5 : 1,
+              cursor: cardIndex === totalCards - 1 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Next →
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
