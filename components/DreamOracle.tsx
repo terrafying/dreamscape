@@ -354,55 +354,77 @@ function CardFront({
         }}
       />
 
-      {/* Body — scrollable region */}
-      <div
-        className="flex-1 min-h-0 overflow-y-auto"
-        style={{ overscrollBehavior: 'contain' }}
-      >
-        <p
-          style={{
-            fontSize: '0.8rem',
-            color: '#94a3b8',
-            fontFamily: 'Georgia, serif',
-            fontStyle: 'italic',
-            lineHeight: '1.6',
-            margin: 0,
-          }}
-        >
-          {card.body}
-        </p>
+      {/* Body — no scrolling, just content */}
+      <div className="flex-1 flex flex-col">
+        {!isExpanded && (
+          <>
+            <p
+              style={{
+                fontSize: '0.8rem',
+                color: '#94a3b8',
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                lineHeight: '1.6',
+                margin: 0,
+              }}
+            >
+              {card.body}
+            </p>
 
-        {/* Footnote */}
-        {card.footnote && (
-          <div
-            className="font-mono"
-            style={{
-              fontSize: '0.6rem',
-              color: 'rgba(167,139,250,0.6)',
-              letterSpacing: '0.1em',
-              marginTop: '10px',
-              fontStyle: 'normal',
-            }}
-          >
-            {card.footnote}
-          </div>
+            {/* Footnote */}
+            {card.footnote && (
+              <div
+                className="font-mono mt-auto pt-2"
+                style={{
+                  fontSize: '0.6rem',
+                  color: 'rgba(167,139,250,0.6)',
+                  letterSpacing: '0.1em',
+                  fontStyle: 'normal',
+                }}
+              >
+                {card.footnote}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Expandable "more" section */}
+        {/* Expanded view — full text */}
         {isExpanded && card.expandedText && (
           <div
             style={{
-              marginTop: '10px',
-              paddingTop: '10px',
-              borderTop: '1px solid rgba(167,139,250,0.15)',
               fontSize: '0.75rem',
               color: '#cbd5e1',
               fontFamily: 'Georgia, serif',
-              fontStyle: 'normal',
               lineHeight: '1.7',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            {card.expandedText}
+            <p style={{ margin: 0, marginBottom: '8px' }}>
+              {card.body}
+            </p>
+            <div
+              style={{
+                paddingTop: '8px',
+                borderTop: '1px solid rgba(167,139,250,0.15)',
+              }}
+            >
+              {card.expandedText}
+            </div>
+            {card.footnote && (
+              <div
+                className="font-mono mt-auto pt-2"
+                style={{
+                  fontSize: '0.6rem',
+                  color: 'rgba(167,139,250,0.6)',
+                  letterSpacing: '0.1em',
+                  fontStyle: 'normal',
+                }}
+              >
+                {card.footnote}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -83,6 +83,55 @@ const PLANET_MEANINGS: Record<string, string> = {
   Chiron: 'The wounded healer — where you heal others through your own wounds',
 }
 
+const SIGN_PLANET_MEANINGS: Record<string, Record<string, { expression: string; look_for: string; avoid: string }>> = {
+  Sun: {
+    Aries: { expression: 'Direct, pioneering, courageous identity', look_for: 'Opportunities to lead and initiate', avoid: 'Recklessness and dominating others' },
+    Taurus: { expression: 'Stable, grounded, sensual identity', look_for: 'Building lasting value and security', avoid: 'Stubbornness and resistance to change' },
+    Gemini: { expression: 'Curious, communicative, adaptable identity', look_for: 'Learning, variety, and meaningful exchange', avoid: 'Superficiality and scattered focus' },
+    Cancer: { expression: 'Nurturing, intuitive, protective identity', look_for: 'Emotional depth and family connection', avoid: 'Moodiness and over-protection' },
+    Leo: { expression: 'Creative, confident, expressive identity', look_for: 'Self-expression and recognition', avoid: 'Arrogance and need for constant validation' },
+    Virgo: { expression: 'Analytical, practical, service-oriented identity', look_for: 'Mastery through refinement and helping', avoid: 'Perfectionism and criticism' },
+    Libra: { expression: 'Diplomatic, aesthetic, relational identity', look_for: 'Balance, beauty, and partnership', avoid: 'People-pleasing and indecision' },
+    Scorpio: { expression: 'Intense, transformative, magnetic identity', look_for: 'Depth, truth, and regeneration', avoid: 'Obsession and manipulation' },
+    Sagittarius: { expression: 'Expansive, philosophical, adventurous identity', look_for: 'Growth, meaning, and exploration', avoid: 'Overconfidence and tactlessness' },
+    Capricorn: { expression: 'Ambitious, disciplined, authoritative identity', look_for: 'Achievement and building legacy', avoid: 'Rigidity and emotional coldness' },
+    Aquarius: { expression: 'Innovative, independent, visionary identity', look_for: 'Unique contribution and collective good', avoid: 'Detachment and contrarianism' },
+    Pisces: { expression: 'Imaginative, compassionate, transcendent identity', look_for: 'Creativity, spirituality, and service', avoid: 'Escapism and boundary dissolution' },
+  },
+  Venus: {
+    Aries: { expression: 'Passionate, direct, spontaneous in love', look_for: 'Excitement and authentic desire', avoid: 'Impulsiveness and taking partners for granted' },
+    Taurus: { expression: 'Loyal, sensual, devoted in love', look_for: 'Stability and physical affection', avoid: 'Possessiveness and resistance to growth' },
+    Gemini: { expression: 'Playful, communicative, curious in love', look_for: 'Intellectual connection and variety', avoid: 'Superficiality and commitment issues' },
+    Cancer: { expression: 'Tender, protective, emotionally deep in love', look_for: 'Security and emotional intimacy', avoid: 'Clinginess and emotional manipulation' },
+    Leo: { expression: 'Generous, dramatic, devoted in love', look_for: 'Admiration and creative partnership', avoid: 'Vanity and needing constant reassurance' },
+    Virgo: { expression: 'Thoughtful, practical, service-oriented in love', look_for: 'Genuine care and meaningful acts', avoid: 'Criticism and emotional distance' },
+    Libra: { expression: 'Romantic, harmonious, aesthetic in love', look_for: 'Balance and beautiful connection', avoid: 'Indecision and superficial charm' },
+    Scorpio: { expression: 'Intense, transformative, magnetic in love', look_for: 'Depth and authentic power exchange', avoid: 'Jealousy and control' },
+    Sagittarius: { expression: 'Optimistic, adventurous, expansive in love', look_for: 'Growth and shared exploration', avoid: 'Restlessness and commitment avoidance' },
+    Capricorn: { expression: 'Serious, loyal, committed in love', look_for: 'Lasting partnership and respect', avoid: 'Emotional coldness and workaholism' },
+    Aquarius: { expression: 'Unconventional, independent, idealistic in love', look_for: 'Intellectual connection and freedom', avoid: 'Emotional detachment and aloofness' },
+    Pisces: { expression: 'Romantic, compassionate, transcendent in love', look_for: 'Spiritual connection and unconditional care', avoid: 'Codependency and self-sacrifice' },
+  },
+  Mars: {
+    Aries: { expression: 'Direct, aggressive, courageous action', look_for: 'Bold moves and competitive challenges', avoid: 'Recklessness and unnecessary conflict' },
+    Taurus: { expression: 'Steady, persistent, grounded action', look_for: 'Building through sustained effort', avoid: 'Stubbornness and slow-burning resentment' },
+    Gemini: { expression: 'Quick, versatile, communicative action', look_for: 'Mental agility and multiple projects', avoid: 'Scattered energy and incomplete tasks' },
+    Cancer: { expression: 'Protective, emotional, defensive action', look_for: 'Defending what matters emotionally', avoid: 'Passive-aggression and emotional volatility' },
+    Leo: { expression: 'Confident, creative, expressive action', look_for: 'Passionate pursuits and leadership', avoid: 'Arrogance and domination' },
+    Virgo: { expression: 'Precise, analytical, service-oriented action', look_for: 'Improvement through attention to detail', avoid: 'Perfectionism and harsh criticism' },
+    Libra: { expression: 'Diplomatic, balanced, relational action', look_for: 'Fair outcomes and collaborative effort', avoid: 'Indecision and passive resistance' },
+    Scorpio: { expression: 'Intense, strategic, transformative action', look_for: 'Deep change and hidden truth', avoid: 'Obsession and manipulation' },
+    Sagittarius: { expression: 'Expansive, optimistic, adventurous action', look_for: 'Growth and pushing boundaries', avoid: 'Overconfidence and recklessness' },
+    Capricorn: { expression: 'Disciplined, strategic, ambitious action', look_for: 'Long-term goals and authority', avoid: 'Rigidity and emotional suppression' },
+    Aquarius: { expression: 'Innovative, rebellious, idealistic action', look_for: 'Revolutionary change and collective good', avoid: 'Detachment and contrarianism' },
+    Pisces: { expression: 'Intuitive, compassionate, subtle action', look_for: 'Spiritual purpose and healing', avoid: 'Passivity and escapism' },
+  },
+}
+
+function getPlanetSignInterpretation(planet: string, sign: string): { expression: string; look_for: string; avoid: string } | null {
+  return SIGN_PLANET_MEANINGS[planet]?.[sign] ?? null
+}
+
 function arcDistance(from: number, to: number): number {
   return ((to - from) % 360 + 360) % 360
 }
@@ -335,7 +384,7 @@ export default function NatalChartWheel({ data }: Props) {
           }}
         >
           {selection.type === 'planet' && selectedPlanet && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="text-sm" style={{ color: 'rgba(233,213,255,0.95)' }}>
                 <span style={{ fontSize: 18, marginRight: 6 }}>{PLANET_SYMBOLS[selectedPlanet.planet] ?? selectedPlanet.planet[0]}</span>
                 {selectedPlanet.planet}
@@ -346,9 +395,26 @@ export default function NatalChartWheel({ data }: Props) {
               <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,240,0.8)' }}>
                 <strong>{PLANET_MEANINGS[selectedPlanet.planet] || selectedPlanet.planet}</strong>
               </div>
-              <div className="text-xs leading-relaxed" style={{ color: 'rgba(200,200,220,0.7)', fontStyle: 'italic' }}>
-                In {selectedPlanet.sign}: Your {selectedPlanet.planet.toLowerCase()} expresses through {selectedPlanet.sign.toLowerCase()} qualities.
-              </div>
+              
+              {(() => {
+                const interp = getPlanetSignInterpretation(selectedPlanet.planet, selectedPlanet.sign)
+                return interp ? (
+                  <div className="space-y-2 rounded-lg p-2" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.15)' }}>
+                    <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                      <strong>In {selectedPlanet.sign}:</strong> {interp.expression}
+                    </div>
+                    <div className="text-xs" style={{ color: 'rgba(200,200,220,0.8)' }}>
+                      <div style={{ color: 'rgba(167,139,250,0.7)', marginBottom: 2 }}>✓ Look for:</div>
+                      <div style={{ marginLeft: 8 }}>{interp.look_for}</div>
+                    </div>
+                    <div className="text-xs" style={{ color: 'rgba(200,200,220,0.8)' }}>
+                      <div style={{ color: 'rgba(167,139,250,0.7)', marginBottom: 2 }}>⚠ Avoid:</div>
+                      <div style={{ marginLeft: 8 }}>{interp.avoid}</div>
+                    </div>
+                  </div>
+                ) : null
+              })()}
+              
               {aspects.filter(asp => asp.planet1 === selectedPlanet.planet || asp.planet2 === selectedPlanet.planet).length > 0 && (
                 <div className="text-xs">
                   <div style={{ color: 'rgba(167,139,250,0.7)', marginBottom: 4 }}>Aspects:</div>
