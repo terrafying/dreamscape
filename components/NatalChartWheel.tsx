@@ -158,6 +158,8 @@ function sameSelection(a: Exclude<Selection, null>, b: Exclude<Selection, null>)
 export default function NatalChartWheel({ data }: Props) {
   const { planets, aspects, houseCusps, ascendant } = data
   const [selection, setSelection] = useState<Selection>(null)
+  const [showGuide, setShowGuide] = useState(false)
+  const [hoveredPlanet, setHoveredPlanet] = useState<string | null>(null)
 
   const planetMap = new Map(planets.map(p => [p.planet, p]))
 
@@ -173,7 +175,41 @@ export default function NatalChartWheel({ data }: Props) {
   const selectedHouse = selection?.type === 'house' ? selection.idx + 1 : null
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs" style={{ color: 'rgba(167,139,250,0.5)', fontStyle: 'italic' }}>
+          ✦ Click planets, houses, or aspects to explore
+        </p>
+        <button
+          onClick={() => setShowGuide(!showGuide)}
+          className="text-xs px-2 py-1 rounded transition-all"
+          style={{
+            color: showGuide ? 'rgba(167,139,250,0.8)' : 'rgba(167,139,250,0.5)',
+            border: `1px solid ${showGuide ? 'rgba(167,139,250,0.3)' : 'rgba(167,139,250,0.15)'}`,
+            background: showGuide ? 'rgba(167,139,250,0.08)' : 'transparent',
+          }}
+        >
+          {showGuide ? '▼ Guide' : '▶ Guide'}
+        </button>
+      </div>
+
+      {showGuide && (
+        <div
+          className="rounded-lg p-3 space-y-2"
+          style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)' }}
+        >
+          <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'rgba(167,139,250,0.7)' }}>
+            How to explore:
+          </div>
+          <ul className="text-xs space-y-1" style={{ color: 'rgba(200,200,220,0.7)' }}>
+            <li>• <strong>Planets</strong> (symbols): Your core drives and qualities</li>
+            <li>• <strong>Houses</strong> (radial lines): Life areas where planets express</li>
+            <li>• <strong>Aspects</strong> (connecting lines): Relationships between planets</li>
+            <li>• <strong>Signs</strong> (outer ring): How each planet flavors its expression</li>
+          </ul>
+        </div>
+      )}
+
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         width={SIZE}
@@ -315,9 +351,16 @@ export default function NatalChartWheel({ data }: Props) {
           const insideRing = deg > 10 && deg < 20
           const [tx, ty] = lonToXY(p.longitude, insideRing ? ECLIP_R + 14 : ECLIP_R + 10)
           const isSelected = selection?.type === 'planet' && selection.planet === p.planet
-          const color = isSelected ? '#f5d0fe' : '#e2e8f0'
+          const isHovered = hoveredPlanet === p.planet
+          const color = isSelected ? '#f5d0fe' : isHovered ? '#cbd5e1' : '#e2e8f0'
           return (
-            <g key={p.planet} onClick={() => toggleSelection({ type: 'planet', planet: p.planet })} style={{ cursor: 'pointer' }}>
+            <g
+              key={p.planet}
+              onClick={() => toggleSelection({ type: 'planet', planet: p.planet })}
+              onMouseEnter={() => setHoveredPlanet(p.planet)}
+              onMouseLeave={() => setHoveredPlanet(null)}
+              style={{ cursor: 'pointer' }}
+            >
               <circle cx={px} cy={py} r={20} fill="transparent" />
               <circle
                 cx={px}
@@ -325,8 +368,12 @@ export default function NatalChartWheel({ data }: Props) {
                 r={7}
                 fill="rgba(10,10,20,0.9)"
                 stroke={color}
-                strokeWidth={isSelected ? 2.4 : 1.5}
+                strokeWidth={isSelected ? 2.4 : isHovered ? 2 : 1.5}
                 className={isSelected ? 'selection-pulse' : undefined}
+                style={{
+                  transition: 'stroke-width 200ms ease, stroke 200ms ease',
+                  filter: isHovered ? 'drop-shadow(0 0 4px rgba(167,139,250,0.4))' : 'none',
+                }}
               />
               <text
                 x={px}
@@ -335,6 +382,7 @@ export default function NatalChartWheel({ data }: Props) {
                 dominantBaseline="middle"
                 fontSize="9"
                 fill={color}
+                style={{ transition: 'fill 200ms ease' }}
               >
                 {PLANET_SYMBOLS[p.planet] ?? p.planet[0]}
               </text>
@@ -344,8 +392,9 @@ export default function NatalChartWheel({ data }: Props) {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fontSize="7"
-                fill={isSelected ? 'rgba(233,213,255,0.95)' : 'rgba(200,200,220,0.7)'}
+                fill={isSelected ? 'rgba(233,213,255,0.95)' : isHovered ? 'rgba(220,220,240,0.8)' : 'rgba(200,200,220,0.7)'}
                 fontFamily="monospace"
+                style={{ transition: 'fill 200ms ease' }}
               >
                 {p.degree}°
               </text>
@@ -464,9 +513,39 @@ export default function NatalChartWheel({ data }: Props) {
                 </div>
               )}
             </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+           )}
+         </div>
+       )}
+
+       {!selection && (
+         <div className="rounded-lg p-3" style={{ background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.1)' }}>
+           <div className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: 'rgba(167,139,250,0.6)' }}>
+             Your Planets
+           </div>
+           <div className="grid grid-cols-2 gap-2">
+             {planets.map(p => (
+               <button
+                 key={p.planet}
+                 onClick={() => toggleSelection({ type: 'planet', planet: p.planet })}
+                 className="text-left rounded p-2 transition-all hover:bg-white/5"
+                 style={{
+                   background: hoveredPlanet === p.planet ? 'rgba(167,139,250,0.08)' : 'transparent',
+                   border: `1px solid ${hoveredPlanet === p.planet ? 'rgba(167,139,250,0.2)' : 'rgba(167,139,250,0.1)'}`,
+                 }}
+                 onMouseEnter={() => setHoveredPlanet(p.planet)}
+                 onMouseLeave={() => setHoveredPlanet(null)}
+               >
+                 <div className="text-xs font-medium" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                   {PLANET_SYMBOLS[p.planet]} {p.planet}
+                 </div>
+                 <div className="text-[10px]" style={{ color: 'rgba(167,139,250,0.6)' }}>
+                   {p.sign} {p.degree}°
+                 </div>
+               </button>
+             ))}
+           </div>
+         </div>
+       )}
+     </div>
+   )
+ }
