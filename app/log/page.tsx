@@ -13,7 +13,7 @@ import DreamOracle from '@/components/DreamOracle'
 import BirthDataModal from '@/components/BirthDataModal'
 import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
-import ShareableDreamCard from '@/components/ShareableDreamCard'
+import SharedDreamCard from '@/components/SharedDreamCard'
 import ShareSheet from '@/components/ShareSheet'
 import HQVoiceButton from '@/components/HQVoiceButton'
 import Paywall from '@/components/Paywall'
@@ -347,7 +347,7 @@ export default function LogPage() {
               </a>
             )}
 
-            <ShareableDreamCard dream={{ id: savedId || 'temp', date: new Date().toISOString().split('T')[0], transcript, extraction: extraction || undefined, createdAt: Date.now() }} />
+            <SharedDreamCard dream={{ id: savedId || 'temp', date: new Date().toISOString().split('T')[0], transcript, extraction: extraction || undefined, createdAt: Date.now(), dream_data: { transcript, extraction }, share_handle: 'you', symbols: extraction?.symbols || [], reactions: [], interpretation_count: 0, is_following: false, my_reactions: [], created_at: new Date().toISOString() }} />
           </div>
         )}
 
