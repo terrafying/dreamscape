@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/apiFetch'
 import { getSupabase } from '@/lib/supabaseClient'
 import ZeitgeistDashboard from '@/components/ZeitgeistDashboard'
+import { MatchesFeed } from '@/components/MatchesFeed'
 
 type CircleListItem = {
   id: string
@@ -37,7 +38,7 @@ export default function CirclesPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [circles, setCircles] = useState<CircleListItem[]>([])
-  const [activeTab, setActiveTab] = useState<'circles' | 'zeitgeist'>('circles')
+  const [activeTab, setActiveTab] = useState<'circles' | 'zeitgeist' | 'matches'>('circles')
 
   const loadCircles = async () => {
     setLoading(true)
@@ -148,6 +149,17 @@ export default function CirclesPage() {
           style={activeTab === 'circles' ? { borderColor: 'var(--violet)' } : {}}
         >
           Dream Circles
+        </button>
+        <button
+          onClick={() => setActiveTab('matches')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'matches'
+              ? 'border-b-2 text-violet-400'
+              : 'text-slate-400 hover:text-slate-300'
+          }`}
+          style={activeTab === 'matches' ? { borderColor: 'var(--violet)' } : {}}
+        >
+          Synchronicities
         </button>
         <button
           onClick={() => setActiveTab('zeitgeist')}
@@ -279,6 +291,11 @@ export default function CirclesPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Synchronicities Tab */}
+      {activeTab === 'matches' && (
+        <MatchesFeed compact={false} />
       )}
 
       {/* Zeitgeist Tab */}
