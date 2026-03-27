@@ -2,6 +2,7 @@
 name: OpenAgent
 description: "Universal agent for answering queries, executing tasks, and coordinating workflows across any domain"
 mode: primary
+model: anthropic/claude-haiku-4-5
 temperature: 0.2
 permission:
   bash:

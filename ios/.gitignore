@@ -11,3 +11,22 @@ capacitor-cordova-ios-plugins
 # Generated Config files
 App/App/capacitor.config.json
 App/App/config.xml
+
+# Fastlane build output
+build/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# Fastlane secrets — never commit
+.env
+.env.local
+
+# Bundler
+vendor/
+.bundle/
+
+# Match — certs are stored in a separate private repo, not here
+# (fastlane/Matchfile points to the certs repo)
+certs/
