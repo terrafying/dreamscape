@@ -1,0 +1,165 @@
+default_platform(:ios)
+
+# ─────────────────────────────────────────────
+# Constants
+# ─────────────────────────────────────────────
+APP_ID        = "com.terrafying.dreamscape"
+SCHEME        = "App"
+WORKSPACE     = "App/App.xcworkspace"
+PROJECT       = "App/App.xcodeproj"
+OUTPUT_DIR    = "build"
+
+platform :ios do
+
+  # ─────────────────────────────────────────────
+  # before_all: runs before every lane
+  # ─────────────────────────────────────────────
+  before_all do
+    # Ensure we're running from the ios/ directory
+    # (all paths are relative to ios/)
+  end
+
+  # ─────────────────────────────────────────────
+  # certs — sync/install certificates & profiles
+  # Usage: fastlane certs
+  # ─────────────────────────────────────────────
+  desc "Sync App Store certificates and provisioning profiles via Match"
+  lane :certs do
+    match(
+      type: "appstore",
+      app_identifier: APP_ID,
+      readonly: ENV["CI"] ? true : false
+    )
+  end
+
+  # ─────────────────────────────────────────────
+  # certs_dev — sync development certs (for local device testing)
+  # Usage: fastlane certs_dev
+  # ─────────────────────────────────────────────
+  desc "Sync development certificates and provisioning profiles via Match"
+  lane :certs_dev do
+    match(
+      type: "development",
+      app_identifier: APP_ID,
+      readonly: ENV["CI"] ? true : false
+    )
+  end
+
+  # ─────────────────────────────────────────────
+  # beta — build and upload to TestFlight
+  # Usage: fastlane beta
+  # Optional env vars:
+  #   BETA_CHANGELOG — release notes shown in TestFlight
+  # ─────────────────────────────────────────────
+  desc "Build and upload a new beta build to TestFlight"
+  lane :beta do
+    # 1. Ensure clean git state (skip in CI where dirty state is expected)
+    ensure_git_status_clean unless ENV["CI"]
+
+    # 2. Bump build number to current timestamp (ensures unique build numbers)
+    build_number = Time.now.strftime("%Y%m%d%H%M")
+    increment_build_number(
+      build_number: build_number,
+      xcodeproj: PROJECT
+    )
+
+    # 3. Sync App Store certs & profiles
+    match(
+      type: "appstore",
+      app_identifier: APP_ID,
+      readonly: true  # Never create new certs during a build
+    )
+
+    # 4. Build the app
+    gym(
+      scheme: SCHEME,
+      workspace: WORKSPACE,
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: OUTPUT_DIR,
+      output_name: "Dreamscape.ipa",
+      clean: true,
+      xcargs: "MARKETING_VERSION=#{get_version_number(xcodeproj: PROJECT, target: SCHEME)}"
+    )
+
+    # 5. Upload to TestFlight
+    pilot(
+      ipa: "#{OUTPUT_DIR}/Dreamscape.ipa",
+      skip_waiting_for_build_processing: true,
+      changelog: ENV["BETA_CHANGELOG"] || "New build — see git log for changes.",
+      distribute_external: false
+    )
+
+    # 6. Tag the release in git (skip in CI — let CI handle tagging)
+    unless ENV["CI"]
+      version = get_version_number(xcodeproj: PROJECT, target: SCHEME)
+      add_git_tag(tag: "ios/v#{version}/#{build_number}")
+      push_git_tags
+    end
+
+    UI.success "✅ Build #{build_number} uploaded to TestFlight!"
+  end
+
+  # ─────────────────────────────────────────────
+  # release — build and submit to App Store review
+  # Usage: fastlane release
+  # ─────────────────────────────────────────────
+  desc "Build and submit to App Store review (does NOT auto-release)"
+  lane :release do
+    ensure_git_status_clean
+
+    match(
+      type: "appstore",
+      app_identifier: APP_ID,
+      readonly: true
+    )
+
+    gym(
+      scheme: SCHEME,
+      workspace: WORKSPACE,
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: OUTPUT_DIR,
+      output_name: "Dreamscape.ipa",
+      clean: true
+    )
+
+    deliver(
+      ipa: "#{OUTPUT_DIR}/Dreamscape.ipa",
+      submit_for_review: true,
+      automatic_release: false,  # Manually release in App Store Connect
+      force: true,               # Skip HTML report
+      skip_screenshots: true,    # Manage screenshots in App Store Connect
+      skip_metadata: true        # Manage metadata in App Store Connect
+    )
+
+    UI.success "✅ Submitted to App Store review!"
+  end
+
+  # ─────────────────────────────────────────────
+  # bump_version — increment marketing version
+  # Usage: fastlane bump_version type:patch  (or minor, major)
+  # ─────────────────────────────────────────────
+  desc "Bump the marketing version (patch/minor/major)"
+  lane :bump_version do |options|
+    type = options[:type] || "patch"
+    increment_version_number(
+      xcodeproj: PROJECT,
+      bump_type: type
+    )
+    version = get_version_number(xcodeproj: PROJECT, target: SCHEME)
+    git_commit(
+      path: PROJECT,
+      message: "chore(ios): bump version to #{version}"
+    )
+    UI.success "✅ Version bumped to #{version}"
+  end
+
+  # ─────────────────────────────────────────────
+  # Error handling
+  # ─────────────────────────────────────────────
+  error do |lane, exception|
+    UI.error "❌ Lane '#{lane}' failed: #{exception.message}"
+  end
+
+end

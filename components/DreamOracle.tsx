@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { DreamExtraction } from '@/lib/types'
 import { findTarotCard, selectAstrologicalNote } from '@/lib/spiritual-content'
+import { findThothArchetype, selectArchetypeByArc, THOTH_ARCHETYPES } from '@/lib/thoth-tarot'
 
 interface DreamOracleProps {
   extraction: DreamExtraction
@@ -16,6 +17,8 @@ interface OracleCard {
   body: string
   footnote: string
   expandedText: string
+  archetypeName?: string
+  archetypeQuote?: string
 }
 
 const ARC_LABELS: Record<string, string> = {
@@ -36,13 +39,16 @@ function buildOracleCards(extraction: DreamExtraction): OracleCard[] {
   )
   const topSymbol = symbols[0]
   const tarot = topSymbol ? findTarotCard(topSymbol.name) : null
+  const thoth = topSymbol ? findThothArchetype(topSymbol.name) : null
 
   const card1: OracleCard = {
     label: 'I \u2014 The Symbol',
-    name: tarot?.name ?? topSymbol?.name ?? 'The Unnamed',
+    name: thoth?.name ?? tarot?.name ?? topSymbol?.name ?? 'The Unnamed',
     body: topSymbol?.meaning ?? 'A symbol beneath the threshold of naming.',
-    footnote: tarot?.principle ? `Principle of ${tarot.principle}` : '',
-    expandedText: tarot?.meaning ?? '',
+    footnote: thoth?.hebrewLetter ? `${thoth.hebrewLetter} — ${thoth.path}` : tarot?.principle ? `Principle of ${tarot.principle}` : '',
+    expandedText: thoth?.dreamResonance ?? tarot?.meaning ?? '',
+    archetypeName: thoth?.name,
+    archetypeQuote: thoth?.crowleyQuote,
   }
 
   // Card 2 — "The Current" (present / flow)
@@ -50,6 +56,7 @@ function buildOracleCards(extraction: DreamExtraction): OracleCard[] {
   const moonSign = extraction.astro_context?.moon_sign ?? ''
   const arc = extraction.narrative_arc ?? 'liminal'
   const astroNote = selectAstrologicalNote(moonSign, arc)
+  const arcArchetype = selectArchetypeByArc(arc)
   const bodyNote = astroNote
     ? astroNote.length > 160
       ? astroNote.slice(0, 160) + '\u2026'
@@ -58,17 +65,20 @@ function buildOracleCards(extraction: DreamExtraction): OracleCard[] {
 
   const card2: OracleCard = {
     label: 'II \u2014 The Current',
-    name: emotion
+    name: arcArchetype?.name ?? (emotion
       ? `${emotion.name} \u00b7 ${Math.round(emotion.intensity * 100)}%`
-      : 'Stillness',
+      : 'Stillness'),
     body: bodyNote,
-    footnote: ARC_LABELS[arc] ?? arc,
+    footnote: arcArchetype?.hebrewLetter ? `${arcArchetype.hebrewLetter} — ${ARC_LABELS[arc] ?? arc}` : ARC_LABELS[arc] ?? arc,
     expandedText: astroNote.length > 160 ? astroNote : '',
+    archetypeName: arcArchetype?.name,
+    archetypeQuote: arcArchetype?.crowleyQuote,
   }
 
   // Card 3 — "The Guidance" (future / path)
   const goetic = extraction.goetic_resonance
   const rec = extraction.recommendations?.[0]
+  const completionArchetype = findThothArchetype('completion') || THOTH_ARCHETYPES[21] // The World
 
   let card3: OracleCard
   if (goetic) {
@@ -78,6 +88,8 @@ function buildOracleCards(extraction: DreamExtraction): OracleCard[] {
       body: goetic.reason,
       footnote: '',
       expandedText: goetic.barbarous,
+      archetypeName: completionArchetype?.name,
+      archetypeQuote: completionArchetype?.crowleyQuote,
     }
   } else if (rec) {
     card3 = {
@@ -86,14 +98,18 @@ function buildOracleCards(extraction: DreamExtraction): OracleCard[] {
       body: rec.why,
       footnote: `Timing: ${rec.timing}`,
       expandedText: rec.action.length > 50 ? rec.action : '',
+      archetypeName: completionArchetype?.name,
+      archetypeQuote: completionArchetype?.crowleyQuote,
     }
   } else {
     card3 = {
       label: 'III \u2014 The Guidance',
-      name: 'The Open Path',
-      body: 'No specific guidance crystallized \u2014 the way forward is yours to shape.',
-      footnote: '',
+      name: completionArchetype?.name ?? 'The Open Path',
+      body: completionArchetype?.dreamResonance ?? 'No specific guidance crystallized \u2014 the way forward is yours to shape.',
+      footnote: completionArchetype?.hebrewLetter ?? '',
       expandedText: '',
+      archetypeName: completionArchetype?.name,
+      archetypeQuote: completionArchetype?.crowleyQuote,
     }
   }
 
@@ -102,30 +118,28 @@ function buildOracleCards(extraction: DreamExtraction): OracleCard[] {
 
 export default function DreamOracle({
   extraction,
-  autoReveal = false,
+  autoReveal = true,
   onComplete,
 }: DreamOracleProps) {
   const cards = useMemo(() => buildOracleCards(extraction), [extraction])
-  const [revealed, setRevealed] = useState(false)
+  const [revealed, setRevealed] = useState(true)
   const [flipped, setFlipped] = useState<Set<number>>(new Set())
   const [modalOpen, setModalOpen] = useState<number | null>(null)
-  const [revealMode, setRevealMode] = useState<'auto' | 'manual'>('auto')
   const touchStartX = useRef(0)
 
   const triggerReveal = useCallback(() => {
     if (revealed) return
     setRevealed(true)
-    if (revealMode === 'auto') {
-      FLIP_DELAYS.forEach((delay, idx) => {
-        setTimeout(() => {
-          setFlipped((prev) => new Set([...prev, idx]))
-        }, delay)
-      })
-      if (onComplete) {
-        setTimeout(onComplete, FLIP_DELAYS[2] + FLIP_DURATION)
-      }
+    // Auto-flip cards on reveal
+    FLIP_DELAYS.forEach((delay, idx) => {
+      setTimeout(() => {
+        setFlipped((prev) => new Set([...prev, idx]))
+      }, delay)
+    })
+    if (onComplete) {
+      setTimeout(onComplete, FLIP_DELAYS[2] + FLIP_DURATION)
     }
-  }, [revealed, revealMode, onComplete])
+  }, [revealed, onComplete])
 
   const revealCard = useCallback((idx: number) => {
     if (!revealed) {
@@ -174,39 +188,6 @@ export default function DreamOracle({
   return (
     <>
       <div className="w-full space-y-6">
-        {!revealed && (
-          <div className="flex justify-center gap-3">
-            <button
-              onClick={() => {
-                setRevealMode('auto')
-                triggerReveal()
-              }}
-              className="px-6 py-2.5 rounded-lg text-sm font-mono tracking-wider cursor-pointer transition-all duration-300 hover:brightness-110"
-              style={{
-                background: 'rgba(167,139,250,0.12)',
-                color: '#a78bfa',
-                border: '1px solid rgba(167,139,250,0.3)',
-                boxShadow: '0 0 20px rgba(167,139,250,0.08)',
-              }}
-            >
-              Auto Reveal
-            </button>
-            <button
-              onClick={() => {
-                setRevealMode('manual')
-                setRevealed(true)
-              }}
-              className="px-6 py-2.5 rounded-lg text-sm font-mono tracking-wider cursor-pointer transition-all duration-300 hover:brightness-110"
-              style={{
-                background: 'rgba(167,139,250,0.08)',
-                color: 'rgba(167,139,250,0.6)',
-                border: '1px solid rgba(167,139,250,0.2)',
-              }}
-            >
-              Click to Reveal
-            </button>
-          </div>
-        )}
 
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-6">
           {cards.map((card, idx) => (
@@ -224,7 +205,7 @@ export default function DreamOracle({
                   transform: flipped.has(idx) ? 'rotateY(180deg)' : 'rotateY(0deg)',
                 }}
                 onClick={() => {
-                  if (revealed && revealMode === 'manual' && !flipped.has(idx)) {
+                  if (revealed && !flipped.has(idx)) {
                     revealCard(idx)
                   } else if (flipped.has(idx)) {
                     handleCardClick(idx)
@@ -236,7 +217,7 @@ export default function DreamOracle({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    if (revealed && revealMode === 'manual' && !flipped.has(idx)) {
+                    if (revealed && !flipped.has(idx)) {
                       revealCard(idx)
                     } else if (flipped.has(idx)) {
                       handleCardClick(idx)
@@ -251,7 +232,7 @@ export default function DreamOracle({
           ))}
         </div>
 
-        {revealed && revealMode === 'manual' && flipped.size < cards.length && (
+        {revealed && flipped.size < cards.length && (
           <div className="flex justify-center">
             <p className="text-xs" style={{ color: 'rgba(167,139,250,0.5)', fontStyle: 'italic' }}>
               Click cards to reveal ({flipped.size}/{cards.length})

@@ -1,0 +1,13 @@
+app_identifier("com.terrafying.dreamscape")
+
+# Your Apple Developer account email
+# Set via FASTLANE_USER env var or replace directly
+apple_id(ENV["FASTLANE_USER"] || "your@email.com")
+
+# Apple Developer Team ID (find at developer.apple.com → Membership)
+# Set via FASTLANE_TEAM_ID env var or replace directly
+team_id(ENV["FASTLANE_TEAM_ID"] || "XXXXXXXXXX")
+
+# App Store Connect Team ID (may differ from Developer Team ID)
+# Set via APP_STORE_CONNECT_TEAM_ID env var
+itc_team_id(ENV["APP_STORE_CONNECT_TEAM_ID"] || ENV["FASTLANE_TEAM_ID"] || "XXXXXXXXXX")

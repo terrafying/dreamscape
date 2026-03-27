@@ -1,0 +1,25 @@
+# Match stores your certificates and provisioning profiles in a private Git repo.
+# Run `fastlane match init` if you want to set this up interactively.
+#
+# SETUP STEPS:
+# 1. Create a PRIVATE git repo (e.g. github.com/yourorg/dreamscape-certs)
+# 2. Set MATCH_GIT_URL env var to that repo's SSH or HTTPS URL
+# 3. Set MATCH_PASSWORD env var to encrypt/decrypt the certs
+# 4. Run: cd ios && fastlane match appstore   (first-time cert generation)
+
+git_url(ENV["MATCH_GIT_URL"] || "git@github.com:your-org/dreamscape-certs.git")
+
+# Encryption passphrase for the certs repo — set via MATCH_PASSWORD env var
+# (fastlane match will prompt if not set)
+
+storage_mode("git")
+
+type("appstore")  # Default type; override per lane with `match(type: "appstore")`
+
+app_identifier(["com.terrafying.dreamscape"])
+
+# Apple Developer Team ID
+team_id(ENV["FASTLANE_TEAM_ID"] || "XXXXXXXXXX")
+
+# Set to true if you want Match to never prompt for input (useful in CI)
+readonly(ENV["CI"] ? true : false)
