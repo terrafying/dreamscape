@@ -33,10 +33,10 @@ export default function GuidedFirstRun() {
 
   if (!show) return null
 
-  return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" style={{ background: 'rgba(0,0,0,0.36)' }}>
-      <div className="absolute left-0 right-0 bottom-0 rounded-t-2xl p-5 space-y-3 max-w-xl mx-auto"
-        style={{ background: 'rgba(10,10,18,0.98)', borderTop: '1px solid var(--border)' }}>
+   return (
+     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" style={{ background: 'rgba(0,0,0,0.36)' }}>
+       <div className="absolute left-0 right-0 rounded-t-2xl p-5 space-y-3 max-w-xl mx-auto"
+         style={{ background: 'rgba(10,10,18,0.98)', borderTop: '1px solid var(--border)', bottom: '80px' }}>
         <div className="flex items-start justify-between">
           <div className="text-sm font-medium" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
             Welcome to Dreamscape
