@@ -4,15 +4,45 @@
  * Seed script: Create synthetic dreamers with prophetic/unusual dreams
  * Run: node scripts/seed-dreamers.js
  * 
- * Creates 10 archetypal dreamers with deeply engaging, prophetic, or unusual dreams
+ * Creates 10 archetypal dreamers with deeply engaging dreams
+ * Reads from .env.local automatically
  */
+
+const fs = require('fs')
+const path = require('path')
+
+// Load .env.local
+const envPath = path.join(__dirname, '..', '.env.local')
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf-8')
+  envContent.split('\n').forEach((line) => {
+    const [key, ...valueParts] = line.split('=')
+    if (key && valueParts.length > 0) {
+      const value = valueParts.join('=').replace(/^"/, '').replace(/"$/, '')
+      process.env[key.trim()] = value
+    }
+  })
+}
 
 const { createClient } = require('@supabase/supabase-js')
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error('❌ Missing environment variables!')
+  console.error('Required in .env.local:')
+  console.error('  - NEXT_PUBLIC_SUPABASE_URL')
+  console.error('  - SUPABASE_SERVICE_ROLE_KEY')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
 
 const DREAMERS = [
   {
@@ -574,7 +604,7 @@ async function seedDreamers() {
 
       console.log(`✅ ${dreamer.name} (${dreamer.handle}) - ${dreamer.dreams.length} dream(s)`)
     } catch (err) {
-      console.error(`❌ ${dreamer.handle}:`, err)
+      console.error(`❌ ${dreamer.handle}:`, err.message)
     }
   }
 
