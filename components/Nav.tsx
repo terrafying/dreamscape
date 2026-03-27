@@ -31,7 +31,6 @@ export default function Nav() {
     { href: '/reading', label: 'Reading', icon: '✧' },
     { href: '/dreamscape', label: 'Sleep', icon: '◉' },
     { href: '/strata', label: 'Strata', icon: '◈' },
-    { href: '/zeitgeist', label: 'Zeitgeist', icon: '◆' },
   ]
 
   return (

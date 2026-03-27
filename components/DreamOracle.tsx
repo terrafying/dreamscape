@@ -369,29 +369,29 @@ function CardFront({ card }: { card: OracleCard }) {
         background: 'rgba(8,5,18,0.95)',
         border: '1px solid rgba(167,139,250,0.25)',
         boxShadow: '0 0 20px rgba(139,92,246,0.06)',
-        padding: '20px',
+        padding: '24px',
       }}
     >
       <div
         className="font-mono uppercase tracking-widest shrink-0"
         style={{
-          fontSize: '0.5rem',
+          fontSize: '0.65rem',
           color: '#a78bfa',
           letterSpacing: '0.2em',
-          marginBottom: '10px',
+          marginBottom: '8px',
         }}
       >
         {card.label}
       </div>
 
       <div
-        className="shrink-0 leading-tight"
+        className="shrink-0 leading-tight line-clamp-2"
         style={{
-          fontSize: '1.2rem',
+          fontSize: '1.35rem',
           color: '#e2e8f0',
           fontFamily: 'Georgia, serif',
           fontWeight: 500,
-          marginBottom: '12px',
+          marginBottom: '14px',
         }}
       >
         {card.name}
@@ -403,21 +403,22 @@ function CardFront({ card }: { card: OracleCard }) {
           height: '1px',
           background:
             'linear-gradient(to right, transparent, rgba(167,139,250,0.3), transparent)',
-          marginBottom: '14px',
+          marginBottom: '16px',
         }}
       />
 
       <p
-        className="flex-1"
+        className="flex-1 overflow-y-auto"
         style={{
-          fontSize: '0.85rem',
+          fontSize: '0.95rem',
           color: '#94a3b8',
           fontFamily: 'Georgia, serif',
           fontStyle: 'italic',
-          lineHeight: '1.6',
+          lineHeight: '1.7',
           margin: 0,
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
+          paddingRight: '4px',
         }}
       >
         {card.body}
@@ -425,12 +426,13 @@ function CardFront({ card }: { card: OracleCard }) {
 
       {card.footnote && (
         <div
-          className="font-mono mt-auto pt-3"
+          className="font-mono mt-auto pt-4"
           style={{
-            fontSize: '0.6rem',
+            fontSize: '0.7rem',
             color: 'rgba(167,139,250,0.6)',
             letterSpacing: '0.1em',
             fontStyle: 'normal',
+            lineHeight: '1.4',
           }}
         >
           {card.footnote}
@@ -438,9 +440,9 @@ function CardFront({ card }: { card: OracleCard }) {
       )}
 
       <div
-        className="text-center font-mono shrink-0 mt-3"
+        className="text-center font-mono shrink-0 mt-4"
         style={{
-          fontSize: '0.55rem',
+          fontSize: '0.65rem',
           color: 'rgba(167,139,250,0.5)',
           letterSpacing: '0.15em',
         }}
@@ -496,11 +498,11 @@ function CardModal({
           ✕
         </button>
 
-        <div className="p-6 space-y-4 overflow-y-auto" style={{ maxHeight: '90vh' }}>
+        <div className="p-8 space-y-5 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
           <div
             className="font-mono uppercase tracking-widest"
             style={{
-              fontSize: '0.6rem',
+              fontSize: '0.7rem',
               color: '#a78bfa',
               letterSpacing: '0.2em',
             }}
@@ -510,10 +512,11 @@ function CardModal({
 
           <div
             style={{
-              fontSize: '1.5rem',
+              fontSize: '1.8rem',
               color: '#e2e8f0',
               fontFamily: 'Georgia, serif',
               fontWeight: 500,
+              lineHeight: '1.3',
             }}
           >
             {card.name}
@@ -529,12 +532,14 @@ function CardModal({
 
           <p
             style={{
-              fontSize: '0.95rem',
+              fontSize: '1rem',
               color: '#94a3b8',
               fontFamily: 'Georgia, serif',
               fontStyle: 'italic',
-              lineHeight: '1.7',
+              lineHeight: '1.8',
               margin: 0,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
             }}
           >
             {card.body}
@@ -543,12 +548,14 @@ function CardModal({
           {card.expandedText && (
             <div
               style={{
-                paddingTop: '16px',
+                paddingTop: '20px',
                 borderTop: '1px solid rgba(167,139,250,0.15)',
-                fontSize: '0.9rem',
+                fontSize: '0.95rem',
                 color: '#cbd5e1',
                 fontFamily: 'Georgia, serif',
                 lineHeight: '1.8',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
               }}
             >
               {card.expandedText}
@@ -559,12 +566,14 @@ function CardModal({
             <div
               className="font-mono"
               style={{
-                fontSize: '0.7rem',
+                fontSize: '0.75rem',
                 color: 'rgba(167,139,250,0.6)',
                 letterSpacing: '0.1em',
-                marginTop: '16px',
-                paddingTop: '16px',
+                marginTop: '20px',
+                paddingTop: '20px',
                 borderTop: '1px solid rgba(167,139,250,0.1)',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
               }}
             >
               {card.footnote}

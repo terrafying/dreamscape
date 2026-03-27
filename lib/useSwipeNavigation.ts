@@ -31,7 +31,6 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
       { href: '/reading', label: 'Reading' },
       { href: '/dreamscape', label: 'Sleep' },
       { href: '/strata', label: 'Strata' },
-      { href: '/zeitgeist', label: 'Zeitgeist' },
     ]
 
     // Check exact match first
@@ -57,7 +56,6 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
       { href: '/reading', label: 'Reading' },
       { href: '/dreamscape', label: 'Sleep' },
       { href: '/strata', label: 'Strata' },
-      { href: '/zeitgeist', label: 'Zeitgeist' },
     ]
     return tabs[index % tabs.length].href
   }
@@ -96,11 +94,11 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
 
       if (diffX > 0) {
         // Swiped left → next tab
-        nextIndex = (currentIndex + 1) % 6
+        nextIndex = (currentIndex + 1) % 5
         onSwipe?.('left')
       } else {
         // Swiped right → previous tab
-        nextIndex = (currentIndex - 1 + 6) % 6
+        nextIndex = (currentIndex - 1 + 5) % 5
         onSwipe?.('right')
       }
 

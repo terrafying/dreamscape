@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { checkAuth } from '@/lib/auth'
 import {
   analyzeCollectiveSymbols,
   identifyTrendingThemes,
@@ -9,9 +8,7 @@ import {
 } from '@/lib/zeitgeist'
 
 export async function GET(req: Request) {
-  const denied = checkAuth(req)
-  if (denied) return denied
-
+  // Use service role for public zeitgeist data (no auth required)
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
