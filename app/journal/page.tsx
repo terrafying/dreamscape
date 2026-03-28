@@ -20,6 +20,17 @@ function detectEntryType(): EntryType {
   return 'morning'
 }
 
+function normalizeExtraction(ext: JournalExtraction | null): JournalExtraction | null {
+  if (!ext) return null
+  return {
+    ...ext,
+    mood_emotions: (ext.mood_emotions || []).map((e: any) => typeof e === 'string' ? e : e?.name || '').filter(Boolean),
+    intentions: (ext.intentions || []).map((e: any) => typeof e === 'string' ? e : e?.name || '').filter(Boolean),
+    gratitude_moments: (ext.gratitude_moments || []).map((e: any) => typeof e === 'string' ? e : e?.name || '').filter(Boolean),
+    themes: (ext.themes || []).map((e: any) => typeof e === 'string' ? e : e?.name || '').filter(Boolean),
+  }
+}
+
 export default function JournalPage() {
   const [transcript, setTranscript] = useState('')
   const [status, setStatus] = useState<Status>('idle')
@@ -109,11 +120,11 @@ export default function JournalPage() {
           } else if (eventType === 'source') {
             setSourceProvider(data.provider)
           } else if (eventType === 'extraction') {
-            const ext = data.data as JournalExtraction
+            const ext = normalizeExtraction(data.data as JournalExtraction)
             setExtraction(ext)
             setStatus('done')
             const id = generateId()
-            const log: JournalLog = { id, date, transcript, extraction: ext, createdAt: Date.now(), entryType }
+            const log: JournalLog = { id, date, transcript, extraction: ext || undefined, createdAt: Date.now(), entryType }
             await saveJournal(log)
             setSavedId(id)
             const updated = await getJournals()
@@ -287,15 +298,7 @@ export default function JournalPage() {
                onClick={() => {
                  setTranscript(journal.transcript)
                  setEntryType(journal.entryType)
-                 // Normalize extraction data to ensure arrays contain strings
-                 const normalized = journal.extraction ? {
-                   ...journal.extraction,
-                   mood_emotions: (journal.extraction.mood_emotions || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
-                   intentions: (journal.extraction.intentions || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
-                   gratitude_moments: (journal.extraction.gratitude_moments || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
-                   themes: (journal.extraction.themes || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
-                 } : null
-                 setExtraction(normalized)
+                 setExtraction(normalizeExtraction(journal.extraction || null))
                  setStatus(journal.extraction ? 'done' : 'idle')
                }}
               className="w-full text-left rounded-xl p-3 transition-all hover:border-opacity-50"
