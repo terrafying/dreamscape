@@ -284,12 +284,20 @@ export default function JournalPage() {
           {journals.slice(0, 5).map((journal) => (
             <button
               key={journal.id}
-              onClick={() => {
-                setTranscript(journal.transcript)
-                setEntryType(journal.entryType)
-                setExtraction(journal.extraction || null)
-                setStatus(journal.extraction ? 'done' : 'idle')
-              }}
+               onClick={() => {
+                 setTranscript(journal.transcript)
+                 setEntryType(journal.entryType)
+                 // Normalize extraction data to ensure arrays contain strings
+                 const normalized = journal.extraction ? {
+                   ...journal.extraction,
+                   mood_emotions: (journal.extraction.mood_emotions || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
+                   intentions: (journal.extraction.intentions || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
+                   gratitude_moments: (journal.extraction.gratitude_moments || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
+                   themes: (journal.extraction.themes || []).map((e: any) => typeof e === 'string' ? e : e.name || ''),
+                 } : null
+                 setExtraction(normalized)
+                 setStatus(journal.extraction ? 'done' : 'idle')
+               }}
               className="w-full text-left rounded-xl p-3 transition-all hover:border-opacity-50"
               style={{ background: 'rgba(15,15,26,0.6)', border: '1px solid var(--border)' }}
             >
@@ -319,13 +327,24 @@ export default function JournalPage() {
   )
 }
 
-function JournalList({ title, items }: { title: string; items: string[] }) {
+function JournalList({ title, items }: { title: string; items: any[] }) {
   if (!items?.length) return null
+  
+  // Handle both string arrays and object arrays
+  const normalizedItems = items.map(item => {
+    if (typeof item === 'string') return item
+    if (typeof item === 'object' && item !== null) {
+      // If it's an object, try to extract a meaningful string
+      return item.name || item.meaning || item.title || JSON.stringify(item)
+    }
+    return String(item)
+  })
+  
   return (
     <div className="space-y-1.5">
       <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{title}</div>
       <ul className="space-y-1">
-        {items.map((item, i) => (
+        {normalizedItems.map((item, i) => (
           <li key={i} className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>• {item}</li>
         ))}
       </ul>
