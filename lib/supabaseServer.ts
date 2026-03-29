@@ -65,3 +65,15 @@ export async function setStripeCustomerForUser(userId: string, customerId: strin
 
   return !updated.error
 }
+
+export function getAuthenticatedClient(token: string) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
+  })
+}
