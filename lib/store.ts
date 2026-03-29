@@ -1,6 +1,6 @@
 import { registerPlugin, Capacitor } from '@capacitor/core'
 import { Preferences } from '@capacitor/preferences'
-import type { DreamLog, JournalLog, BirthData } from './types'
+import type { DreamLog, JournalLog, VisionLog, BirthData } from './types'
 
 export interface CloudStorePlugin {
   get(options: { key: string }): Promise<{ value: string }>
@@ -12,6 +12,7 @@ const CloudStore = registerPlugin<CloudStorePlugin>('CloudStore')
 
 const DREAMS_KEY = 'dreamscape_dreams'
 const JOURNALS_KEY = 'dreamscape_journals'
+const VISIONS_KEY = 'dreamscape_visions'
 const BIRTH_KEY = 'dreamscape_birth'
 
 async function getStorageValue(key: string): Promise<string | null> {
@@ -117,6 +118,36 @@ export async function deleteJournal(id: string): Promise<void> {
   let journals = await getJournals()
   journals = journals.filter((j) => j.id !== id)
   await setStorageValue(JOURNALS_KEY, JSON.stringify(journals))
+}
+
+// ─── Vision Rituals ───────────────────────────────────────────────────────────
+
+export async function getVisions(): Promise<VisionLog[]> {
+  try {
+    const raw = await getStorageValue(VISIONS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export async function saveVision(vision: VisionLog): Promise<void> {
+  const visions = await getVisions()
+  const idx = visions.findIndex((v) => v.id === vision.id)
+  if (idx >= 0) {
+    visions[idx] = vision
+  } else {
+    visions.unshift(vision)
+  }
+  await setStorageValue(VISIONS_KEY, JSON.stringify(visions))
+}
+
+export async function deleteVision(id: string): Promise<void> {
+  let visions = await getVisions()
+  visions = visions.filter((v) => v.id !== id)
+  await setStorageValue(VISIONS_KEY, JSON.stringify(visions))
 }
 
 // ─── Birth Data ───────────────────────────────────────────────────────────────

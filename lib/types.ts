@@ -64,6 +64,53 @@ export interface JournalLog {
   entryType: 'evening' | 'morning'
 }
 
+export interface SigilRecipe {
+  source_phrase: string
+  normalized_phrase: string
+  removed_characters: string[]
+  glyph_letters: string[]
+  seed: number
+  geometry: {
+    symmetry: 4 | 6 | 8 | 12
+    rings: number
+    spokes: number
+    polygon_sides: number
+    polygon_skip: number
+    line_weight: number
+    rotation: number
+  }
+  style: {
+    palette: string[]
+    glow: number
+    roughness: number
+    border_mode: 'none' | 'circle' | 'double-circle' | 'seal'
+  }
+}
+
+export interface VisionExtraction {
+  title: string
+  distilled_intention: string
+  invocation: string
+  symbols: { name: string; salience: number; category: string; meaning: string }[]
+  emotions: { name: string; intensity: number; valence: number }[]
+  themes: string[]
+  blockers: { name: string; reframing: string; action: string }[]
+  visual_motifs: string[]
+  color_palette: string[]
+  ritual_steps: { action: string; timing: string; why: string }[]
+  sigil_recipe: SigilRecipe
+}
+
+export interface VisionLog {
+  id: string
+  date: string
+  transcript: string
+  extraction?: VisionExtraction
+  boardImageUrl?: string
+  createdAt: number
+  published?: boolean
+}
+
 export interface BirthData {
   date: string // YYYY-MM-DD
   time?: string // HH:MM
@@ -171,6 +218,27 @@ export interface SharedDreamWithCounts extends SharedDream {
   my_reactions: string[]
 }
 
+export interface SharedVision {
+  id: string
+  user_id: string
+  vision_id: string
+  vision_data: VisionLog
+  title: string
+  distilled_intention: string
+  symbols: string[]
+  themes: string[]
+  share_handle: string
+  board_image_url?: string
+  created_at: string
+}
+
+export interface SharedVisionWithCounts extends SharedVision {
+  reactions: { emoji: string; count: number }[]
+  interpretation_count: number
+  preview_interpretations?: VisionInterpretation[]
+  my_reactions: string[]
+}
+
 export interface DreamReaction {
   id: string
   dream_id: string
@@ -182,6 +250,15 @@ export interface DreamReaction {
 export interface DreamInterpretation {
   id: string
   dream_id: string
+  user_id: string
+  handle: string
+  text: string
+  created_at: string
+}
+
+export interface VisionInterpretation {
+  id: string
+  vision_id: string
   user_id: string
   handle: string
   text: string

@@ -53,6 +53,16 @@ export default function Home() {
       border: 'rgba(244,201,93,0.32)',
       color: '#f4c95d',
     },
+    {
+      step: 'Future Casting',
+      time: 'When desire asks for form',
+      detail: 'Distill what you are calling in into a sigil, ritual sequence, and shareable vision board.',
+      href: '/visions',
+      cta: 'Open Vision Ritual',
+      tint: 'rgba(192,132,252,0.14)',
+      border: 'rgba(192,132,252,0.28)',
+      color: '#c084fc',
+    },
   ]
 
   return (
@@ -105,6 +115,32 @@ export default function Home() {
           style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.35)', color: 'var(--violet)' }}
         >
           Open Sleep Stories →
+        </Link>
+      </div>
+
+      <div
+        className="rounded-2xl p-4 space-y-3 transition-all hover:opacity-95"
+        style={{
+          background: 'radial-gradient(circle at 12% 0%, rgba(244,201,93,0.12), rgba(0,0,0,0) 36%), linear-gradient(160deg, rgba(22,10,34,0.97), rgba(10,10,24,0.92))',
+          border: '1px solid rgba(192,132,252,0.26)',
+          boxShadow: '0 0 36px rgba(192,132,252,0.08), inset 0 0 18px rgba(244,201,93,0.05)',
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm" style={{ fontFamily: 'monospace', color: '#f4c95d' }}>✦</span>
+          <div className="text-xs uppercase tracking-[0.16em]" style={{ color: '#f4c95d' }}>
+            New — Vision Ritual
+          </div>
+        </div>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
+          Speak the life you are summoning. Dreamscape condenses it into a sigil, a future-facing ritual, and an image board you can publish.
+        </p>
+        <Link
+          href="/visions"
+          className="inline-block rounded-xl px-4 py-2.5 text-xs font-medium transition-all hover:opacity-90"
+          style={{ background: 'rgba(192,132,252,0.18)', border: '1px solid rgba(192,132,252,0.34)', color: '#e9d5ff' }}
+        >
+          Enter Vision Ritual →
         </Link>
       </div>
 
@@ -253,7 +289,7 @@ export default function Home() {
         <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--muted)' }}>
           Quick Start
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <Link
             href={isEveningWindow ? '/journal' : '/log'}
             className="rounded-lg px-3 py-3 text-center transition-colors"
@@ -312,6 +348,16 @@ export default function Home() {
             <div className="text-lg" style={{ fontFamily: 'monospace' }}>&#x25C7;</div>
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
               Community
+            </div>
+          </Link>
+          <Link
+            href="/visions"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(192,132,252,0.08)', color: '#e9d5ff' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>✦</div>
+            <div className="text-xs mt-1" style={{ color: '#d8b4fe' }}>
+              Visions
             </div>
           </Link>
           <Link

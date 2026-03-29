@@ -3,10 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import SharedDreamCard from '@/components/SharedDreamCard'
-import type { SharedDreamWithCounts } from '@/lib/types'
+import SharedVisionCard from '@/components/SharedVisionCard'
+import type { SharedDreamWithCounts, SharedVisionWithCounts, VisionInterpretation } from '@/lib/types'
 import { apiFetch } from '@/lib/apiFetch'
 import { getSupabase } from '@/lib/supabaseClient'
 
+const MODES = ['Dreams', 'Visions'] as const
+type Mode = typeof MODES[number]
 const TABS = ['Recent', 'Following'] as const
 type Tab = typeof TABS[number]
 
@@ -75,11 +78,95 @@ function useFeed(tab: Tab, page: number, setPage: (p: number) => void) {
   return { dreams, loading, hasMore, error, handleReact }
 }
 
+function useVisionFeed(page: number) {
+  const [visions, setVisions] = useState<SharedVisionWithCounts[]>([])
+  const [loading, setLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await apiFetch(`/api/visions/feed?page=${page}`)
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Failed to load')
+        return
+      }
+      setVisions(page === 1 ? json.visions : (prev) => [...prev, ...json.visions])
+      setHasMore(json.hasMore)
+    } catch {
+      setError('Network error')
+    } finally {
+      setLoading(false)
+    }
+  }, [page])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const handleReact = async (visionId: string, emoji: string) => {
+    try {
+      const res = await apiFetch(`/api/visions/${visionId}/react`, {
+        method: 'POST',
+        body: JSON.stringify({ emoji }),
+      })
+      const json = await res.json()
+      if (!res.ok) return
+      setVisions((prev) => prev.map((vision) => {
+        if (vision.id !== visionId) return vision
+        const reactions = [...vision.reactions]
+        const idx = reactions.findIndex((item) => item.emoji === emoji)
+        if (json.reacted) {
+          if (idx >= 0) reactions[idx].count++
+          else reactions.push({ emoji, count: 1 })
+        } else if (idx >= 0) {
+          reactions[idx].count--
+          if (reactions[idx].count <= 0) reactions.splice(idx, 1)
+        }
+        const myReactions = json.reacted
+          ? [...vision.my_reactions, emoji]
+          : vision.my_reactions.filter((item) => item !== emoji)
+        return { ...vision, reactions, my_reactions: myReactions }
+      }))
+    } catch {}
+  }
+
+  const handleInterpret = async (visionId: string, text: string) => {
+    const res = await apiFetch(`/api/visions/${visionId}/interpret`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Failed to post note')
+
+    setVisions((prev) => prev.map((vision) => {
+      if (vision.id !== visionId) return vision
+      const interpretation = json.interpretation as VisionInterpretation
+      return {
+        ...vision,
+        interpretation_count: (vision.interpretation_count || 0) + 1,
+        preview_interpretations: [interpretation, ...(vision.preview_interpretations || [])].slice(0, 2),
+      }
+    }))
+  }
+
+  return { visions, loading, hasMore, error, handleReact, handleInterpret }
+}
+
 export default function SharedFeedPage() {
+  const [mode, setMode] = useState<Mode>('Dreams')
   const [tab, setTab] = useState<Tab>('Recent')
   const [page, setPage] = useState(1)
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const { dreams, loading, hasMore, error, handleReact } = useFeed(tab, page, setPage)
+  const { visions, loading: loadingVisions, hasMore: hasMoreVisions, error: visionError, handleReact: handleVisionReact, handleInterpret: handleVisionInterpret } = useVisionFeed(page)
+
+  useEffect(() => {
+    setPage(1)
+  }, [mode])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -111,7 +198,7 @@ export default function SharedFeedPage() {
           ◇ Community Dreams
         </h1>
         <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>
-          Sign in to browse shared dreams and connect with other dreamers.
+          Sign in to browse shared dreams and future rituals from other dreamers.
         </p>
         <Link
           href="/account"
@@ -128,10 +215,10 @@ export default function SharedFeedPage() {
     <div className="max-w-xl mx-auto px-4 pt-8 pb-4 space-y-4">
       <div>
         <h1 className="text-2xl font-medium" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
-          ◇ Community Dreams
+          ◇ Community Rituals
         </h1>
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
-          Shared dreams from dreamers like you
+          Shared dreams and vision rituals from dreamers like you
         </p>
       </div>
 
@@ -139,33 +226,55 @@ export default function SharedFeedPage() {
         className="flex rounded-xl p-0.5 gap-0.5"
         style={{ background: 'rgba(15,15,26,0.8)', border: '1px solid var(--border)' }}
       >
-        {TABS.map(t => (
+        {MODES.map(m => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={m}
+            onClick={() => setMode(m)}
             className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
             style={{
-              background: tab === t ? 'rgba(167,139,250,0.15)' : 'transparent',
-              color: tab === t ? 'var(--violet)' : 'var(--muted)',
-              border: tab === t ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent',
+              background: mode === m ? 'rgba(244,201,93,0.14)' : 'transparent',
+              color: mode === m ? '#f4c95d' : 'var(--muted)',
+              border: mode === m ? '1px solid rgba(244,201,93,0.24)' : '1px solid transparent',
             }}
           >
-            {t}
+            {m}
           </button>
         ))}
       </div>
 
-      {error && (
+      {mode === 'Dreams' && (
+        <div
+          className="flex rounded-xl p-0.5 gap-0.5"
+          style={{ background: 'rgba(15,15,26,0.8)', border: '1px solid var(--border)' }}
+        >
+          {TABS.map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
+              style={{
+                background: tab === t ? 'rgba(167,139,250,0.15)' : 'transparent',
+                color: tab === t ? 'var(--violet)' : 'var(--muted)',
+                border: tab === t ? '1px solid rgba(167,139,250,0.3)' : '1px solid transparent',
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(mode === 'Dreams' ? error : visionError) && (
         <div
           className="rounded-xl p-3 text-xs"
           style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
         >
-          {error}
+          {mode === 'Dreams' ? error : visionError}
         </div>
       )}
 
       <div className="space-y-3">
-        {dreams.length === 0 && !loading && (
+        {mode === 'Dreams' && dreams.length === 0 && !loading && (
           <div
             className="rounded-xl p-6 text-center text-sm"
             style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', color: 'var(--muted)' }}
@@ -176,7 +285,16 @@ export default function SharedFeedPage() {
           </div>
         )}
 
-        {dreams.map(dream => (
+        {mode === 'Visions' && visions.length === 0 && !loadingVisions && (
+          <div
+            className="rounded-xl p-6 text-center text-sm"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+          >
+            No shared visions yet. Publish one from the Vision Ritual lane.
+          </div>
+        )}
+
+        {mode === 'Dreams' && dreams.map(dream => (
           <SharedDreamCard
             key={dream.id}
             dream={dream}
@@ -184,7 +302,17 @@ export default function SharedFeedPage() {
           />
         ))}
 
-        {loading && (
+        {mode === 'Visions' && visions.map(vision => (
+          <SharedVisionCard
+            key={vision.id}
+            vision={vision}
+            signedIn={signedIn === true}
+            onReact={(emoji) => handleVisionReact(vision.id, emoji)}
+            onInterpret={(text) => handleVisionInterpret(vision.id, text)}
+          />
+        ))}
+
+        {(mode === 'Dreams' ? loading : loadingVisions) && (
           <div className="flex justify-center py-4">
             <div className="flex gap-1">
               {[0, 1, 2].map(i => (
@@ -198,7 +326,7 @@ export default function SharedFeedPage() {
           </div>
         )}
 
-        {hasMore && !loading && (
+        {(mode === 'Dreams' ? hasMore && !loading : hasMoreVisions && !loadingVisions) && (
           <button
             onClick={() => setPage(p => p + 1)}
             className="w-full py-3 rounded-xl text-sm"
