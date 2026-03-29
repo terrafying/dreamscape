@@ -470,9 +470,9 @@ describe('getCurrentSky extended fields', () => {
 // ─── buildAstroContext (extended) ─────────────────────────────────────────────
 
 describe('buildAstroContext extended fields', () => {
-  it('includes lunar mansion name', () => {
+  it('does not include lunar mansion language', () => {
     const ctx = buildAstroContext('2026-03-16')
-    expect(ctx).toContain('lunar mansion')
+    expect(ctx).not.toContain('lunar mansion')
   })
 
   it('includes Chiron sign when present', () => {

@@ -336,7 +336,6 @@ export function buildAstroContext(dateStr: string, birthData?: BirthData | null)
     ctx += `. Retrograde planets: ${sky.retrogrades.join(', ')}`
   }
   ctx += `\nDominant transit: ${sky.dominantTransit}`
-  ctx += `\nMoon in ${sky.lunarMansion!.name} lunar mansion — ${sky.lunarMansion!.meaning}`
 
   if (sky.aspects!.length > 0) {
     const top = sky.aspects!.slice(0, 5)
@@ -634,5 +633,4 @@ export function getOuterPlanetTransits(dateStr: string): { planet: string; sign:
     return { planet, sign, description: desc }
   })
 }
-
 

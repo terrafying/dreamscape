@@ -6,6 +6,8 @@ import { apiFetch } from '@/lib/apiFetch'
 import { getSupabase } from '@/lib/supabaseClient'
 import ZeitgeistDashboard from '@/components/ZeitgeistDashboard'
 import { MatchesFeed } from '@/components/MatchesFeed'
+import SharedVisionCard from '@/components/SharedVisionCard'
+import type { SharedVisionWithCounts, VisionInterpretation } from '@/lib/types'
 
 type CircleListItem = {
   id: string
@@ -29,6 +31,83 @@ function relativeTime(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function useVisionFeed(enabled: boolean) {
+  const [visions, setVisions] = useState<SharedVisionWithCounts[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!enabled || visions.length > 0) return
+
+    const load = async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const res = await apiFetch('/api/visions/feed?page=1')
+        const json = await res.json()
+        if (!res.ok) {
+          setError(json.error ?? 'Failed to load visions')
+          return
+        }
+        setVisions(json.visions ?? [])
+      } catch {
+        setError('Network error')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
+  }, [enabled, visions.length])
+
+  const handleReact = async (visionId: string, emoji: string) => {
+    const res = await apiFetch(`/api/visions/${visionId}/react`, {
+      method: 'POST',
+      body: JSON.stringify({ emoji }),
+    })
+    const json = await res.json()
+    if (!res.ok) return
+
+    setVisions((prev) => prev.map((vision) => {
+      if (vision.id !== visionId) return vision
+      const reactions = [...vision.reactions]
+      const index = reactions.findIndex((item) => item.emoji === emoji)
+      if (json.reacted) {
+        if (index >= 0) reactions[index].count++
+        else reactions.push({ emoji, count: 1 })
+      } else if (index >= 0) {
+        reactions[index].count--
+        if (reactions[index].count <= 0) reactions.splice(index, 1)
+      }
+      const myReactions = json.reacted
+        ? [...vision.my_reactions, emoji]
+        : vision.my_reactions.filter((item) => item !== emoji)
+      return { ...vision, reactions, my_reactions: myReactions }
+    }))
+  }
+
+  const handleInterpret = async (visionId: string, text: string) => {
+    const res = await apiFetch(`/api/visions/${visionId}/interpret`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Failed to post note')
+
+    setVisions((prev) => prev.map((vision) => {
+      if (vision.id !== visionId) return vision
+      const interpretation = json.interpretation as VisionInterpretation
+      return {
+        ...vision,
+        interpretation_count: vision.interpretation_count + 1,
+        preview_interpretations: [interpretation, ...(vision.preview_interpretations || [])].slice(0, 2),
+      }
+    }))
+  }
+
+  return { visions, loading, error, handleReact, handleInterpret }
+}
+
 export default function CirclesPage() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,7 +117,8 @@ export default function CirclesPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [circles, setCircles] = useState<CircleListItem[]>([])
-  const [activeTab, setActiveTab] = useState<'circles' | 'zeitgeist' | 'matches'>('circles')
+  const [activeTab, setActiveTab] = useState<'circles' | 'visions' | 'zeitgeist' | 'matches'>('circles')
+  const visionFeed = useVisionFeed(activeTab === 'visions' && signedIn === true)
 
   const loadCircles = async () => {
     setLoading(true)
@@ -133,7 +213,7 @@ export default function CirclesPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>◇ Community</h1>
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>Dream circles & collective zeitgeist</p>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>Dream circles, shared visions, synchronicities, and collective zeitgeist</p>
         </div>
       </div>
 
@@ -160,6 +240,17 @@ export default function CirclesPage() {
           style={activeTab === 'matches' ? { borderColor: 'var(--violet)' } : {}}
         >
           Synchronicities
+        </button>
+        <button
+          onClick={() => setActiveTab('visions')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'visions'
+              ? 'border-b-2 text-violet-400'
+              : 'text-slate-400 hover:text-slate-300'
+          }`}
+          style={activeTab === 'visions' ? { borderColor: 'var(--violet)' } : {}}
+        >
+          Visions
         </button>
         <button
           onClick={() => setActiveTab('zeitgeist')}
@@ -296,6 +387,61 @@ export default function CirclesPage() {
       {/* Synchronicities Tab */}
       {activeTab === 'matches' && (
         <MatchesFeed compact={false} />
+      )}
+
+      {activeTab === 'visions' && (
+        <div className="space-y-4">
+          <div
+            className="rounded-2xl p-4 space-y-2"
+            style={{ background: 'rgba(15,15,26,0.6)', border: '1px solid rgba(192,132,252,0.16)' }}
+          >
+            <div className="text-xs uppercase tracking-[0.16em]" style={{ color: '#d8b4fe' }}>
+              Vision Rituals
+            </div>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              Browse future-facing rituals from the community, leave notes, and open the full rite when something resonates.
+            </p>
+            <Link
+              href="/visions"
+              className="inline-block px-3 py-2 rounded-xl text-xs font-medium"
+              style={{ background: 'rgba(244,201,93,0.12)', border: '1px solid rgba(244,201,93,0.2)', color: '#f4c95d' }}
+            >
+              Create a Vision Ritual
+            </Link>
+          </div>
+
+          {visionFeed.error && (
+            <div className="rounded-xl p-3 text-xs" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}>
+              {visionFeed.error}
+            </div>
+          )}
+
+          {visionFeed.loading && (
+            <div className="flex justify-center py-4">
+              <div className="flex gap-1">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--violet)', animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!visionFeed.loading && visionFeed.visions.length === 0 && !visionFeed.error && (
+            <div className="rounded-2xl p-6 text-center text-sm" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+              No shared visions yet. Publish one from the Vision Ritual lane.
+            </div>
+          )}
+
+          {visionFeed.visions.map((vision) => (
+            <SharedVisionCard
+              key={vision.id}
+              vision={vision}
+              signedIn={signedIn === true}
+              onReact={(emoji) => visionFeed.handleReact(vision.id, emoji)}
+              onInterpret={(text) => visionFeed.handleInterpret(vision.id, text)}
+            />
+          ))}
+        </div>
       )}
 
       {/* Zeitgeist Tab */}

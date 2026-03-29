@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import BinauralPlayer from '@/components/BinauralPlayer'
 import BreathworkPlayer from '@/components/BreathworkPlayer'
 import { getDreams } from '@/lib/store'
@@ -17,6 +17,7 @@ interface TTSState {
   activeVoice: string
   speaking: boolean
   paused: boolean
+  warming: boolean
   error: string | null
 }
 
@@ -26,10 +27,67 @@ function useTTS() {
     activeVoice: '',
     speaking: false,
     paused: false,
+    warming: false,
     error: null,
   })
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioSrcRef = useRef<string | null>(null)
+  const blobCacheRef = useRef<Map<string, Blob>>(new Map())
+  const inflightRef = useRef<Map<string, Promise<Blob | null>>>(new Map())
+
+  const clearCurrentAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.onended = null
+      audioRef.current.onerror = null
+      audioRef.current = null
+    }
+    if (audioSrcRef.current) {
+      URL.revokeObjectURL(audioSrcRef.current)
+      audioSrcRef.current = null
+    }
+  }, [])
+
+  const getCacheKey = (text: string, voiceId: string) => `${voiceId}::${text}`
+
+  const fetchAudioBlob = useCallback(async (text: string, voiceId: string, warm = false): Promise<Blob | null> => {
+    const cacheKey = getCacheKey(text, voiceId)
+    const cached = blobCacheRef.current.get(cacheKey)
+    if (cached) return cached
+
+    const inflight = inflightRef.current.get(cacheKey)
+    if (inflight) return inflight
+
+    if (warm) {
+      setState((s) => ({ ...s, warming: true }))
+    }
+
+    const request = (async () => {
+      try {
+        const res = await apiFetch('/api/tts/stream', {
+          method: 'POST',
+          body: JSON.stringify({ text, voiceId }),
+        })
+
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error((json as { error?: string }).error || 'TTS failed')
+        }
+
+        const blob = await res.blob()
+        blobCacheRef.current.set(cacheKey, blob)
+        return blob
+      } finally {
+        inflightRef.current.delete(cacheKey)
+        if (warm) {
+          setState((s) => ({ ...s, warming: false }))
+        }
+      }
+    })()
+
+    inflightRef.current.set(cacheKey, request)
+    return request
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -51,33 +109,24 @@ function useTTS() {
       .catch(() => {})
   }, [])
 
-  const speak = async (text: string) => {
+  const speak = useCallback(async (text: string) => {
     if (!text || typeof window === 'undefined') return
+    if (!state.activeVoice) {
+      setState((s) => ({ ...s, error: 'Choose a voice first to read aloud.' }))
+      return
+    }
 
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.onended = null
-      audioRef.current.onerror = null
-      audioRef.current = null
-    }
-    if (audioSrcRef.current) {
-      URL.revokeObjectURL(audioSrcRef.current)
-      audioSrcRef.current = null
-    }
+    clearCurrentAudio()
 
     setState((s) => ({ ...s, speaking: true, paused: false, error: null }))
 
     try {
-      const res = await apiFetch('/api/tts/stream', {
-        method: 'POST',
-        body: JSON.stringify({ text, voiceId: state.activeVoice }),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        setState((s) => ({ ...s, speaking: false, error: (json as { error?: string }).error || 'TTS failed' }))
+      const blob = await fetchAudioBlob(text, state.activeVoice)
+      if (!blob) {
+        setState((s) => ({ ...s, speaking: false, error: 'TTS failed' }))
         return
       }
-      const blob = await res.blob()
+
       const url = URL.createObjectURL(blob)
       audioSrcRef.current = url
       const audio = new Audio(url)
@@ -95,23 +144,23 @@ function useTTS() {
     } catch (err) {
       setState((s) => ({ ...s, speaking: false, error: err instanceof Error ? err.message : 'TTS failed' }))
     }
-  }
+  }, [clearCurrentAudio, fetchAudioBlob, state.activeVoice])
 
-  const stop = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.onended = null
-      audioRef.current.onerror = null
-      audioRef.current = null
+  const prefetch = useCallback(async (text: string) => {
+    if (!text || typeof window === 'undefined' || !state.activeVoice) return
+    try {
+      await fetchAudioBlob(text, state.activeVoice, true)
+    } catch {
+      // Warm cache quietly; playback path handles user-facing errors.
     }
-    if (audioSrcRef.current) {
-      URL.revokeObjectURL(audioSrcRef.current)
-      audioSrcRef.current = null
-    }
+  }, [fetchAudioBlob, state.activeVoice])
+
+  const stop = useCallback(() => {
+    clearCurrentAudio()
     setState((s) => ({ ...s, speaking: false, paused: false }))
-  }
+  }, [clearCurrentAudio])
 
-  const togglePause = () => {
+  const togglePause = useCallback(() => {
     if (!audioRef.current) return
     if (state.paused) {
       audioRef.current.play()
@@ -120,30 +169,21 @@ function useTTS() {
       audioRef.current.pause()
       setState((s) => ({ ...s, paused: true }))
     }
-  }
+  }, [state.paused])
 
-  const setVoice = (id: string) => {
+  const setVoice = useCallback((id: string) => {
     if (audioRef.current) { stop() }
     setState((s) => ({ ...s, activeVoice: id }))
     localStorage.setItem('dreamscape_elevenlabs_voice', id)
-  }
+  }, [stop])
 
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.onended = null
-        audioRef.current.onerror = null
-        audioRef.current = null
-      }
-      if (audioSrcRef.current) {
-        URL.revokeObjectURL(audioSrcRef.current)
-        audioSrcRef.current = null
-      }
+      clearCurrentAudio()
     }
   }, [])
 
-  return { ...state, speak, stop, togglePause, setVoice }
+  return { ...state, speak, stop, togglePause, setVoice, prefetch }
 }
 
 const TABS = [
@@ -269,7 +309,8 @@ function StoryTab() {
   const [subtitle, setSubtitle] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const { speaking, paused, activeVoice, voices, speak, stop, togglePause, setVoice } = useTTS()
+  const { speaking, paused, warming, activeVoice, voices, speak, stop, togglePause, setVoice, prefetch } = useTTS()
+  const fullText = chapters.map((c) => c.body).join(' ')
 
   useEffect(() => { getDreams().then(setDreams) }, [])
 
@@ -297,6 +338,14 @@ function StoryTab() {
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [])
+
+  useEffect(() => {
+    if (!fullText || !activeVoice || speaking) return
+    const timer = window.setTimeout(() => {
+      void prefetch(fullText)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [activeVoice, fullText, prefetch, speaking])
 
   const generate = async () => {
     if (loading) { abortRef.current?.abort(); return }
@@ -474,7 +523,6 @@ function StoryTab() {
   }
 
   const hasDreams = dreams.length > 0
-  const fullText = chapters.map(c => c.body).join(' ')
 
   return (
     <div className="space-y-5">
@@ -650,6 +698,11 @@ function StoryTab() {
             {voices.length === 0 && (
               <p className="text-xs text-center" style={{ color: 'var(--muted)' }}>
                 Configure ELEVENLABS_API_KEY to enable voices
+              </p>
+            )}
+            {warming && !speaking && (
+              <p className="text-xs text-center" style={{ color: 'rgba(167,139,250,0.7)' }}>
+                Preloading audio so first playback starts faster...
               </p>
             )}
           </div>

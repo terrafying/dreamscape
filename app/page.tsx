@@ -203,11 +203,6 @@ export default function Home() {
         <div className="space-y-1.5 text-sm">
           <p style={{ color: 'var(--text)' }}>
             {isEveningWindow ? 'Tonight' : 'Today'}: {currentSky.moonPhaseEmoji} {currentSky.moonPhase} in {currentSky.moonSign}
-            {currentSky.lunarMansion && (
-              <span style={{ color: 'var(--violet)' }}>
-                {' · '}{currentSky.lunarMansion.symbol} {currentSky.lunarMansion.name}
-              </span>
-            )}
           </p>
           <p style={{ color: 'var(--muted)', fontSize: '12px' }}>
             ☀ Sun in {currentSky.sunSign}

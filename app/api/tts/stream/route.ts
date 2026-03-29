@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 
 interface TTSOptions {
   text: string
@@ -27,6 +28,18 @@ export async function POST(req: Request) {
   const { text, voiceId, model = 'eleven_multilingual_v2', stability = 0.5, similarityBoost = 0.75, speed = 0.85 } = await req.json() as TTSOptions
   if (!text || !voiceId) {
     return NextResponse.json({ ok: false, error: 'text and voiceId required' }, { status: 400 })
+  }
+
+  const cacheKey = `tts_${generateCacheKey({ text, voiceId, model, stability, similarityBoost, speed })}`
+  const cached = await getCached<string>(cacheKey)
+  if (cached) {
+    return new Response(Buffer.from(cached, 'base64'), {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=604800, immutable',
+        'X-Dreamscape-TTS-Cache': 'HIT',
+      },
+    })
   }
 
   const body = JSON.stringify({
@@ -60,28 +73,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: `ElevenLabs error ${resp.status}: ${err}` }, { status: 502 })
     }
 
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        if (!resp.body) { controller.close(); return }
-        const reader = resp.body.getReader()
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            controller.enqueue(value)
-          }
-        } finally {
-          controller.close()
-        }
-      },
-    })
+    const audioBuffer = Buffer.from(await resp.arrayBuffer())
+    await setCache(cacheKey, audioBuffer.toString('base64'))
 
-    return new Response(stream, {
+    return new Response(audioBuffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'no-cache',
-        'X-Accel-Buffering': 'no',
+        'Cache-Control': 'public, max-age=604800, immutable',
+        'X-Dreamscape-TTS-Cache': 'MISS',
       },
     })
   } catch (err) {

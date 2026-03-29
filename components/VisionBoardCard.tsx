@@ -1,6 +1,7 @@
 'use client'
 
 import type { VisionExtraction } from '@/lib/types'
+import VisionSigil from '@/components/VisionSigil'
 
 export default function VisionBoardCard({
   extraction,
@@ -41,7 +42,26 @@ export default function VisionBoardCard({
       </div>
 
       {imageUrl ? (
-        <img src={imageUrl} alt={extraction.title} className="w-full rounded-2xl object-cover" style={{ maxHeight: 420, border: '1px solid rgba(255,255,255,0.08)' }} />
+        <div className="relative rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+          <img src={imageUrl} alt={extraction.title} className="w-full object-cover" style={{ maxHeight: 420 }} />
+          <div
+            className="absolute top-4 right-4 rounded-[1.25rem] p-2"
+            style={{ background: 'rgba(6, 8, 16, 0.58)', border: '1px solid rgba(244,201,93,0.22)', backdropFilter: 'blur(8px)' }}
+          >
+            <VisionSigil recipe={extraction.sigil_recipe} size={104} className="block" />
+          </div>
+          <div
+            className="absolute inset-x-0 bottom-0 p-4"
+            style={{ background: 'linear-gradient(180deg, rgba(7,8,16,0), rgba(7,8,16,0.78))' }}
+          >
+            <div className="text-[11px] uppercase tracking-[0.16em]" style={{ color: 'rgba(244,201,93,0.8)' }}>
+              AI Board + Deterministic Sigil Seal
+            </div>
+            <div className="mt-1 text-sm" style={{ color: 'rgba(248,250,252,0.94)', fontFamily: 'Georgia, serif' }}>
+              {extraction.title}
+            </div>
+          </div>
+        </div>
       ) : (
         <div
           className="rounded-2xl p-6 space-y-4"
@@ -53,6 +73,11 @@ export default function VisionBoardCard({
         >
           <div className="text-sm" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
             {extraction.distilled_intention}
+          </div>
+          <div className="flex justify-center">
+            <div className="rounded-[1.25rem] p-2" style={{ background: 'rgba(7,9,16,0.42)', border: '1px solid rgba(244,201,93,0.18)' }}>
+              <VisionSigil recipe={extraction.sigil_recipe} size={120} className="block" />
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {extraction.visual_motifs.map((motif) => (
