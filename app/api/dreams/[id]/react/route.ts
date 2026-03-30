@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/supabaseServer'
+import { getUserFromRequest, getBearerToken, getAuthenticatedClient } from '@/lib/supabaseServer'
 
 type ReactionRow = { id: string }
 
@@ -18,7 +18,10 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid reaction' }, { status: 400 })
   }
 
-  const supabase = (await import('@/lib/supabaseClient')).getSupabase() as any
+  const token = getBearerToken(request)
+  if (!token) return NextResponse.json({ error: 'Auth token missing' }, { status: 401 })
+
+  const supabase = getAuthenticatedClient(token)
   if (!supabase) return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
 
   const existingResult = await supabase

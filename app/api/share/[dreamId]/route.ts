@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/supabaseServer'
+import { getUserFromRequest, getBearerToken, getAuthenticatedClient } from '@/lib/supabaseServer'
 
 type ProfileRow = { user_id: string; handle: string }
 type SharedDreamRow = { id: string; user_id: string; dream_id: string; dream_data: unknown; symbols: string[]; themes: string[]; emotions: string[]; share_handle: string; created_at: string }
@@ -13,7 +13,10 @@ export async function POST(
     return NextResponse.json({ error: 'Sign in to share dreams' }, { status: 401 })
   }
 
-  const supabase = (await import('@/lib/supabaseClient')).getSupabase() as any
+  const token = getBearerToken(request)
+  if (!token) return NextResponse.json({ error: 'Auth token missing' }, { status: 401 })
+
+  const supabase = getAuthenticatedClient(token)
   if (!supabase) return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
 
   const profileResult = await supabase

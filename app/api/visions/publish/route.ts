@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/supabaseServer'
+import { getUserFromRequest, getBearerToken, getAuthenticatedClient } from '@/lib/supabaseServer'
 import type { VisionLog } from '@/lib/types'
 
 type ProfileRow = { handle: string }
@@ -8,7 +8,10 @@ export async function POST(request: Request) {
   const user = await getUserFromRequest(request)
   if (!user) return NextResponse.json({ error: 'Sign in to publish visions' }, { status: 401 })
 
-  const supabase = (await import('@/lib/supabaseClient')).getSupabase() as any
+  const token = getBearerToken(request)
+  if (!token) return NextResponse.json({ error: 'Auth token missing' }, { status: 401 })
+
+  const supabase = getAuthenticatedClient(token)
   if (!supabase) return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
 
   const { vision } = await request.json() as { vision: VisionLog }
