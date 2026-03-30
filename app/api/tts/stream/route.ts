@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
+import { generateBlobCacheKey, getCachedBlob, setCachedBlob } from '@/lib/blob-cache'
 import { generateTTSSmart } from '@/lib/tts-generation'
 
 interface TTSOptions {
@@ -26,14 +27,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'text and voiceId required' }, { status: 400 })
   }
 
-  const cacheKey = `tts_${generateCacheKey({ text, voiceId, model, stability, similarityBoost, speed })}`
-  const cached = await getCached<string>(cacheKey)
-  if (cached) {
-    return new Response(Buffer.from(cached, 'base64'), {
+  const blobCacheKey = generateBlobCacheKey({ text, voiceId, model, stability, similarityBoost, speed })
+  
+  // Try blob cache first (persistent across deploys)
+  const cachedBlob = await getCachedBlob(blobCacheKey)
+  if (cachedBlob) {
+    return new Response(new Uint8Array(cachedBlob), {
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=604800, immutable',
-        'X-Dreamscape-TTS-Cache': 'HIT',
+        'Cache-Control': 'public, max-age=2592000, immutable',
+        'X-Dreamscape-TTS-Cache': 'HIT-BLOB',
       },
     })
   }
@@ -42,13 +45,13 @@ export async function POST(req: Request) {
     // Use smart fallback: ElevenLabs first, then Replicate
     const result = await generateTTSSmart(text, voiceId, model, stability, similarityBoost, speed)
     
-    // Cache the audio
-    await setCache(cacheKey, result.audioBuffer.toString('base64'))
+    // Cache the audio in blob storage (persistent, 30-day TTL)
+    await setCachedBlob(blobCacheKey, result.audioBuffer)
 
-    return new Response(Buffer.from(result.audioBuffer), {
+    return new Response(new Uint8Array(result.audioBuffer), {
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=604800, immutable',
+        'Cache-Control': 'public, max-age=2592000, immutable',
         'X-Dreamscape-TTS-Cache': 'MISS',
         'X-Dreamscape-TTS-Provider': result.provider,
         'X-Dreamscape-TTS-Model': result.model,
