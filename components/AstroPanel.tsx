@@ -95,7 +95,7 @@ function CelestialGuidance({
         <p
           key={i}
           className="text-xs leading-relaxed"
-          style={{ color: 'rgba(226, 232, 240, 0.55)', fontFamily: 'Georgia, serif' }}
+          style={{ color: 'var(--secondary)', fontFamily: 'Georgia, serif' }}
         >
           {line}
         </p>
@@ -142,33 +142,33 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
 
       {/* Current Sky */}
       <div className="grid grid-cols-2 gap-2">
-        {moonPhase && (
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{moonEmoji}</span>
-            <div>
-              <div className="text-xs" style={{ color: 'var(--muted)' }}>Moon</div>
-              <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                {moonPhase}
-                {moonSign && (
-                  <span style={{ color: 'var(--violet)' }}>
-                    {' '}in {SIGN_SYMBOLS[moonSign] || ''} {moonSign}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        {currentSky?.sunSign && (
-          <div className="flex items-center gap-2">
-            <span className="text-lg">☀️</span>
-            <div>
-              <div className="text-xs" style={{ color: 'var(--muted)' }}>Sun</div>
-              <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                {SIGN_SYMBOLS[currentSky.sunSign] || ''} {currentSky.sunSign}
-              </div>
-            </div>
-          </div>
-        )}
+         {moonPhase && (
+           <div className="flex items-center gap-2">
+             <span className="text-lg">{moonEmoji}</span>
+             <div>
+               <div className="text-xs" style={{ color: 'var(--tertiary)' }}>Moon</div>
+               <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                 {moonPhase}
+                 {moonSign && (
+                   <span style={{ color: 'var(--violet)' }}>
+                     {' '}in {SIGN_SYMBOLS[moonSign] || ''} {moonSign}
+                   </span>
+                 )}
+               </div>
+             </div>
+           </div>
+         )}
+         {currentSky?.sunSign && (
+           <div className="flex items-center gap-2">
+             <span className="text-lg">☀️</span>
+             <div>
+               <div className="text-xs" style={{ color: 'var(--tertiary)' }}>Sun</div>
+               <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                 {SIGN_SYMBOLS[currentSky.sunSign] || ''} {currentSky.sunSign}
+               </div>
+             </div>
+           </div>
+         )}
       </div>
 
 
@@ -201,31 +201,31 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
           <div className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--indigo)' }}>
             Natal Big 3
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div className="text-lg">☀️</div>
-              <div className="text-xs" style={{ color: 'var(--muted)' }}>Sun</div>
-              <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>
-                {SIGN_SYMBOLS[natal.sunSign] || ''} {natal.sunSign}
-              </div>
-            </div>
-            <div>
-              <div className="text-lg">🌙</div>
-              <div className="text-xs" style={{ color: 'var(--muted)' }}>Moon</div>
-              <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>
-                {SIGN_SYMBOLS[natal.moonSign] || ''} {natal.moonSign}
-              </div>
-            </div>
-            <div>
-              <div className="text-lg">↑</div>
-              <div className="text-xs" style={{ color: 'var(--muted)' }}>Rising</div>
-              <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>
-                {natal.risingSign
-                  ? `${SIGN_SYMBOLS[natal.risingSign] || ''} ${natal.risingSign}`
-                  : <span style={{ color: 'var(--muted)' }}>–</span>}
-              </div>
-            </div>
-          </div>
+           <div className="grid grid-cols-3 gap-2 text-center">
+             <div>
+               <div className="text-lg">☀️</div>
+               <div className="text-xs" style={{ color: 'var(--tertiary)' }}>Sun</div>
+               <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>
+                 {SIGN_SYMBOLS[natal.sunSign] || ''} {natal.sunSign}
+               </div>
+             </div>
+             <div>
+               <div className="text-lg">🌙</div>
+               <div className="text-xs" style={{ color: 'var(--tertiary)' }}>Moon</div>
+               <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>
+                 {SIGN_SYMBOLS[natal.moonSign] || ''} {natal.moonSign}
+               </div>
+             </div>
+             <div>
+               <div className="text-lg">↑</div>
+               <div className="text-xs" style={{ color: 'var(--tertiary)' }}>Rising</div>
+               <div className="text-xs font-medium" style={{ color: 'var(--text)' }}>
+                 {natal.risingSign
+                   ? `${SIGN_SYMBOLS[natal.risingSign] || ''} ${natal.risingSign}`
+                   : <span style={{ color: 'var(--tertiary)' }}>–</span>}
+               </div>
+             </div>
+           </div>
         </div>
       )}
 
@@ -248,9 +248,9 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
                     {a.planet1} <span style={{ color: 'var(--gold)' }}>{a.aspect}</span> {a.planet2}
                     <span className="ml-2" style={{ color: 'var(--muted)' }}>({a.orb}°)</span>
                   </div>
-                  <div className="text-xs leading-relaxed mt-0.5" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}>
-                    {a.meaning}
-                  </div>
+                   <div className="text-xs leading-relaxed mt-0.5" style={{ color: 'var(--secondary)', fontFamily: 'Georgia, serif' }}>
+                     {a.meaning}
+                   </div>
                 </div>
               ))}
             </div>
@@ -259,25 +259,25 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
       )}
 
       {/* Outer Planet Transits */}
-      {outerPlanets.length > 0 && !compact && (
-        <div className="space-y-1">
-          <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-            Outer Planets
-          </div>
-          <div className="space-y-1">
-            {outerPlanets.map((op) => (
-              <div key={op.planet} className="flex items-start gap-2">
-                <span className="text-xs mt-0.5" style={{ color: 'var(--muted)', minWidth: 60 }}>
-                  {op.planet}
-                </span>
-                <span className="text-xs" style={{ color: 'var(--text)' }}>
-                  {SIGN_SYMBOLS[op.sign] || ''} {op.sign}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+       {outerPlanets.length > 0 && !compact && (
+         <div className="space-y-1">
+           <div className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--tertiary)' }}>
+             Outer Planets
+           </div>
+           <div className="space-y-1">
+             {outerPlanets.map((op) => (
+               <div key={op.planet} className="flex items-start gap-2">
+                 <span className="text-xs mt-0.5" style={{ color: 'var(--tertiary)', minWidth: 60 }}>
+                   {op.planet}
+                 </span>
+                 <span className="text-xs" style={{ color: 'var(--text)' }}>
+                   {SIGN_SYMBOLS[op.sign] || ''} {op.sign}
+                 </span>
+               </div>
+             ))}
+           </div>
+         </div>
+       )}
 
       {/* Cosmic Themes */}
       {cosmicThemes.length > 0 && !compact && (
@@ -299,14 +299,14 @@ export default function AstroPanel({ extraction, natal, currentSky, compact }: A
       )}
 
       {/* Transit Note */}
-      {transitNote && (
-        <p
-          className="text-sm leading-relaxed italic"
-          style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}
-        >
-          {transitNote}
-        </p>
-      )}
+       {transitNote && (
+         <p
+           className="text-sm leading-relaxed italic"
+           style={{ color: 'var(--secondary)', fontFamily: 'Georgia, serif' }}
+         >
+           {transitNote}
+         </p>
+       )}
 
       {/* Natal Aspects */}
       {natalAspects.length > 0 && (

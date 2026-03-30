@@ -169,7 +169,7 @@ export default function VisionRitualPage() {
         <h1 className="text-2xl leading-tight" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
           Distill a future desire into a sigil and living image.
         </h1>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--secondary)' }}>
           Speak in scenes, feelings, places, and symbols. We will condense the desire, design a ceremonial sigil, and shape a vision board you can keep or share.
         </p>
       </div>

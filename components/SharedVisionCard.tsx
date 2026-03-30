@@ -114,7 +114,7 @@ export default function SharedVisionCard({
               <Link href={`/vision/${vision.id}`} className="block text-xl leading-tight hover:underline" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
                 {vision.title}
               </Link>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--secondary)' }}>
                 {vision.distilled_intention}
               </p>
             </div>

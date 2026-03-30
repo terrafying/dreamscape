@@ -156,7 +156,7 @@ export default function VisionDetailClient({ visionId }: { visionId: string }) {
 
       <div className="space-y-2">
         <h1 className="text-2xl leading-tight" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>{vision.title}</h1>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{vision.distilled_intention}</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--secondary)' }}>{vision.distilled_intention}</p>
       </div>
 
       <SigilWorkbench extraction={extraction} />

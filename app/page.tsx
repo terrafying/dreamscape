@@ -87,7 +87,7 @@ export default function Home() {
         <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>
           This space holds your threshold moments: the final minutes before sleep and the first moments after waking.
         </p>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--secondary)' }}>
           Keep it simple, warm, and honest. Return nightly and each morning to trace your inner weather.
         </p>
       </div>
@@ -168,7 +168,7 @@ export default function Home() {
                     {item.step}
                   </div>
                   <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>{item.time}</div>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--secondary)' }}>
                     {item.detail}
                   </p>
                   <p className="text-xs font-medium" style={{ color: item.color }}>
@@ -204,7 +204,7 @@ export default function Home() {
           <p style={{ color: 'var(--text)' }}>
             {isEveningWindow ? 'Tonight' : 'Today'}: {currentSky.moonPhaseEmoji} {currentSky.moonPhase} in {currentSky.moonSign}
           </p>
-          <p style={{ color: 'var(--muted)', fontSize: '12px' }}>
+          <p style={{ color: 'var(--secondary)', fontSize: '12px' }}>
             ☀ Sun in {currentSky.sunSign}
             {currentSky.moonHouse && (
               <span style={{ color: 'var(--indigo)' }}> · ☽ House {currentSky.moonHouse}</span>

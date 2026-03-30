@@ -65,7 +65,7 @@ export default function RecommendationCards({ recommendations }: RecommendationC
                   {rec.timing}
                 </span>
               </div>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--secondary)' }}>
                 {rec.why}
               </p>
             </div>

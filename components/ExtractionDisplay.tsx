@@ -108,7 +108,7 @@ export default function ExtractionDisplay({ extraction, natal }: ExtractionDispl
                       {sym.category}
                     </span>
                   </div>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>{sym.meaning}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--secondary)' }}>{sym.meaning}</p>
                 </div>
                 <div className="shrink-0 text-right">
                   <SalienceBar value={sym.salience} />
@@ -254,7 +254,7 @@ export default function ExtractionDisplay({ extraction, natal }: ExtractionDispl
               <div className="text-base font-medium mb-1" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
                 {extraction.goetic_resonance.spirit}
               </div>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--secondary)' }}>
                 {extraction.goetic_resonance.reason}
               </p>
             </div>
