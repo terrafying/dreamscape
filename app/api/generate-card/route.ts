@@ -1,7 +1,6 @@
-import { generateImage } from 'ai'
-import { openai } from '@ai-sdk/openai'
 import type { DreamLog } from '@/lib/types'
 import { buildDreamCardPrompt, buildStoryCardPrompt } from '@/lib/image-prompts'
+import { generateImageSmart, fetchImageAsBase64 } from '@/lib/image-generation'
 
 interface CardOptions {
   dreams: DreamLog[]
@@ -12,14 +11,13 @@ interface CardOptions {
 }
 
 export async function POST(req: Request) {
-  const { dreams, storyTitle, subtitle, model } = await req.json() as CardOptions
+  const { dreams, storyTitle, subtitle } = await req.json() as CardOptions
 
   const isStory = !dreams?.length
   const { prompt, title } = isStory
     ? buildStoryCardPrompt({ dreams, storyTitle, subtitle })
     : buildDreamCardPrompt({ dreams, storyTitle, subtitle })
 
-  const imgModel = (model || 'dall-e-3').replace('dall-e-', 'dall-e-')
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
@@ -29,14 +27,27 @@ export async function POST(req: Request) {
       try {
         send('status', { message: 'Rendering your dream card...' })
 
-        const result = await generateImage({
-          model: (openai as any).image(imgModel),
-          prompt,
-        }) as { image?: { base64?: string; url?: string } }
+        // Use smart fallback: OpenRouter first, then OpenAI
+        const result = await generateImageSmart(prompt)
+        
+        // Convert to base64 if needed
+        let base64 = result.base64 || ''
+        if (!base64 && result.url) {
+          try {
+            base64 = await fetchImageAsBase64(result.url)
+          } catch (err) {
+            console.error('Failed to convert image to base64:', err)
+            // Fall back to URL
+            base64 = result.url
+          }
+        }
 
-        const raw = result?.image?.base64 ?? result?.image?.url ?? ''
-
-        send('done', { title, base64: raw })
+        send('done', { 
+          title, 
+          base64,
+          provider: result.provider,
+          model: result.model,
+        })
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Generation failed'
         send('error', { message: msg })
