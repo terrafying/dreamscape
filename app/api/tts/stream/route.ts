@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
+import { generateTTSSmart } from '@/lib/tts-generation'
 
 interface TTSOptions {
   text: string
@@ -20,11 +21,6 @@ function parseVoices(raw: string | undefined): Array<{ id: string; label: string
 }
 
 export async function POST(req: Request) {
-  const apiKey = process.env.ELEVENLABS_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ ok: false, error: 'ELEVENLABS_API_KEY not configured' }, { status: 503 })
-  }
-
   const { text, voiceId, model = 'eleven_multilingual_v2', stability = 0.5, similarityBoost = 0.75, speed = 0.85 } = await req.json() as TTSOptions
   if (!text || !voiceId) {
     return NextResponse.json({ ok: false, error: 'text and voiceId required' }, { status: 400 })
@@ -42,45 +38,20 @@ export async function POST(req: Request) {
     })
   }
 
-  const body = JSON.stringify({
-    model_id: model,
-    text,
-    voice_settings: {
-      stability,
-      similarity_boost: similarityBoost,
-      use_speaker_boost: true,
-      speed,
-    },
-  })
-
   try {
-    const resp = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg',
-        },
-        body,
-        signal: AbortSignal.timeout(60_000),
-      }
-    )
+    // Use smart fallback: ElevenLabs first, then Replicate
+    const result = await generateTTSSmart(text, voiceId, model, stability, similarityBoost, speed)
+    
+    // Cache the audio
+    await setCache(cacheKey, result.audioBuffer.toString('base64'))
 
-    if (!resp.ok) {
-      const err = await resp.text()
-      return NextResponse.json({ ok: false, error: `ElevenLabs error ${resp.status}: ${err}` }, { status: 502 })
-    }
-
-    const audioBuffer = Buffer.from(await resp.arrayBuffer())
-    await setCache(cacheKey, audioBuffer.toString('base64'))
-
-    return new Response(audioBuffer, {
+    return new Response(Buffer.from(result.audioBuffer), {
       headers: {
         'Content-Type': 'audio/mpeg',
         'Cache-Control': 'public, max-age=604800, immutable',
         'X-Dreamscape-TTS-Cache': 'MISS',
+        'X-Dreamscape-TTS-Provider': result.provider,
+        'X-Dreamscape-TTS-Model': result.model,
       },
     })
   } catch (err) {
