@@ -15,8 +15,18 @@ const config: Config = {
           indigo: '#818cf8',
           gold: '#fbbf24',
           text: '#e2e8f0',
-          muted: '#475569',
+          muted: '#94a3b8',
         },
+      },
+      // Override slate colors for better contrast on dark backgrounds
+      slate: {
+        '300': '#cbd5e1',
+        '400': '#94a3b8',
+        '500': '#64748b',
+        '600': '#475569',
+        '700': '#334155',
+        '800': '#1e293b',
+        '900': '#0f172a',
       },
       fontFamily: {
         serif: ['Georgia', 'ui-serif', 'serif'],
