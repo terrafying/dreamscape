@@ -220,17 +220,20 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
         </p>
       </Link>
 
-       {symbols.length > 0 && (
-         <div className="flex flex-wrap gap-1.5">
-           {symbols.map((s: string) => (
-            <span
-              key={s}
-              className="text-[10px] px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', color: 'rgba(251,191,36,0.7)' }}
-            >
-              {s}
-            </span>
-          ))}
+        {symbols.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {symbols.map((s: any) => {
+              const symbolName = typeof s === 'string' ? s : (s?.name || String(s))
+              return (
+                <span
+                  key={symbolName}
+                  className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.15)', color: 'rgba(251,191,36,0.7)' }}
+                >
+                  {symbolName}
+                </span>
+              )
+            })}
           {dream.symbols.length > 4 && (
             <span className="text-[10px]" style={{ color: 'var(--muted)' }}>
               +{dream.symbols.length - 4}
