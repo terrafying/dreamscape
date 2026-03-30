@@ -18,6 +18,39 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function normalizeSymbols(symbols: any[]): { name: string; salience: number; category: string; meaning: string }[] {
+  return (symbols ?? []).map(s => {
+    if (typeof s === 'string') {
+      return { name: s, salience: 0.5, category: 'symbol', meaning: '' }
+    }
+    if (typeof s === 'object' && s !== null) {
+      return {
+        name: s.name || '',
+        salience: typeof s.salience === 'number' ? s.salience : 0.5,
+        category: s.category || 'symbol',
+        meaning: s.meaning || ''
+      }
+    }
+    return { name: String(s), salience: 0.5, category: 'symbol', meaning: '' }
+  })
+}
+
+function normalizeEmotions(emotions: any[]): { name: string; intensity: number; valence: number }[] {
+  return (emotions ?? []).map(e => {
+    if (typeof e === 'string') {
+      return { name: e, intensity: 0.5, valence: 0 }
+    }
+    if (typeof e === 'object' && e !== null) {
+      return {
+        name: e.name || '',
+        intensity: typeof e.intensity === 'number' ? e.intensity : 0.5,
+        valence: typeof e.valence === 'number' ? e.valence : 0
+      }
+    }
+    return { name: String(e), intensity: 0.5, valence: 0 }
+  })
+}
+
 const REACTION_EMOJIS = ['💭', '🔮', '💜']
 
 export function DreamDetailClient({ dreamId }: { dreamId: string }) {
@@ -148,9 +181,9 @@ export function DreamDetailClient({ dreamId }: { dreamId: string }) {
     )
   }
 
-  const dreamData = dream.dream_data as { transcript?: string; extraction?: { symbols?: { name: string; salience: number; category: string; meaning: string }[]; emotions?: { name: string; intensity: number; valence: number }[]; narrative_arc?: string; lucidity?: number; interpretation?: string } }
-  const symbols = dreamData?.extraction?.symbols ?? []
-  const emotions = dreamData?.extraction?.emotions ?? []
+  const dreamData = dream.dream_data as { transcript?: string; extraction?: { symbols?: any[]; emotions?: any[]; narrative_arc?: string; lucidity?: number; interpretation?: string } }
+  const symbols = normalizeSymbols(dreamData?.extraction?.symbols ?? [])
+  const emotions = normalizeEmotions(dreamData?.extraction?.emotions ?? [])
   const reactionMap: Record<string, number> = {}
   for (const r of dream.reactions) reactionMap[r.emoji] = r.count
 
