@@ -44,6 +44,7 @@
     "@vercel/analytics": "^1.6.1",
     "ai": "^6.0.116",
     "howler": "^2.2.4",
+    "hyperspace.js": "^0.1.0",
     "next": "14.2.5",
     "postprocessing": "^6.36.3",
     "react": "^18",
