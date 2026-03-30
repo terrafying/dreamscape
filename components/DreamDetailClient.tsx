@@ -51,6 +51,26 @@ function normalizeEmotions(emotions: any[]): { name: string; intensity: number; 
   })
 }
 
+function safeString(value: any): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') {
+    // If it's an object with a 'text' or 'content' property, use that
+    if (value.text) return String(value.text)
+    if (value.content) return String(value.content)
+    if (value.meaning) return String(value.meaning)
+    if (value.name) return String(value.name)
+    // Otherwise, try to stringify it
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return '[object]'
+    }
+  }
+  return String(value)
+}
+
 const REACTION_EMOJIS = ['💭', '🔮', '💜']
 
 export function DreamDetailClient({ dreamId }: { dreamId: string }) {
@@ -222,7 +242,7 @@ export function DreamDetailClient({ dreamId }: { dreamId: string }) {
       {dreamData?.extraction?.narrative_arc && (
         <div className="flex gap-2 text-xs">
           <span className="px-2 py-1 rounded-full" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)', color: 'rgba(167,139,250,0.7)' }}>
-            {dreamData.extraction.narrative_arc}
+            {safeString(dreamData.extraction.narrative_arc)}
           </span>
           {dreamData.extraction.lucidity !== undefined && dreamData.extraction.lucidity > 0 && (
             <span className="px-2 py-1 rounded-full" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: 'rgba(251,191,36,0.7)' }}>
@@ -244,7 +264,7 @@ export function DreamDetailClient({ dreamId }: { dreamId: string }) {
             lineHeight: '1.8',
           }}
         >
-          {dreamData.transcript}
+          {safeString(dreamData.transcript)}
         </div>
       )}
 
@@ -253,7 +273,7 @@ export function DreamDetailClient({ dreamId }: { dreamId: string }) {
           className="rounded-xl px-4 py-3 text-sm italic"
           style={{ background: 'rgba(167,139,250,0.04)', border: '1px solid rgba(167,139,250,0.15)', color: 'rgba(226,232,240,0.6)', fontFamily: 'Georgia, serif' }}
         >
-          {dreamData.extraction.interpretation}
+          {safeString(dreamData.extraction.interpretation)}
         </div>
       )}
 
