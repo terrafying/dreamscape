@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import BinauralPlayer from '@/components/BinauralPlayer'
 import BreathworkPlayer from '@/components/BreathworkPlayer'
@@ -771,13 +770,6 @@ export default function DreamscapePage() {
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
           Guided stories, breathwork & binaural frequencies for deep sleep.
         </p>
-        <Link
-          href="/explore"
-          className="inline-block mt-2 text-xs transition-opacity hover:opacity-90"
-          style={{ color: 'var(--violet)' }}
-        >
-          Liminal Atlas — walk symbols from your dreams →
-        </Link>
       </div>
 
       {tab !== 'breathwork' && breathPlaying && (

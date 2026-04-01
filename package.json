@@ -28,6 +28,7 @@
     "videos:all": "npm run videos && npm run videos:trim"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "^3.0.66",
     "@ai-sdk/openai": "^3.0.41",
     "@anthropic-ai/sdk": "^0.27.3",
     "@capacitor/core": "^8.2.0",
