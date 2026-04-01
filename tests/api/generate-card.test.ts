@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const mockGenerateImage = vi.hoisted(() => vi.fn())
-vi.mock('ai', () => ({
-  generateImage: mockGenerateImage,
+const mockGenerateImageSmart = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/image-generation', () => ({
+  generateImageSmart: mockGenerateImageSmart,
+  fetchImageAsBase64: vi.fn().mockResolvedValue(''),
 }))
 
 import { POST } from '@/app/api/generate-card/route'
@@ -62,12 +64,14 @@ function makeRequest(body: object) {
 
 describe('POST /api/generate-card', () => {
   beforeEach(() => {
-    mockGenerateImage.mockReset()
+    mockGenerateImageSmart.mockReset()
   })
 
   it('emits status then done with base64 image', async () => {
-    mockGenerateImage.mockResolvedValue({
-      image: { base64: 'aGVsbG93b3JsZA==' },
+    mockGenerateImageSmart.mockResolvedValue({
+      base64: 'aGVsbG93b3JsZA==',
+      model: 'dall-e-3',
+      provider: 'openai',
     })
 
     const req = makeRequest({ dreams: [makeDream()] })
@@ -84,7 +88,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('includes title derived from narrative_arc', async () => {
-    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
+    mockGenerateImageSmart.mockResolvedValue({ base64: 'test', model: 'dall-e-3', provider: 'openai' })
 
     const req = makeRequest({ dreams: [makeDream({ extraction: { ...makeDream().extraction!, narrative_arc: 'ascending' } })] })
     const res = await POST(req)
@@ -95,7 +99,7 @@ describe('POST /api/generate-card', () => {
   })
 
   it('derives title from storyTitle when provided', async () => {
-    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
+    mockGenerateImageSmart.mockResolvedValue({ base64: 'test', model: 'dall-e-3', provider: 'openai' })
 
     const req = makeRequest({ dreams: [], storyTitle: 'The Midnight Garden' })
     const res = await POST(req)
@@ -105,8 +109,8 @@ describe('POST /api/generate-card', () => {
     expect((doneEvent.data as { title: string }).title).toBe('The Midnight Garden')
   })
 
-  it('emits error event when generateImage throws', async () => {
-    mockGenerateImage.mockRejectedValue(new Error('DALL-E quota exceeded'))
+  it('emits error event when generateImageSmart throws', async () => {
+    mockGenerateImageSmart.mockRejectedValue(new Error('DALL-E quota exceeded'))
 
     const req = makeRequest({ dreams: [makeDream()] })
     const res = await POST(req)
@@ -117,20 +121,8 @@ describe('POST /api/generate-card', () => {
     expect((errorEvent!.data as { message: string }).message).toContain('DALL-E quota exceeded')
   })
 
-  it('passes custom model to generateImage', async () => {
-    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
-
-    const req = makeRequest({ dreams: [makeDream()], model: 'dall-e-2' })
-    const res = await POST(req)
-    await collectSSE(res)
-
-    expect(mockGenerateImage).toHaveBeenCalled()
-    const call = mockGenerateImage.mock.calls[0]?.[0] as any
-    expect(call?.model?.modelId || call?.model?.toString()).toBeTruthy()
-  })
-
   it('response has SSE content-type header', async () => {
-    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
+    mockGenerateImageSmart.mockResolvedValue({ base64: 'test', model: 'dall-e-3', provider: 'openai' })
 
     const req = makeRequest({ dreams: [makeDream()] })
     const res = await POST(req)
@@ -138,28 +130,24 @@ describe('POST /api/generate-card', () => {
   })
 
   it('uses story card prompt when dreams array is empty', async () => {
-    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
+    mockGenerateImageSmart.mockResolvedValue({ base64: 'test', model: 'dall-e-3', provider: 'openai' })
 
     const req = makeRequest({ dreams: [] })
     await POST(req)
 
-    expect(mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: expect.stringContaining('dreamer floats in a cosmic sleep between two worlds'),
-      }),
+    expect(mockGenerateImageSmart).toHaveBeenCalledWith(
+      expect.stringContaining('dreamer floats in a cosmic sleep between two worlds'),
     )
   })
 
   it('uses dream card prompt when dreams are provided', async () => {
-    mockGenerateImage.mockResolvedValue({ image: { base64: 'test' } })
+    mockGenerateImageSmart.mockResolvedValue({ base64: 'test', model: 'dall-e-3', provider: 'openai' })
 
     const req = makeRequest({ dreams: [makeDream()] })
     await POST(req)
 
-    expect(mockGenerateImage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: expect.stringContaining('translucent glass towers'),
-      }),
+    expect(mockGenerateImageSmart).toHaveBeenCalledWith(
+      expect.stringContaining('translucent glass towers'),
     )
   })
 })

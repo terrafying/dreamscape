@@ -1,18 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // vi.hoisted creates refs that are hoisted BEFORE vi.mock calls — avoids TDZ
-const { refs, getSupabaseFn } = vi.hoisted(() => {
+const { refs, getSupabaseFn, getAuthenticatedClientMock } = vi.hoisted(() => {
   const from = vi.fn()
   const fn = vi.fn()
   const getSupabaseFn = vi.fn(() => ({ from } as any))
+  const refs = { supabase: { from }, getUser: fn }
+  const getAuthenticatedClientMock = vi.fn(() => ({ from: refs.supabase.from }))
   return {
-    refs: { supabase: { from }, getUser: fn },
+    refs,
     getSupabaseFn,
+    getAuthenticatedClientMock,
   }
 })
 
 vi.mock('@/lib/supabaseClient', () => ({ getSupabase: getSupabaseFn }))
-vi.mock('@/lib/supabaseServer', () => ({ getUserFromRequest: refs.getUser }))
+vi.mock('@/lib/supabaseServer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/supabaseServer')>()
+  return {
+    ...actual,
+    getUserFromRequest: refs.getUser,
+    getAuthenticatedClient: getAuthenticatedClientMock,
+  }
+})
 
 import { POST as sharePOST } from '@/app/api/share/[dreamId]/route'
 import { GET as feedGET } from '@/app/api/feed/route'
@@ -87,6 +97,8 @@ beforeEach(() => {
   refs.getUser.mockResolvedValue(null)
   getSupabaseFn.mockReset()
   getSupabaseFn.mockReturnValue({ from: refs.supabase.from })
+  getAuthenticatedClientMock.mockReset()
+  getAuthenticatedClientMock.mockImplementation(() => ({ from: refs.supabase.from }))
   tables.clear()
   inCallCount = 0
   refs.supabase.from.mockImplementation((t: string) => {
@@ -105,14 +117,17 @@ describe('POST /api/share/[dreamId]', () => {
     const profileChain = chain()
     profileChain.single.mockResolvedValue({ data: { user_id: 'user-1', handle: 'starwalker' }, error: null })
     setTable('user_profiles', profileChain)
-    const res = await sharePOST(makeReq('/api/share/d1', 'POST', { dream: { id: 'd2' } }), { params: { dreamId: 'd1' } })
+    const res = await sharePOST(
+      authReq(makeReq('/api/share/d1', 'POST', { dream: { id: 'd2' } })),
+      { params: { dreamId: 'd1' } },
+    )
     expect(res.status).toBe(400)
     expect((await res.json()).error).toContain('Invalid dream data')
   })
 
   it('returns 500 when database unavailable', async () => {
     withAuth()
-    getSupabaseFn.mockReturnValue(null)
+    getAuthenticatedClientMock.mockReturnValue(null)
     const res = await sharePOST(authReq(makeReq('/api/share/d1', 'POST', { dream: { id: 'd1' } })), { params: { dreamId: 'd1' } })
     expect(res.status).toBe(500)
   })

@@ -157,8 +157,8 @@ export function pivotTo(
 }
 
 // SO(4) rotation planes: pairs of 4D axes
-// (0,1), (0,2), (0,3), (1,2), (1,3), (2,3)
-const SO4_PLANES: [number, number][] = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
+// (0,1), (0,2), (0,3), (1,2), (1,3), (2,3) — independent SO(4) rotation planes
+export const SO4_PLANES: [number, number][] = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]
 
 export function flipPlane(state: ManifoldState): ManifoldState {
   return { ...state, plane: (state.plane + 1) % SO4_PLANES.length }
