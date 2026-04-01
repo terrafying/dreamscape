@@ -29,7 +29,13 @@ export default function HypermapSliceCanvas({
 }: HypermapSliceCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const neighbors = useRef<number[]>([])
-  const dragRef = useRef<{ active: boolean; lastX: number } | null>(null)
+  const dragRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    lastX: number
+    dragging: boolean
+  } | null>(null)
 
   const draw = useCallback(
     (ambient: number) => {
@@ -117,35 +123,12 @@ export default function HypermapSliceCanvas({
     }
   }, [draw])
 
-  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    dragRef.current = { active: true, lastX: e.clientX }
-    e.currentTarget.setPointerCapture(e.pointerId)
-  }
-
-  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const d = dragRef.current
-    if (!d?.active) return
-    const dx = e.clientX - d.lastX
-    d.lastX = e.clientX
-    onYawDelta(dx * 0.006)
-  }
-
-  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    dragRef.current = null
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId)
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const onCanvasTap = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (Math.abs(e.movementX) + Math.abs(e.movementY) > 6) return
+  const pickPortalAt = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
-    const sx = e.clientX - rect.left
-    const sy = e.clientY - rect.top
+    const sx = clientX - rect.left
+    const sy = clientY - rect.top
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
     const x = sx * scaleX
@@ -181,6 +164,42 @@ export default function HypermapSliceCanvas({
     if (best !== null) onPickNeighbor(best)
   }
 
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      lastX: e.clientX,
+      dragging: false,
+    }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const d = dragRef.current
+    if (!d || d.pointerId !== e.pointerId) return
+    const moved = Math.hypot(e.clientX - d.startX, e.clientY - d.startY)
+    if (moved > 8) d.dragging = true
+    if (d.dragging) {
+      const dx = e.clientX - d.lastX
+      d.lastX = e.clientX
+      onYawDelta(dx * 0.006)
+    }
+  }
+
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const d = dragRef.current
+    dragRef.current = null
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+    if (d && !d.dragging) {
+      pickPortalAt(e.clientX, e.clientY)
+    }
+  }
+
   return (
     <canvas
       ref={canvasRef}
@@ -192,7 +211,6 @@ export default function HypermapSliceCanvas({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onClick={onCanvasTap}
     />
   )
 }

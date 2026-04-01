@@ -5,8 +5,7 @@ import HypermapSliceCanvas from '@/components/hypermap/HypermapSliceCanvas'
 import { getDirectionalNeighbor } from '@/lib/hypermap/navigation'
 import { buildVistaPrompt, roomLabelsForSeed } from '@/lib/hypermap/procedural'
 import { EDGES_TESSERACT, VERTS_TESSERACT } from '@/lib/geometry4d'
-import { planeLabel } from '@/lib/manifold'
-import { SO4_PLANES } from '@/lib/manifold'
+import { planeLabel, SO4_PLANES } from '@/lib/manifold'
 import { apiFetch } from '@/lib/apiFetch'
 
 function clamp(n: number, a: number, b: number) {
@@ -170,6 +169,7 @@ export default function HypermapPage() {
         slice={slice}
         roomLabels={roomLabels}
         yaw={yaw}
+        onYawDelta={(d) => setYaw((y) => y + d)}
         onPickNeighbor={goPortal}
       />
 

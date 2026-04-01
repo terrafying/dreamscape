@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import Polytope4DViewer from '@/components/4d/Polytope4DViewer'
 import { getAllPolytopes } from '@/lib/4d'
@@ -21,6 +22,12 @@ export default function FourDTestPage() {
           </h1>
           <p className="text-sm" style={{ color: 'var(--secondary)' }}>
             Phase 1: Modular 4D visualization with Hyperspace.js and Clifford Algebra
+          </p>
+          <p className="text-xs mt-2">
+            <Link href="/hypermap" className="underline underline-offset-2" style={{ color: 'var(--violet)' }}>
+              Slice Atlas
+            </Link>
+            <span style={{ color: 'var(--muted)' }}> — procedural tesseract, 2D slice navigation, optional Nano Banana vistas</span>
           </p>
         </div>
 
