@@ -16,12 +16,14 @@ export default function ShareSheet({ dream, onClose, onShared }: Props) {
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
   const [sharedOutside, setSharedOutside] = useState(false)
+  const [sharedId, setSharedId] = useState<string | null>(null)
 
   const handleShareOutside = async () => {
-    const text = `A dream from dreamscape.quest:\n"${dream.transcript.slice(0, 200)}..."\n\nExplore at ${SITE_URL}/dream/${dream.id}`
+    const idToShare = sharedId || dream.id
+    const text = `A dream from dreamscape.quest:\n"${dream.transcript.slice(0, 200)}..."\n\nExplore at ${SITE_URL}/dream/${idToShare}`
     if (navigator.share) {
       try {
-        await navigator.share({ text, url: `${SITE_URL}/dream/${dream.id}` })
+        await navigator.share({ text, url: `${SITE_URL}/dream/${idToShare}` })
         setSharedOutside(true)
       } catch { }
     } else {
@@ -42,7 +44,9 @@ export default function ShareSheet({ dream, onClose, onShared }: Props) {
       const json = await res.json()
       if (!res.ok) { setError(json.error ?? 'Failed to share'); return }
       setDone(true)
-      onShared?.(json.sharedDream?.id ?? dream.id)
+      const newSharedId = json.sharedDream?.id ?? dream.id
+      setSharedId(newSharedId)
+      onShared?.(newSharedId)
     } catch {
       setError('Network error')
     } finally {

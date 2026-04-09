@@ -29,6 +29,7 @@ export interface DreamLog {
   transcript: string
   extraction?: DreamExtraction
   isExample?: boolean
+  modelName?: string
   createdAt: number
 }
 
@@ -263,6 +264,23 @@ export interface VisionInterpretation {
   handle: string
   text: string
   created_at: string
+}
+
+export interface DreamwalkExtraction {
+  archetype: string
+  meaning: string // 1-2 sentences
+  insight: string // A deeper connection between intention and what they found
+}
+
+export interface DreamwalkLog {
+  id: string
+  date: string // YYYY-MM-DD
+  intention: string
+  coordinates: { lat: number; lng: number }
+  radius: number
+  extraction?: DreamwalkExtraction
+  journal?: string
+  createdAt: number
 }
 
 export interface Follow {

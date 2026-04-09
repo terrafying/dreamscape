@@ -360,94 +360,75 @@ function CardBack() {
 }
 
 function CardFront({ card }: { card: OracleCard }) {
+  // Use a stable seed for the background image based on the card name
+  const seed = card.name.replace(/[^a-zA-Z0-9]/g, '')
+  const bgUrl = `https://picsum.photos/seed/${seed}/400/600`
+
   return (
     <div
-      className="absolute inset-0 rounded-xl overflow-hidden flex flex-col"
+      className="absolute inset-0 rounded-xl overflow-hidden flex flex-col items-center justify-center text-center"
       style={{
         backfaceVisibility: 'hidden',
         transform: 'rotateY(180deg)',
-        background: 'rgba(8,5,18,0.95)',
+        background: '#080512',
         border: '1px solid rgba(167,139,250,0.25)',
         boxShadow: '0 0 20px rgba(139,92,246,0.06)',
-        padding: '24px',
       }}
     >
+      {/* Background Image with Dark Overlay */}
       <div
-        className="font-mono uppercase tracking-widest shrink-0"
+        className="absolute inset-0 bg-cover bg-center"
         style={{
-          fontSize: '0.65rem',
-          color: '#a78bfa',
-          letterSpacing: '0.2em',
-          marginBottom: '8px',
-        }}
-      >
-        {card.label}
-      </div>
-
-      <div
-        className="shrink-0 leading-tight line-clamp-2"
-        style={{
-          fontSize: '1.35rem',
-          color: '#e2e8f0',
-          fontFamily: 'Georgia, serif',
-          fontWeight: 500,
-          marginBottom: '14px',
-        }}
-      >
-        {card.name}
-      </div>
-
-      <div
-        className="w-full shrink-0"
-        style={{
-          height: '1px',
-          background:
-            'linear-gradient(to right, transparent, rgba(167,139,250,0.3), transparent)',
-          marginBottom: '16px',
+          backgroundImage: `url(${bgUrl})`,
+          opacity: 0.5,
+          filter: 'grayscale(0.5) contrast(1.2)',
         }}
       />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#080512] via-transparent to-[#080512]/50 opacity-90" />
 
-      <p
-        className="flex-1 overflow-y-auto"
-        style={{
-          fontSize: '0.95rem',
-          color: '#94a3b8',
-          fontFamily: 'Georgia, serif',
-          fontStyle: 'italic',
-          lineHeight: '1.7',
-          margin: 0,
-          display: 'flex',
-          alignItems: 'flex-start',
-          paddingRight: '4px',
-        }}
-      >
-        {card.body}
-      </p>
-
-      {card.footnote && (
+      {/* Content Overlay */}
+      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-6">
         <div
-          className="font-mono mt-auto pt-4"
+          className="font-mono uppercase tracking-widest shrink-0"
           style={{
-            fontSize: '0.7rem',
-            color: 'rgba(167,139,250,0.6)',
-            letterSpacing: '0.1em',
-            fontStyle: 'normal',
-            lineHeight: '1.4',
+            fontSize: '0.65rem',
+            color: '#a78bfa',
+            letterSpacing: '0.2em',
+            marginBottom: '16px',
+            textShadow: '0 2px 4px rgba(0,0,0,0.8)',
           }}
         >
-          {card.footnote}
+          {card.label}
         </div>
-      )}
 
-      <div
-        className="text-center font-mono shrink-0 mt-4"
-        style={{
-          fontSize: '0.65rem',
-          color: 'rgba(167,139,250,0.5)',
-          letterSpacing: '0.15em',
-        }}
-      >
-        TAP FOR MORE
+        <div
+          className="shrink-0 leading-tight"
+          style={{
+            fontSize: '1.75rem',
+            color: '#ffffff',
+            fontFamily: 'Georgia, serif',
+            fontWeight: 500,
+            textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(167,139,250,0.4)',
+          }}
+        >
+          {card.name}
+        </div>
+
+        <div
+          className="text-center font-mono mt-auto"
+          style={{
+            fontSize: '0.65rem',
+            color: 'rgba(255,255,255,0.7)',
+            letterSpacing: '0.15em',
+            background: 'rgba(0,0,0,0.5)',
+            padding: '6px 12px',
+            borderRadius: '20px',
+            border: '1px solid rgba(167,139,250,0.3)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          TAP FOR MEANING
+        </div>
       </div>
     </div>
   )

@@ -6,7 +6,13 @@ import { EDGES_TESSERACT, VERTS_TESSERACT, proj3to2 } from '@/lib/geometry4d'
 import { buildAdjacency } from '@/lib/manifold'
 import { relativeProjection } from '@/lib/hypermap/projection'
 
-const ROOM_SCALE = 2.8
+/**
+ * proj4→3 yields O(1) coordinates; without a large screen scale, every vertex
+ * collapses to the center (only "You" was visible). Match puzzle world feel ~ROOM_SCALE*35.
+ */
+function sliceCanvasZoom(canvasWidth: number): number {
+  return 520 * (canvasWidth / 400)
+}
 
 interface HypermapSliceCanvasProps {
   currentVertex: number
@@ -47,7 +53,7 @@ export default function HypermapSliceCanvas({
       const h = canvas.height
       const cx = w / 2
       const cy = h / 2
-      const scale = ROOM_SCALE * (w / 400)
+      const scale = sliceCanvasZoom(w)
       const verts = VERTS_TESSERACT as Vec4[]
       const adj = buildAdjacency(verts, EDGES_TESSERACT)
       const nbr = adj.get(currentVertex) ?? []
@@ -68,8 +74,8 @@ export default function HypermapSliceCanvas({
       ctx.fillStyle = '#050810'
       ctx.fillRect(0, 0, w, h)
 
-      ctx.strokeStyle = 'rgba(100, 160, 220, 0.35)'
-      ctx.lineWidth = 1
+      ctx.strokeStyle = 'rgba(120, 175, 235, 0.55)'
+      ctx.lineWidth = 1.5
       for (const [a, b] of EDGES_TESSERACT) {
         const pa = relativeProjection(verts, currentVertex, a, plane, slice, ambient)
         const pb = relativeProjection(verts, currentVertex, b, plane, slice, ambient)
@@ -85,10 +91,11 @@ export default function HypermapSliceCanvas({
         const p3 = relativeProjection(verts, currentVertex, i, plane, slice, ambient)
         const [sx, sy] = toScreen(p3)
         ctx.beginPath()
-        ctx.arc(sx, sy, 14, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(124, 87, 255, 0.25)'
+        ctx.arc(sx, sy, 18, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(124, 87, 255, 0.35)'
         ctx.fill()
-        ctx.strokeStyle = 'rgba(200, 180, 255, 0.7)'
+        ctx.strokeStyle = 'rgba(210, 190, 255, 0.85)'
+        ctx.lineWidth = 1.5
         ctx.stroke()
         ctx.fillStyle = 'rgba(200, 210, 240, 0.85)'
         ctx.font = '10px system-ui, sans-serif'
@@ -135,7 +142,7 @@ export default function HypermapSliceCanvas({
     const y = sy * scaleY
     const cx = canvas.width / 2
     const cy = canvas.height / 2
-    const scale = ROOM_SCALE * (canvas.width / 400)
+    const scale = sliceCanvasZoom(canvas.width)
     const cos = Math.cos(-yaw)
     const sin = Math.sin(-yaw)
     const verts = VERTS_TESSERACT as Vec4[]
@@ -151,7 +158,7 @@ export default function HypermapSliceCanvas({
     }
 
     let best: number | null = null
-    let bestD = 28
+    let bestD = 40
     for (const i of neighbors.current) {
       const p3 = relativeProjection(verts, currentVertex, i, plane, slice, ambient)
       const [px, py] = toScreen(p3)

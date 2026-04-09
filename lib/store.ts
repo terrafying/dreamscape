@@ -169,6 +169,38 @@ export async function clearBirthData(): Promise<void> {
   await removeStorageValue(BIRTH_KEY)
 }
 
+// ─── Dreamwalk Logs ────────────────────────────────────────────────────────────
+
+const DREAMWALK_KEY = 'dreamscape_dreamwalks'
+
+export async function getDreamwalks(): Promise<import('./types').DreamwalkLog[]> {
+  try {
+    const raw = await getStorageValue(DREAMWALK_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export async function saveDreamwalk(walk: import('./types').DreamwalkLog): Promise<void> {
+  const walks = await getDreamwalks()
+  const idx = walks.findIndex((w) => w.id === walk.id)
+  if (idx >= 0) {
+    walks[idx] = walk
+  } else {
+    walks.unshift(walk)
+  }
+  await setStorageValue(DREAMWALK_KEY, JSON.stringify(walks))
+}
+
+export async function deleteDreamwalk(id: string): Promise<void> {
+  let walks = await getDreamwalks()
+  walks = walks.filter((w) => w.id !== id)
+  await setStorageValue(DREAMWALK_KEY, JSON.stringify(walks))
+}
+
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
 export function generateId(): string {

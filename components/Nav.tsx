@@ -29,6 +29,7 @@ export default function Nav() {
     { href: '/', label: 'Altar', icon: '✦' },
     ritualTab,
     { href: '/reading', label: 'Reading', icon: '✧' },
+    { href: '/wander', label: 'Wander', icon: '◬' },
     { href: '/dreamscape', label: 'Sleep', icon: '◉' },
     { href: '/strata', label: 'Strata', icon: '◈' },
   ]

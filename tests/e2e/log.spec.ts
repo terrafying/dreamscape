@@ -53,26 +53,26 @@ test.beforeEach(async ({ page }) => {
 
 test('shows the dream log heading', async ({ page }) => {
   await page.goto('/log')
-  await expect(page.getByRole('heading', { name: 'Dream Log' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Morning Ritual' })).toBeVisible()
 })
 
 test('submit button is disabled when textarea is empty', async ({ page }) => {
   await page.goto('/log')
-  const btn = page.getByRole('button', { name: /analyze dream/i })
+  const btn = page.getByRole('button', { name: /capture \+ interpret/i })
   await expect(btn).toBeDisabled()
 })
 
 test('submit button enables after typing in textarea', async ({ page }) => {
   await page.goto('/log')
-  await page.getByPlaceholder(/describe your dream/i).fill('I was swimming in a warm ocean.')
-  const btn = page.getByRole('button', { name: /analyze dream/i })
+  await page.getByPlaceholder(/capture the dream/i).fill('I was swimming in a warm ocean.')
+  const btn = page.getByRole('button', { name: /capture \+ interpret/i })
   await expect(btn).toBeEnabled()
 })
 
 test('submitting a dream shows extraction sections', async ({ page }) => {
   await page.goto('/log')
-  await page.getByPlaceholder(/describe your dream/i).fill('I was swimming in a warm ocean.')
-  await page.getByRole('button', { name: /analyze dream/i }).click()
+  await page.getByPlaceholder(/capture the dream/i).fill('I was swimming in a warm ocean.')
+  await page.getByRole('button', { name: /capture \+ interpret/i }).click()
 
   await expect(page.getByText('Dream Analysis')).toBeVisible()
   await expect(page.getByText('Interpretation')).toBeVisible()
@@ -81,8 +81,8 @@ test('submitting a dream shows extraction sections', async ({ page }) => {
 
 test('extraction saves to localStorage', async ({ page }) => {
   await page.goto('/log')
-  await page.getByPlaceholder(/describe your dream/i).fill('I was swimming in a warm ocean.')
-  await page.getByRole('button', { name: /analyze dream/i }).click()
+  await page.getByPlaceholder(/capture the dream/i).fill('I was swimming in a warm ocean.')
+  await page.getByRole('button', { name: /capture \+ interpret/i }).click()
 
   await expect(page.getByText('Dream Analysis')).toBeVisible()
 
@@ -94,19 +94,19 @@ test('extraction saves to localStorage', async ({ page }) => {
 
 test('"New Dream" button resets to blank form', async ({ page }) => {
   await page.goto('/log')
-  await page.getByPlaceholder(/describe your dream/i).fill('Ocean dream.')
-  await page.getByRole('button', { name: /analyze dream/i }).click()
+  await page.getByPlaceholder(/capture the dream/i).fill('Ocean dream.')
+  await page.getByRole('button', { name: /capture \+ interpret/i }).click()
   await expect(page.getByText('Dream Analysis')).toBeVisible()
 
   await page.getByRole('button', { name: 'New Dream' }).click()
-  await expect(page.getByPlaceholder(/describe your dream/i)).toBeVisible()
+  await expect(page.getByPlaceholder(/capture the dream/i)).toBeVisible()
   await expect(page.getByText('Dream Analysis')).not.toBeVisible()
 })
 
 test('recent dreams list appears after logging a dream', async ({ page }) => {
   await page.goto('/log')
-  await page.getByPlaceholder(/describe your dream/i).fill('First dream entry.')
-  await page.getByRole('button', { name: /analyze dream/i }).click()
+  await page.getByPlaceholder(/capture the dream/i).fill('First dream entry.')
+  await page.getByRole('button', { name: /capture \+ interpret/i }).click()
   await expect(page.getByText('Dream Analysis')).toBeVisible()
 
   await page.getByRole('button', { name: 'New Dream' }).click()
@@ -115,8 +115,8 @@ test('recent dreams list appears after logging a dream', async ({ page }) => {
 
 test('emotion and recommendation sections appear in extraction', async ({ page }) => {
   await page.goto('/log')
-  await page.getByPlaceholder(/describe your dream/i).fill('I was flying over mountains.')
-  await page.getByRole('button', { name: /analyze dream/i }).click()
+  await page.getByPlaceholder(/capture the dream/i).fill('I was flying over mountains.')
+  await page.getByRole('button', { name: /capture \+ interpret/i }).click()
 
   // Wait for staggered reveal to complete
   await expect(page.getByText('Emotional Signature')).toBeVisible({ timeout: 5000 })

@@ -113,6 +113,8 @@ export default function LogPage() {
       const decoder = new TextDecoder()
       let buffer = ''
 
+      let currentProvider: string | null = null
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -136,13 +138,14 @@ export default function LogPage() {
           if (eventType === 'status') {
             setStatusMessage(data.message)
           } else if (eventType === 'source') {
+            currentProvider = data.provider
             setSourceProvider(data.provider)
           } else if (eventType === 'extraction') {
             const ext = data.data as DreamExtraction
             setExtraction(ext)
             setStatus('done')
             const id = generateId()
-            const log: DreamLog = { id, date: today, transcript, extraction: ext, createdAt: Date.now() }
+            const log: DreamLog = { id, date: today, transcript, extraction: ext, createdAt: Date.now(), modelName: currentProvider || undefined }
             await saveDream(log)
             const supabase = getSupabase()
             const session = supabase ? await supabase.auth.getSession() : null
@@ -347,7 +350,7 @@ export default function LogPage() {
               </a>
             )}
 
-            <SharedDreamCard dream={{ id: savedId || 'temp', date: new Date().toISOString().split('T')[0], transcript, extraction: extraction || undefined, createdAt: Date.now(), dream_data: { transcript, extraction }, share_handle: 'you', symbols: extraction?.symbols || [], reactions: [], interpretation_count: 0, is_following: false, my_reactions: [], created_at: new Date().toISOString() }} />
+            <SharedDreamCard isPreview dream={{ id: savedId || 'temp', date: new Date().toISOString().split('T')[0], transcript, extraction: extraction || undefined, createdAt: Date.now(), dream_data: { transcript, extraction }, share_handle: 'you', symbols: extraction?.symbols || [], reactions: [], interpretation_count: 0, is_following: false, my_reactions: [], created_at: new Date().toISOString() }} />
           </div>
         )}
 
@@ -372,6 +375,7 @@ export default function LogPage() {
                     setTranscript(dream.transcript)
                     setExtraction(dream.extraction || null)
                     setStatus(dream.extraction ? 'done' : 'idle')
+                    setSourceProvider(dream.modelName || null)
                   }}
                   onShare={dream.extraction ? () => setShareDream(dream) : undefined}
                 />

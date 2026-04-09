@@ -29,6 +29,7 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
       { href: '/', label: 'Altar' },
       { href: isEveningHour() ? '/journal' : '/log', label: 'Dusk/Dawn' },
       { href: '/reading', label: 'Reading' },
+      { href: '/wander', label: 'Wander' },
       { href: '/dreamscape', label: 'Sleep' },
       { href: '/strata', label: 'Strata' },
     ]
@@ -39,7 +40,8 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
 
     // Check if path starts with tab href (for nested routes)
     for (let i = 0; i < tabs.length; i++) {
-      if (path.startsWith(tabs[i].href + '/')) {
+      // Don't match the root '/' for all routes
+      if (tabs[i].href !== '/' && path.startsWith(tabs[i].href + '/')) {
         return i
       }
     }
@@ -54,10 +56,11 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
       { href: '/', label: 'Altar' },
       { href: isEveningHour() ? '/journal' : '/log', label: 'Dusk/Dawn' },
       { href: '/reading', label: 'Reading' },
+      { href: '/wander', label: 'Wander' },
       { href: '/dreamscape', label: 'Sleep' },
       { href: '/strata', label: 'Strata' },
     ]
-    return tabs[index % tabs.length].href
+    return tabs[((index % tabs.length) + tabs.length) % tabs.length].href
   }
 
   // Handle touch start
@@ -94,11 +97,11 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
 
       if (diffX > 0) {
         // Swiped left → next tab
-        nextIndex = (currentIndex + 1) % 5
+        nextIndex = (currentIndex + 1) % 6
         onSwipe?.('left')
       } else {
         // Swiped right → previous tab
-        nextIndex = (currentIndex - 1 + 5) % 5
+        nextIndex = (currentIndex - 1 + 6) % 6
         onSwipe?.('right')
       }
 

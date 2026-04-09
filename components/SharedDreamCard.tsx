@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { SharedDreamWithCounts } from '@/lib/types'
 import { SITE_URL } from '@/lib/site'
@@ -33,11 +33,15 @@ interface SharedDreamCardProps {
   dream: SharedDreamWithCounts | any
   onReact?: (emoji: string) => void
   myReactions?: string[]
+  isPreview?: boolean
 }
 
-export default function SharedDreamCard({ dream, onReact, myReactions = [] }: SharedDreamCardProps) {
+export default function SharedDreamCard({ dream, onReact, myReactions = [], isPreview = false }: SharedDreamCardProps) {
    const [copied, setCopied] = useState(false)
    const [showCard, setShowCard] = useState(false)
+   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null)
+   const [generatingImage, setGeneratingImage] = useState(false)
+   const [genStatus, setGenStatus] = useState('')
    const canvasRef = useRef<HTMLCanvasElement | null>(null)
    const transcript = (dream.dream_data as { transcript?: string })?.transcript ?? ''
    const mood = dreamMood(dream.dream_data as { extraction?: { emotions?: { name: string }[]; tone?: string } })
@@ -68,7 +72,7 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
      if (!blob) return saveImage()
 
      const file = new File([blob], `dream-${dream.id}.png`, { type: 'image/png' })
-     const shareUrl = `${SITE_URL}/dream/${dream.id}`
+     const shareUrl = isPreview ? SITE_URL : `${SITE_URL}/dream/${dream.id}`
      const shareText = interpretation
        ? `"${interpretation.slice(0, 120)}..." — @${dream.share_handle}'s dream on Dreamscape`
        : `A dream from @${dream.share_handle} — Dreamscape`
@@ -91,10 +95,11 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
    }
 
    const handleShare = async () => {
-     const text = `@${dream.share_handle} shared a dream:\n"${truncated}"\n\nExplore at ${SITE_URL}/dream/${dream.id}`
+     const shareUrl = isPreview ? SITE_URL : `${SITE_URL}/dream/${dream.id}`
+     const text = `@${dream.share_handle} shared a dream:\n"${truncated}"\n\nExplore at ${shareUrl}`
      if (navigator.share) {
        try {
-         await navigator.share({ text, url: `${SITE_URL}/dream/${dream.id}` })
+         await navigator.share({ text, url: shareUrl })
        } catch { }
      } else {
        await navigator.clipboard.writeText(text)
@@ -103,46 +108,87 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
      }
    }
 
-   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-     // Background gradient
-     const g = ctx.createLinearGradient(0, 0, 0, h)
-     g.addColorStop(0, '#0c0c18')
-     g.addColorStop(1, '#1a102a')
-     ctx.fillStyle = g
-     ctx.fillRect(0, 0, w, h)
+    const draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+      // Background
+      if (bgImage) {
+        const scale = Math.max(w / bgImage.width, h / bgImage.height)
+        const imgW = bgImage.width * scale
+        const imgH = bgImage.height * scale
+        const ix = (w - imgW) / 2
+        const iy = (h - imgH) / 2
+        ctx.drawImage(bgImage, ix, iy, imgW, imgH)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+        ctx.fillRect(0, 0, w, h)
+      } else {
+        const g = ctx.createLinearGradient(0, 0, 0, h)
+        g.addColorStop(0, '#0c0c18')
+        g.addColorStop(1, '#1a102a')
+        ctx.fillStyle = g
+        ctx.fillRect(0, 0, w, h)
+      }
 
-     // Frame
-     ctx.strokeStyle = 'rgba(167,139,250,0.35)'
-     ctx.lineWidth = 2
-     ctx.strokeRect(12, 12, w - 24, h - 24)
+      // Frame
+      ctx.strokeStyle = 'rgba(167,139,250,0.35)'
+      ctx.lineWidth = 2
+      ctx.strokeRect(12, 12, w - 24, h - 24)
 
-     // Title/date
-     ctx.fillStyle = '#e2e8f0'
-     ctx.font = '600 18px Georgia, serif'
-     ctx.fillText('Dreamscape', 24, 40)
+      // Title/date
+      ctx.fillStyle = bgImage ? '#ffffff' : '#e2e8f0'
+      ctx.font = '600 18px Impact, sans-serif'
+      ctx.shadowColor = 'black'
+      ctx.shadowBlur = 4
+      ctx.shadowOffsetX = 2
+      ctx.shadowOffsetY = 2
+      ctx.fillText('DREAMSCAPE', 24, 40)
 
-     ctx.fillStyle = '#94a3b8'
-     ctx.font = '12px monospace'
-     ctx.fillText(`@${dream.share_handle}`, 24, 60)
+      ctx.fillStyle = bgImage ? '#cccccc' : '#94a3b8'
+      ctx.font = '12px monospace'
+      ctx.shadowBlur = 2
+      ctx.fillText(`@${dream.share_handle}`, 24, 60)
 
-     // Body excerpt
-     const text = transcript.trim().slice(0, 280)
-     ctx.fillStyle = '#e2e8f0'
-     ctx.font = '14px Georgia, serif'
-     wrapText(ctx, quoteify(text), 24, 96, w - 48, 20)
+      // Reset shadow for text background
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
 
-     // Interpretation headline (if any)
-     if (interpretation) {
-       ctx.fillStyle = '#a78bfa'
-       ctx.font = 'italic 14px Georgia, serif'
-       wrapText(ctx, interpretation, 24, h - 90, w - 48, 18)
-     }
+      // Body excerpt
+      const text = transcript.trim().slice(0, 200) + (transcript.length > 200 ? '...' : '')
+      const quotedText = quoteify(text)
+      
+      // Draw text background rectangle
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
+      ctx.fillRect(16, 76, w - 32, 110)
 
-     ctx.fillStyle = '#94a3b8'
-     ctx.font = '12px monospace'
-     const shareUrl = `${SITE_URL}/dream/${dream.id}`
-     ctx.fillText(shareUrl, 24, h - 24)
-   }
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '18px Impact, sans-serif'
+      wrapText(ctx, quotedText, 24, 100, w - 48, 24)
+
+      // Interpretation headline (if any)
+      if (interpretation) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'
+        ctx.fillRect(16, h - 100, w - 32, 50)
+        
+        ctx.fillStyle = '#a78bfa'
+        ctx.font = 'italic 16px Impact, sans-serif'
+        wrapText(ctx, interpretation.slice(0, 100) + (interpretation.length > 100 ? '...' : ''), 24, h - 76, w - 48, 22)
+      }
+
+      ctx.fillStyle = bgImage ? '#ffffff' : '#94a3b8'
+      ctx.font = '12px monospace'
+      ctx.shadowColor = 'black'
+      ctx.shadowBlur = 2
+      ctx.shadowOffsetX = 1
+      ctx.shadowOffsetY = 1
+      const shareUrl = isPreview ? SITE_URL : `${SITE_URL}/dream/${dream.id}`
+      ctx.fillText(shareUrl, 24, h - 24)
+
+      // Reset shadow
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+    }
 
    const onCanvas = (el: HTMLCanvasElement | null) => {
      if (!el) return
@@ -160,7 +206,82 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
      draw(ctx, w, h)
    }
 
-  const reactionMap: Record<string, number> = {}
+   const handleGenerateImage = async () => {
+     if (generatingImage) return
+     setGeneratingImage(true)
+     setGenStatus('Conjuring visual...')
+     try {
+       const res = await fetch('/api/generate-card', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           dreams: [dream.dream_data || dream],
+           storyTitle: 'A Dream',
+         }),
+       })
+       if (!res.ok) throw new Error('API error')
+       if (!res.body) throw new Error('No body')
+       
+       const reader = res.body.getReader()
+       const decoder = new TextDecoder()
+       let buffer = ''
+       
+       while (true) {
+         const { done, value } = await reader.read()
+         if (done) break
+         buffer += decoder.decode(value, { stream: true })
+         const events = buffer.split('\n\n')
+         buffer = events.pop() || ''
+         
+         for (const event of events) {
+           if (!event.trim()) continue
+           const lines = event.split('\n')
+           let eventType = ''
+           let dataLine = ''
+           for (const line of lines) {
+             if (line.startsWith('event:')) eventType = line.slice(6).trim()
+             if (line.startsWith('data:')) dataLine = line.slice(5).trim()
+           }
+           if (!dataLine) continue
+           const data = JSON.parse(dataLine)
+           if (eventType === 'status') {
+             setGenStatus(data.message)
+           } else if (eventType === 'done') {
+             const img = new window.Image()
+             img.onload = () => {
+               setBgImage(img)
+               setGeneratingImage(false)
+               setGenStatus('')
+             }
+             img.src = data.base64.startsWith('data:image') ? data.base64 : `data:image/jpeg;base64,${data.base64}`
+           } else if (eventType === 'error') {
+             throw new Error(data.message)
+           }
+         }
+       }
+     } catch (err) {
+       console.error(err)
+       setGenStatus('Generation failed.')
+       setGeneratingImage(false)
+     }
+   }
+
+   useEffect(() => {
+     const c = canvasRef.current
+     if (c) {
+       const ctx = c.getContext('2d')
+       if (ctx) {
+         const dpr = Math.min(window.devicePixelRatio || 1, 2)
+         ctx.save()
+         // Re-apply scale for redraw because we're restoring
+         ctx.scale(dpr, dpr)
+         draw(ctx, 800, 420)
+         ctx.restore()
+       }
+     }
+   }, [bgImage])
+
+   const reactionMap: Record<string, number> = {}
   for (const r of dream.reactions) {
     reactionMap[r.emoji] = r.count
   }
@@ -179,13 +300,22 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
             {dream.share_handle[0].toUpperCase()}
           </div>
           <div>
-            <Link
-              href={`/dream/${dream.id}`}
-              className="text-sm font-medium hover:underline"
-              style={{ color: 'var(--text)' }}
-            >
-              @{dream.share_handle}
-            </Link>
+            {isPreview ? (
+              <span
+                className="text-sm font-medium"
+                style={{ color: 'var(--text)' }}
+              >
+                @{dream.share_handle}
+              </span>
+            ) : (
+              <Link
+                href={`/dream/${dream.id}`}
+                className="text-sm font-medium hover:underline"
+                style={{ color: 'var(--text)' }}
+              >
+                @{dream.share_handle}
+              </Link>
+            )}
             <p className="text-[10px]" style={{ color: 'var(--muted)' }}>
               {timeAgo(dream.created_at)}
             </p>
@@ -211,14 +341,25 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
         </div>
       </div>
 
-      <Link href={`/dream/${dream.id}`} className="block">
-        <p
-          className="text-sm leading-relaxed"
-          style={{ color: 'rgba(226,232,240,0.75)', fontFamily: 'Georgia, serif' }}
-        >
-          {truncated || 'No transcript available'}
-        </p>
-      </Link>
+      {isPreview ? (
+        <div className="block">
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: 'rgba(226,232,240,0.75)', fontFamily: 'Georgia, serif' }}
+          >
+            {truncated || 'No transcript available'}
+          </p>
+        </div>
+      ) : (
+        <Link href={`/dream/${dream.id}`} className="block">
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: 'rgba(226,232,240,0.75)', fontFamily: 'Georgia, serif' }}
+          >
+            {truncated || 'No transcript available'}
+          </p>
+        </Link>
+      )}
 
         {symbols.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -267,40 +408,63 @@ export default function SharedDreamCard({ dream, onReact, myReactions = [] }: Sh
 
         <div className="flex-1" />
 
-        <button
-          onClick={handleShare}
-          className="text-xs px-2 py-1 rounded-lg"
-          style={{ border: '1px solid var(--border)', color: copied ? '#86efac' : 'var(--muted)' }}
-        >
-          {copied ? 'Copied!' : 'Share'}
-        </button>
-        <Link
-          href={`/dream/${dream.id}`}
-          className="text-xs px-2 py-1 rounded-lg"
-          style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-        >
-          View →
-        </Link>
+        {!isPreview && (
+          <>
+            <button
+              onClick={handleShare}
+              className="text-xs px-2 py-1 rounded-lg"
+              style={{ border: '1px solid var(--border)', color: copied ? '#86efac' : 'var(--muted)' }}
+            >
+              {copied ? 'Copied!' : 'Share'}
+            </button>
+            <Link
+              href={`/dream/${dream.id}`}
+              className="text-xs px-2 py-1 rounded-lg"
+              style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+            >
+              View →
+            </Link>
+          </>
+        )}
        </div>
 
        {showCard && (
          <div className="space-y-2 mt-4 pt-4 border-t border-violet-500/20">
-           <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
-             Shareable Dream Card
+           <div className="flex items-center justify-between text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
+             <span>Shareable Dream Card</span>
+             {!bgImage && (
+               <button
+                 onClick={handleGenerateImage}
+                 disabled={generatingImage}
+                 className="flex items-center gap-2 hover:text-white transition-colors"
+                 style={{ color: 'var(--violet)' }}
+               >
+                 {generatingImage ? (
+                   <>
+                     <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--violet)' }} />
+                     {genStatus || 'Conjuring...'}
+                   </>
+                 ) : (
+                   '✦ Generate AI Visual'
+                 )}
+               </button>
+             )}
            </div>
            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
              <canvas ref={onCanvas}></canvas>
            </div>
            <div className="flex items-center justify-end gap-2">
-             <button
-               onClick={() => {
-                 navigator.clipboard?.writeText(`${SITE_URL}/dream/${dream.id}`).catch(() => {})
-               }}
-               className="px-3 py-1.5 rounded-full text-xs cursor-pointer"
-               style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-             >
-               Copy Link
-             </button>
+             {!isPreview && (
+               <button
+                 onClick={() => {
+                   navigator.clipboard?.writeText(`${SITE_URL}/dream/${dream.id}`).catch(() => {})
+                 }}
+                 className="px-3 py-1.5 rounded-full text-xs cursor-pointer"
+                 style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+               >
+                 Copy Link
+               </button>
+             )}
              <button
                onClick={saveImage}
                className="px-3 py-1.5 rounded-full text-xs cursor-pointer"

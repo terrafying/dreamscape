@@ -36,8 +36,8 @@ test('bottom nav is visible', async ({ page }) => {
 test('all nav tabs are present', async ({ page }) => {
   await page.goto('/log')
   const nav = page.locator('nav')
-  for (const label of ['Log', 'Strata', 'Letters', 'Stories']) {
-    await expect(nav.getByText(label)).toBeVisible()
+  for (const label of ['Altar', 'Dawn', 'Reading', 'Wander', 'Sleep', 'Strata']) {
+    await expect(nav.getByText(label, { exact: true })).toBeVisible()
   }
 })
 
@@ -54,16 +54,16 @@ test('nav tab tap targets are at least 44px tall', async ({ page }) => {
 test('tap navigation visits all sections', async ({ page }) => {
   await page.goto('/log')
 
-  await page.locator('nav').getByText('Strata').click()
+  await page.locator('nav').getByText('Strata', { exact: true }).click()
   await expect(page).toHaveURL('/strata')
 
-  await page.locator('nav').getByText('Letters').click()
-  await expect(page).toHaveURL('/letters')
+  await page.locator('nav').getByText('Wander', { exact: true }).click()
+  await expect(page).toHaveURL('/wander')
 
-  await page.locator('nav').getByText('Stories').click()
+  await page.locator('nav').getByText('Sleep', { exact: true }).click()
   await expect(page).toHaveURL('/dreamscape')
 
-  await page.locator('nav').getByText('Log').click()
+  await page.locator('nav').getByText('Dawn', { exact: true }).click()
   await expect(page).toHaveURL('/log')
 })
 

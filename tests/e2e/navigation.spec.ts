@@ -20,30 +20,30 @@ test('loads ritual hub at /', async ({ page }) => {
 test('all nav tabs are present', async ({ page }) => {
   await page.goto('/log')
   const nav = page.locator('nav')
-  await expect(nav.getByText('Altar')).toBeVisible()
-  await expect(nav.getByText('Dawn')).toBeVisible()
-  await expect(nav.getByText('Journal')).toBeVisible()
-  await expect(nav.getByText('Strata')).toBeVisible()
-  await expect(nav.getByText('Letters')).toBeVisible()
-  await expect(nav.getByText('Sleep')).toBeVisible()
+  await expect(nav.getByText('Altar', { exact: true })).toBeVisible()
+  await expect(nav.getByText('Dawn', { exact: true })).toBeVisible()
+  await expect(nav.getByText('Reading', { exact: true })).toBeVisible()
+  await expect(nav.getByText('Wander', { exact: true })).toBeVisible()
+  await expect(nav.getByText('Sleep', { exact: true })).toBeVisible()
+  await expect(nav.getByText('Strata', { exact: true })).toBeVisible()
 })
 
 test('navigates to /strata via nav', async ({ page }) => {
   await page.goto('/log')
-  await page.locator('nav').getByText('Strata').click()
+  await page.locator('nav').getByText('Strata', { exact: true }).click()
   await expect(page).toHaveURL('/strata')
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible()
 })
 
-test('navigates to /letters via nav', async ({ page }) => {
+test('navigates to /wander via nav', async ({ page }) => {
   await page.goto('/log')
-  await page.locator('nav').getByText('Letters').click()
-  await expect(page).toHaveURL('/letters')
+  await page.locator('nav').getByText('Wander', { exact: true }).click()
+  await expect(page).toHaveURL('/wander')
 })
 
 test('navigates to /dreamscape via nav', async ({ page }) => {
   await page.goto('/log')
-  await page.locator('nav').getByText('Sleep').click()
+  await page.locator('nav').getByText('Sleep', { exact: true }).click()
   await expect(page).toHaveURL('/dreamscape')
   await expect(page.getByRole('heading', { name: 'Sleep' })).toBeVisible()
 })

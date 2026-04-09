@@ -17,131 +17,114 @@ interface ImageResult {
  * Generate image via Replicate (preferred: cheaper, no billing limits)
  * Uses Flux Schnell (fast, free tier available)
  */
-async function generateViaReplicate(prompt: string, model = 'black-forest-labs/flux-schnell'): Promise<ImageResult | null> {
-  if (!REPLICATE_KEY) return null
+async function generateViaReplicate(prompt: string, model = 'black-forest-labs/flux-schnell'): Promise<ImageResult> {
+  if (!REPLICATE_KEY) throw new Error('REPLICATE_API_TOKEN is not set')
 
-  try {
-    // Start prediction
-    const startResponse = await fetch('https://api.replicate.com/v1/predictions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Token ${REPLICATE_KEY}`,
+  // Start prediction
+  const startResponse = await fetch('https://api.replicate.com/v1/predictions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Token ${REPLICATE_KEY}`,
+    },
+    body: JSON.stringify({
+      version: model === 'black-forest-labs/flux-schnell' 
+        ? '3f0457e4a4202e302f7a14bdd7df1b04a3eccd2e' // Flux Schnell
+        : 'a25d7920246ce30010671ca59a0f1450733641ae', // SDXL
+      input: {
+        prompt,
+        width: 1024,
+        height: 1024,
+        num_outputs: 1,
+        scheduler: 'K_EULER',
+        num_inference_steps: 4,
+        guidance_scale: 7.5,
       },
-      body: JSON.stringify({
-        version: model === 'black-forest-labs/flux-schnell' 
-          ? '3f0457e4a4202e302f7a14bdd7df1b04a3eccd2e' // Flux Schnell
-          : 'a25d7920246ce30010671ca59a0f1450733641ae', // SDXL
-        input: {
-          prompt,
-          width: 1024,
-          height: 1024,
-          num_outputs: 1,
-          scheduler: 'K_EULER',
-          num_inference_steps: 4,
-          guidance_scale: 7.5,
-        },
-      }),
+    }),
+  })
+
+  if (!startResponse.ok) {
+    const error = await startResponse.json().catch(() => ({}))
+    throw new Error(`Replicate start failed (${startResponse.status}): ${JSON.stringify(error)}`)
+  }
+
+  const prediction = await startResponse.json()
+  const predictionId = prediction.id
+
+  // Poll for completion (max 60 seconds)
+  let attempts = 0
+  while (attempts < 60) {
+    const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+      headers: { Authorization: `Token ${REPLICATE_KEY}` },
     })
 
-    if (!startResponse.ok) {
-      const error = await startResponse.json().catch(() => ({}))
-      console.warn(`Replicate start failed (${startResponse.status}):`, error)
-      return null
+    if (!statusResponse.ok) {
+      throw new Error(`Replicate status check failed (${statusResponse.status})`)
     }
 
-    const prediction = await startResponse.json()
-    const predictionId = prediction.id
+    const status = await statusResponse.json()
 
-    // Poll for completion (max 60 seconds)
-    let attempts = 0
-    while (attempts < 60) {
-      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-        headers: { Authorization: `Token ${REPLICATE_KEY}` },
-      })
-
-      if (!statusResponse.ok) {
-        console.warn(`Replicate status check failed (${statusResponse.status})`)
-        return null
+    if (status.status === 'succeeded') {
+      const imageUrl = status.output?.[0]
+      if (!imageUrl) {
+        throw new Error('Replicate: No image URL in output')
       }
-
-      const status = await statusResponse.json()
-
-      if (status.status === 'succeeded') {
-        const imageUrl = status.output?.[0]
-        if (!imageUrl) {
-          console.warn('Replicate: No image URL in output')
-          return null
-        }
-        return {
-          url: imageUrl,
-          model,
-          provider: 'openrouter', // Keep as openrouter for compatibility
-        }
+      return {
+        url: imageUrl,
+        model,
+        provider: 'openrouter', // Keep as openrouter for compatibility
       }
-
-      if (status.status === 'failed') {
-        console.warn('Replicate: Prediction failed', status.error)
-        return null
-      }
-
-      // Wait before polling again
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      attempts++
     }
 
-    console.warn('Replicate: Prediction timeout')
-    return null
-  } catch (err) {
-    console.warn('Replicate error:', err instanceof Error ? err.message : err)
-    return null
+    if (status.status === 'failed') {
+      throw new Error(`Replicate: Prediction failed: ${JSON.stringify(status.error)}`)
+    }
+
+    // Wait before polling again
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    attempts++
   }
+
+  throw new Error('Replicate: Prediction timeout')
 }
 
 /**
  * Generate image via OpenAI (fallback)
  */
-async function generateViaOpenAI(prompt: string, model = 'dall-e-3'): Promise<ImageResult | null> {
-  if (!OPENAI_KEY) return null
+async function generateViaOpenAI(prompt: string, model = 'dall-e-3'): Promise<ImageResult> {
+  if (!OPENAI_KEY) throw new Error('OPENAI_API_KEY is not set')
 
-  try {
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        size: '1024x1024',
-        n: 1,
-        response_format: 'url',
-      }),
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      console.warn(`OpenAI failed (${response.status}):`, error)
-      return null
-    }
-
-    const data = await response.json()
-    const imageUrl = data.data?.[0]?.url
-
-    if (!imageUrl) {
-      console.warn('OpenAI: No image URL in response')
-      return null
-    }
-
-    return {
-      url: imageUrl,
+  const response = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_KEY}`,
+    },
+    body: JSON.stringify({
       model,
-      provider: 'openai',
-    }
-  } catch (err) {
-    console.warn('OpenAI error:', err instanceof Error ? err.message : err)
-    return null
+      prompt,
+      size: '1024x1024',
+      n: 1,
+      response_format: 'url',
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(`OpenAI failed (${response.status}): ${JSON.stringify(error)}`)
+  }
+
+  const data = await response.json()
+  const imageUrl = data.data?.[0]?.url
+
+  if (!imageUrl) {
+    throw new Error('OpenAI: No image URL in response')
+  }
+
+  return {
+    url: imageUrl,
+    model,
+    provider: 'openai',
   }
 }
 
@@ -150,16 +133,30 @@ async function generateViaOpenAI(prompt: string, model = 'dall-e-3'): Promise<Im
  * Tries Replicate first (cheaper, no billing limits), falls back to OpenAI.
  */
 export async function generateImageSmart(prompt: string): Promise<ImageResult> {
+  const errors: string[] = []
+
   // Try Replicate first (cheaper, no billing limits)
-  const repResult = await generateViaReplicate(prompt, 'black-forest-labs/flux-schnell')
-  if (repResult) return repResult
+  try {
+    const repResult = await generateViaReplicate(prompt, 'black-forest-labs/flux-schnell')
+    return repResult
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('Replicate error:', msg)
+    errors.push(`Replicate: ${msg}`)
+  }
 
   // Fall back to OpenAI
-  const oaiResult = await generateViaOpenAI(prompt, 'dall-e-3')
-  if (oaiResult) return oaiResult
+  try {
+    const oaiResult = await generateViaOpenAI(prompt, 'dall-e-3')
+    return oaiResult
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('OpenAI error:', msg)
+    errors.push(`OpenAI: ${msg}`)
+  }
 
   // No provider available
-  throw new Error('No image generation provider available (Replicate and OpenAI both unavailable)')
+  throw new Error(`No image generation provider available. Errors: ${errors.join(' | ')}`)
 }
 
 /**
