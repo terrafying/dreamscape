@@ -68,3 +68,53 @@ textarea {
 .stagger-children > *:nth-child(6) { animation-delay: 500ms; }
 .stagger-children > *:nth-child(7) { animation-delay: 600ms; }
 .stagger-children > *:nth-child(8) { animation-delay: 700ms; }
+
+/* VHS Retro Monitor Flicker and CRT scanline effects */
+body::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.05) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+body::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.15) 100%);
+  z-index: 9998;
+  pointer-events: none;
+}
+
+@keyframes flicker {
+  0% { opacity: 0.95; }
+  5% { opacity: 0.85; }
+  10% { opacity: 0.95; }
+  15% { opacity: 1; }
+  50% { opacity: 0.98; }
+  55% { opacity: 0.92; }
+  60% { opacity: 1; }
+  90% { opacity: 0.97; }
+  95% { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+
+html {
+  animation: flicker 6s infinite;
+}

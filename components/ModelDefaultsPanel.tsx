@@ -5,14 +5,14 @@ import { useEffect, useState } from 'react'
 type Provider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
 
 export default function ModelDefaultsPanel() {
-  const [provider, setProvider] = useState<Provider>('groq')
-  const [orModel, setOrModel] = useState('nvidia/nemotron-3-super-120b-a12b:free')
+  const [provider, setProvider] = useState<Provider>('openrouter')
+  const [orModel, setOrModel] = useState('google/gemma-4-31b-it:free')
   const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const p = (localStorage.getItem('dreamscape_provider') as Provider) || 'groq'
-    const orm = localStorage.getItem('dreamscape_or_model') || 'nvidia/nemotron-3-super-120b-a12b:free'
+    const p = (localStorage.getItem('dreamscape_provider') as Provider) || 'openrouter'
+    const orm = localStorage.getItem('dreamscape_or_model') || 'google/gemma-4-31b-it:free'
     const gm = localStorage.getItem('dreamscape_groq_model') || 'llama-3.3-70b-versatile'
     setProvider(p)
     setOrModel(orm)
@@ -49,7 +49,7 @@ export default function ModelDefaultsPanel() {
         {provider === 'openrouter' && (
           <>
             <label className="text-xs" style={{ color: 'var(--muted)' }}>OpenRouter Model</label>
-            <input type="text" value={orModel} onChange={(e) => setOrModel(e.target.value)} placeholder="nvidia/nemotron-3-super-120b-a12b:free" className="rounded px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            <input type="text" value={orModel} onChange={(e) => setOrModel(e.target.value)} placeholder="google/gemma-4-31b-it:free" className="rounded px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
           </>
         )}
         {provider === 'groq' && (

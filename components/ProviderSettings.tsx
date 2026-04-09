@@ -11,15 +11,15 @@ interface ProviderSettingsProps {
 const PREMIUM_PROVIDERS: LLMProvider[] = ['anthropic', 'openai']
 
 export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
-  const [provider, setProvider] = useState<LLMProvider>('groq')
-  const [orModel, setOrModel] = useState('nvidia/nemotron-3-super-120b-a12b:free')
+  const [provider, setProvider] = useState<LLMProvider>('openrouter')
+  const [orModel, setOrModel] = useState('google/gemma-4-31b-it:free')
   const [expanded, setExpanded] = useState(false)
   const [premium, setPremium] = useState(false)
 
   useEffect(() => {
     setPremium(isPremium())
-    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'groq'
-    const orm = localStorage.getItem('dreamscape_or_model') || 'nvidia/nemotron-3-super-120b-a12b:free'
+    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'openrouter'
+    const orm = localStorage.getItem('dreamscape_or_model') || 'google/gemma-4-31b-it:free'
     setProvider(p)
     setOrModel(orm)
     onChange?.(p, p === 'openrouter' ? orm : undefined)
@@ -121,7 +121,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
           {provider === 'openrouter' && (
             <div className="space-y-2">
               <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                Uses OpenRouter via your <span style={{ color: 'var(--violet)' }}>OPENROUTER_API_KEY</span>. Defaults to <span style={{ color: 'var(--text)' }}>nemotron-3-super-120b</span>. Auto-rotates with cool-down on failures.
+                Uses OpenRouter via your <span style={{ color: 'var(--violet)' }}>OPENROUTER_API_KEY</span>. Defaults to <span style={{ color: 'var(--text)' }}>google/gemma-4-31b-it:free</span>. Auto-rotates with cool-down on failures.
               </p>
               <div className="space-y-1">
                 <label className="text-xs" style={{ color: 'var(--muted)' }}>Model override</label>
@@ -129,7 +129,7 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
                   type="text"
                   value={orModel}
                   onChange={(e) => save('openrouter', e.target.value)}
-                  placeholder="nvidia/nemotron-3-super-120b-a12b:free"
+                  placeholder="google/gemma-4-31b-it:free"
                   className="w-full rounded-lg px-3 py-1.5 text-xs font-mono outline-none"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)' }}
                 />

@@ -302,13 +302,22 @@ export default function LogPage() {
                 )}
                 {savedId && <span className="text-xs" style={{ color: 'var(--muted)' }}>· saved</span>}
               </div>
-              <button
-                onClick={handleNew}
-                className="text-xs px-3 py-1 rounded-full transition-opacity hover:opacity-70"
-                style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
-              >
-                New Dream
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setStatus('idle')}
+                  className="text-xs px-3 py-1 rounded-full transition-opacity hover:opacity-70"
+                  style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+                >
+                  Re-analyze
+                </button>
+                <button
+                  onClick={handleNew}
+                  className="text-xs px-3 py-1 rounded-full transition-opacity hover:opacity-70"
+                  style={{ border: '1px solid var(--border)', color: 'var(--muted)' }}
+                >
+                  New Dream
+                </button>
+              </div>
             </div>
 
             <div

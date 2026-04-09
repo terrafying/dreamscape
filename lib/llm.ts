@@ -88,15 +88,15 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
 }
 
 export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): Promise<{ text: string; source: string }> {
-  const { provider = 'groq', model, maxTokens = 2000 } = opts
+  const { provider = 'openrouter', model, maxTokens = 2000 } = opts
 
   const chain: LLMProvider[] = provider === 'anthropic'
-    ? ['anthropic', 'groq', 'openai', 'openrouter']
+    ? ['anthropic', 'openrouter', 'openai', 'groq']
     : provider === 'openai'
-    ? ['openai', 'groq', 'openrouter', 'anthropic']
-    : provider === 'openrouter'
-    ? ['openrouter', 'groq', 'openai', 'anthropic']
-    : ['groq', 'openai', 'openrouter', 'anthropic']
+    ? ['openai', 'openrouter', 'groq', 'anthropic']
+    : provider === 'groq'
+    ? ['groq', 'openrouter', 'openai', 'anthropic']
+    : ['openrouter', 'groq', 'openai', 'anthropic']
 
   const tried = new Set<LLMProvider>()
   for (const p of chain) {

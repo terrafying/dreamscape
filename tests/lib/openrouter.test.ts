@@ -12,9 +12,9 @@ import {
 describe('pickOpenRouterModel', () => {
   afterEach(() => { vi.resetModules(); mockFetch.mockReset() })
 
-  it('returns nemotron-super as top pick by default', () => {
+  it('returns gemma-4 as top pick by default', () => {
     const model = pickOpenRouterModel()
-    expect(model).toBe('nvidia/nemotron-3-super-120b-a12b:free')
+    expect(model).toBe('google/gemma-4-31b-it:free')
   })
 
   it('returns preferred model when available and not cooled', () => {
@@ -23,26 +23,26 @@ describe('pickOpenRouterModel', () => {
   })
 
   it('falls back to next available when preferred is cooled', () => {
-    markOpenRouterFailure('nvidia/nemotron-3-super-120b-a12b:free', 60)
-    const model = pickOpenRouterModel('nvidia/nemotron-3-super-120b-a12b:free')
-    expect(model).not.toBe('nvidia/nemotron-3-super-120b-a12b:free')
+    markOpenRouterFailure('google/gemma-4-31b-it:free', 60)
+    const model = pickOpenRouterModel('google/gemma-4-31b-it:free')
+    expect(model).not.toBe('google/gemma-4-31b-it:free')
     expect(model).toBeTruthy()
   })
 })
 
 describe('markOpenRouterFailure', () => {
   it('prevents cooled model from being picked for the given duration', () => {
-    markOpenRouterFailure('nvidia/nemotron-3-super-120b-a12b:free', 1)
+    markOpenRouterFailure('google/gemma-4-31b-it:free', 1)
     const model = pickOpenRouterModel()
-    expect(model).not.toBe('nvidia/nemotron-3-super-120b-a12b:free')
+    expect(model).not.toBe('google/gemma-4-31b-it:free')
   })
 })
 
 describe('markOpenRouterSuccess', () => {
   it('resets cool-down on success, restoring the model', () => {
-    markOpenRouterFailure('nvidia/nemotron-3-super-120b-a12b:free', 60)
-    expect(pickOpenRouterModel()).not.toBe('nvidia/nemotron-3-super-120b-a12b:free')
-    markOpenRouterSuccess('nvidia/nemotron-3-super-120b-a12b:free')
-    expect(pickOpenRouterModel()).toBe('nvidia/nemotron-3-super-120b-a12b:free')
+    markOpenRouterFailure('google/gemma-4-31b-it:free', 60)
+    expect(pickOpenRouterModel()).not.toBe('google/gemma-4-31b-it:free')
+    markOpenRouterSuccess('google/gemma-4-31b-it:free')
+    expect(pickOpenRouterModel()).toBe('google/gemma-4-31b-it:free')
   })
 })

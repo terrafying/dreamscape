@@ -1,7 +1,8 @@
 type Candidate = { id: string; score: number; coolUntil: number }
 
 const SEEDED: Candidate[] = [
-  { id: 'nvidia/nemotron-3-super-120b-a12b:free', score: 1.0, coolUntil: 0 },
+  { id: 'google/gemma-4-31b-it:free', score: 1.0, coolUntil: 0 },
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free', score: 0.9, coolUntil: 0 },
   { id: 'qwen/qwen3-next-80b-a3b-instruct:free', score: 0.70, coolUntil: 0 },
   { id: 'nvidia/nemotron-3-nano-30b-a3b:free', score: 0.65, coolUntil: 0 },
   { id: 'stepfun/step-3.5-flash:free', score: 0.60, coolUntil: 0 },

@@ -52,29 +52,31 @@ export default function Nav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all duration-200"
+              className="relative flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-all duration-300 group"
               style={{
-                color: active ? 'var(--text)' : 'var(--muted)',
-                background: active
-                  ? 'linear-gradient(180deg, rgba(167,139,250,0.15), rgba(167,139,250,0.04))'
-                  : 'transparent',
+                color: active ? 'var(--violet)' : 'var(--muted)',
               }}
             >
-              <span className="text-lg leading-none" style={{ fontFamily: 'monospace' }}>
-                {tab.icon}
-              </span>
+              <div 
+                className="flex items-center justify-center transition-all duration-300"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  background: active ? 'rgba(167,139,250,0.15)' : 'transparent',
+                  clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                  border: active ? '1px solid rgba(167,139,250,0.5)' : 'none',
+                }}
+              >
+                <span className="text-lg leading-none group-hover:scale-110 transition-transform" style={{ fontFamily: 'monospace' }}>
+                  {tab.icon}
+                </span>
+              </div>
               <span
                 className="text-xs font-medium tracking-wider uppercase"
-                style={{ fontSize: '10px', letterSpacing: '0.1em' }}
+                style={{ fontSize: '9px', letterSpacing: '0.1em' }}
               >
                 {tab.label}
               </span>
-              {active && (
-                <span
-                  className="absolute bottom-0 w-8 h-0.5 rounded-full"
-                  style={{ background: 'var(--violet)' }}
-                />
-              )}
             </Link>
           )
         })}
