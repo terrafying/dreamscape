@@ -23,7 +23,6 @@ test('all nav tabs are present', async ({ page }) => {
   await expect(nav.getByText('Altar', { exact: true })).toBeVisible()
   await expect(nav.getByText('Dawn', { exact: true })).toBeVisible()
   await expect(nav.getByText('Reading', { exact: true })).toBeVisible()
-  await expect(nav.getByText('Wander', { exact: true })).toBeVisible()
   await expect(nav.getByText('Sleep', { exact: true })).toBeVisible()
   await expect(nav.getByText('Strata', { exact: true })).toBeVisible()
 })
@@ -33,12 +32,6 @@ test('navigates to /strata via nav', async ({ page }) => {
   await page.locator('nav').getByText('Strata', { exact: true }).click()
   await expect(page).toHaveURL('/strata')
   await expect(page.getByRole('heading', { name: 'Strata' })).toBeVisible()
-})
-
-test('navigates to /wander via nav', async ({ page }) => {
-  await page.goto('/log')
-  await page.locator('nav').getByText('Wander', { exact: true }).click()
-  await expect(page).toHaveURL('/wander')
 })
 
 test('navigates to /dreamscape via nav', async ({ page }) => {

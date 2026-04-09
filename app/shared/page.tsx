@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import SharedDreamCard from '@/components/SharedDreamCard'
 import SharedVisionCard from '@/components/SharedVisionCard'
-import type { SharedDreamWithCounts, SharedVisionWithCounts, VisionInterpretation } from '@/lib/types'
+import type { SharedDreamWithCounts, SharedVisionWithCounts, VisionInterpretation, DreamLog } from '@/lib/types'
 import { apiFetch } from '@/lib/apiFetch'
 import { getSupabase } from '@/lib/supabaseClient'
+import { getDreams } from '@/lib/store'
 
 const MODES = ['Dreams', 'Visions'] as const
 type Mode = typeof MODES[number]
@@ -188,6 +189,29 @@ export default function SharedFeedPage() {
     }
     checkAuth()
   }, [])
+
+  useEffect(() => {
+    if (!signedIn || typeof window === 'undefined') return
+    if (localStorage.getItem('dreamscape_retroactive_share_done') === '1') return
+
+    const retroactiveShare = async () => {
+      try {
+        const localDreams = await getDreams()
+        for (const dream of localDreams) {
+          if (dream.extraction) {
+            await apiFetch(`/api/share/${dream.id}`, {
+              method: 'POST',
+              body: JSON.stringify({ dream })
+            }).catch(() => {})
+          }
+        }
+        localStorage.setItem('dreamscape_retroactive_share_done', '1')
+      } catch (e) {
+        console.error('Failed to retroactively share dreams:', e)
+      }
+    }
+    retroactiveShare()
+  }, [signedIn])
 
   if (signedIn === null) return null
 

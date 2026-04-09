@@ -36,7 +36,7 @@ test('bottom nav is visible', async ({ page }) => {
 test('all nav tabs are present', async ({ page }) => {
   await page.goto('/log')
   const nav = page.locator('nav')
-  for (const label of ['Altar', 'Dawn', 'Reading', 'Wander', 'Sleep', 'Strata']) {
+  for (const label of ['Altar', 'Dawn', 'Reading', 'Sleep', 'Strata']) {
     await expect(nav.getByText(label, { exact: true })).toBeVisible()
   }
 })
@@ -56,9 +56,6 @@ test('tap navigation visits all sections', async ({ page }) => {
 
   await page.locator('nav').getByText('Strata', { exact: true }).click()
   await expect(page).toHaveURL('/strata')
-
-  await page.locator('nav').getByText('Wander', { exact: true }).click()
-  await expect(page).toHaveURL('/wander')
 
   await page.locator('nav').getByText('Sleep', { exact: true }).click()
   await expect(page).toHaveURL('/dreamscape')

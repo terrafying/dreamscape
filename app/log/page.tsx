@@ -52,6 +52,7 @@ export default function LogPage() {
   const [model, setModel] = useState<string | undefined>(undefined)
   const [streak, setStreak] = useState(0)
   const [shareDream, setShareDream] = useState<DreamLog | null>(null)
+  const [autoShare, setAutoShare] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -149,7 +150,17 @@ export default function LogPage() {
             await saveDream(log)
             const supabase = getSupabase()
             const session = supabase ? await supabase.auth.getSession() : null
-            if (session?.data?.session?.user) { try { await syncDream(session.data.session.user.id, log) } catch {} }
+            if (session?.data?.session?.user) { 
+              try { await syncDream(session.data.session.user.id, log) } catch {}
+              if (autoShare) {
+                try {
+                  await apiFetch(`/api/share/${id}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ dream: log })
+                  })
+                } catch {}
+              }
+            }
             setSavedId(id)
             const updated = await getDreams()
             setDreams(updated)
@@ -249,8 +260,39 @@ export default function LogPage() {
               </div>
             </div>
 
-            <button
-              onClick={handleSubmit}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={autoShare}
+                      onChange={(e) => setAutoShare(e.target.checked)}
+                      className="peer w-4 h-4 rounded appearance-none cursor-pointer border transition-colors"
+                      style={{
+                        background: autoShare ? 'var(--violet)' : 'rgba(255,255,255,0.05)',
+                        borderColor: autoShare ? 'var(--violet)' : 'var(--border)'
+                      }}
+                    />
+                    <svg
+                      className="absolute inset-0 w-4 h-4 pointer-events-none stroke-black transition-opacity"
+                      style={{ opacity: autoShare ? 1 : 0 }}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <span className="text-[11px] uppercase tracking-widest font-mono transition-colors group-hover:text-violet-400" style={{ color: autoShare ? 'var(--violet)' : 'var(--muted)' }}>
+                    Share to Community
+                  </span>
+                </label>
+              </div>
+
+              <button
+                onClick={handleSubmit}
               disabled={!transcript.trim() || status === 'loading' || paywallLocked}
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-all duration-200"
               style={{
