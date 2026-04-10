@@ -18,6 +18,8 @@ import ShareSheet from '@/components/ShareSheet'
 import HQVoiceButton from '@/components/HQVoiceButton'
 import Paywall from '@/components/Paywall'
 import { isPaywallEnforced } from '@/lib/entitlements'
+import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
+import { getStoredModelPreference } from '@/lib/modelPreferences'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
@@ -48,14 +50,17 @@ export default function LogPage() {
   const [birthData, setBirthData] = useState<BirthData | null>(null)
   const [showBirthModal, setShowBirthModal] = useState(false)
   const [dreams, setDreams] = useState<DreamLog[]>([])
-  const [provider, setProvider] = useState<LLMProvider>('anthropic')
-  const [model, setModel] = useState<string | undefined>(undefined)
+  const [provider, setProvider] = useState<LLMProvider>('openrouter')
+  const [model, setModel] = useState<string | undefined>(DEFAULT_OPENROUTER_MODEL)
   const [streak, setStreak] = useState(0)
   const [shareDream, setShareDream] = useState<DreamLog | null>(null)
   const [autoShare, setAutoShare] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
+    const stored = getStoredModelPreference()
+    setProvider(stored.provider)
+    setModel(stored.model)
     getBirthData().then((bd) => {
       setBirthData(bd)
       const dismissed = localStorage.getItem('dreamscape_birth_dismissed')

@@ -11,6 +11,8 @@ import HQVoiceButton from '@/components/HQVoiceButton'
 import SigilWorkbench from '@/components/SigilWorkbench'
 import VisionBoardCard from '@/components/VisionBoardCard'
 import ShareableVisionCard from '@/components/ShareableVisionCard'
+import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
+import { getStoredModelPreference } from '@/lib/modelPreferences'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
@@ -23,8 +25,8 @@ export default function VisionRitualPage() {
   const [visions, setVisions] = useState<VisionLog[]>([])
   const [savedId, setSavedId] = useState<string | null>(null)
   const [birthData, setBirthData] = useState<BirthData | null>(null)
-  const [provider, setProvider] = useState<LLMProvider>('anthropic')
-  const [model, setModel] = useState<string | undefined>(undefined)
+  const [provider, setProvider] = useState<LLMProvider>('openrouter')
+  const [model, setModel] = useState<string | undefined>(DEFAULT_OPENROUTER_MODEL)
   const [imageUrl, setImageUrl] = useState('')
   const [generatingImage, setGeneratingImage] = useState(false)
   const [publishMessage, setPublishMessage] = useState('')
@@ -32,6 +34,9 @@ export default function VisionRitualPage() {
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
+    const stored = getStoredModelPreference()
+    setProvider(stored.provider)
+    setModel(stored.model)
     getBirthData().then(setBirthData)
     getVisions().then(setVisions)
   }, [])

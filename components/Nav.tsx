@@ -57,12 +57,11 @@ export default function Nav() {
               }}
             >
               <div 
-                className="flex items-center justify-center transition-all duration-300"
+                className="flex items-center justify-center transition-all duration-300 rounded-lg"
                 style={{
                   width: '40px',
                   height: '40px',
                   background: active ? 'rgba(167,139,250,0.15)' : 'transparent',
-                  clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
                   border: active ? '1px solid rgba(167,139,250,0.5)' : 'none',
                 }}
               >

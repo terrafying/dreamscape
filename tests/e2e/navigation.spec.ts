@@ -14,14 +14,16 @@ test.beforeEach(async ({ page }) => {
 test('loads ritual hub at /', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveURL('/')
-  await expect(page.getByRole('heading', { name: 'The last 10 and first 10 minutes of your day.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'At dusk you close. At dawn you gather.' })).toBeVisible()
+  await expect(page.getByRole('main').getByRole('link', { name: /Dusk/ }).first()).toBeVisible()
+  await expect(page.getByRole('main').getByRole('link', { name: /Dawn/ }).first()).toBeVisible()
 })
 
 test('all nav tabs are present', async ({ page }) => {
   await page.goto('/log')
   const nav = page.locator('nav')
   await expect(nav.getByText('Altar', { exact: true })).toBeVisible()
-  await expect(nav.getByText('Dawn', { exact: true })).toBeVisible()
+  await expect(nav.getByText(/Dusk|Dawn/, { exact: true })).toBeVisible()
   await expect(nav.getByText('Reading', { exact: true })).toBeVisible()
   await expect(nav.getByText('Sleep', { exact: true })).toBeVisible()
   await expect(nav.getByText('Strata', { exact: true })).toBeVisible()

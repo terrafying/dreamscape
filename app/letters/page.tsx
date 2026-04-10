@@ -8,6 +8,8 @@ import RecommendationCards from '@/components/RecommendationCards'
 import { apiFetch } from '@/lib/apiFetch'
 import Paywall from '@/components/Paywall'
 import { isPaywallEnforced } from '@/lib/entitlements'
+import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
+import { getStoredModelPreference } from '@/lib/modelPreferences'
 
 interface StructuredLetter {
   key_patterns: { pattern: string; frequency: number; significance: string }[]
@@ -59,8 +61,8 @@ export default function LettersPage() {
   const [statusMessage, setStatusMessage] = useState('')
   const [prose, setProse] = useState('')
   const [structured, setStructured] = useState<StructuredLetter | null>(null)
-  const [provider, setProvider] = useState<LLMProvider>('anthropic')
-  const [model, setModel] = useState<string | undefined>(undefined)
+  const [provider, setProvider] = useState<LLMProvider>('openrouter')
+  const [model, setModel] = useState<string | undefined>(DEFAULT_OPENROUTER_MODEL)
   const [copied, setCopied] = useState(false)
 
   // Personal letter state
@@ -82,10 +84,9 @@ export default function LettersPage() {
   useEffect(() => {
     getDreams().then(setDreams)
     getBirthData().then(setBirthData)
-    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'anthropic'
-    const m = localStorage.getItem('dreamscape_model') || undefined
-    setProvider(p)
-    setModel(m)
+    const stored = getStoredModelPreference()
+    setProvider(stored.provider)
+    setModel(stored.model)
   }, [])
 
   const analyzed = dreams.filter((d) => d.extraction)

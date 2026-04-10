@@ -254,7 +254,7 @@ export function DreamDetailClient({ dreamId }: { dreamId: string }) {
 
       {dreamData?.transcript && (
         <div
-          className="rounded-2xl p-5 leading-relaxed"
+          className="rounded-2xl p-5 leading-relaxed whitespace-pre-wrap break-words"
           style={{
             background: 'rgba(12,10,28,0.95)',
             border: '1px solid rgba(167,139,250,0.2)',
@@ -262,6 +262,7 @@ export function DreamDetailClient({ dreamId }: { dreamId: string }) {
             color: 'rgba(226,232,240,0.9)',
             fontSize: '15px',
             lineHeight: '1.8',
+            overflowWrap: 'anywhere',
           }}
         >
           {safeString(dreamData.transcript)}
@@ -355,7 +356,7 @@ export function DreamDetailClient({ dreamId }: { dreamId: string }) {
               <span className="text-xs font-medium" style={{ color: 'var(--violet)' }}>@{interp.handle}</span>
               <span className="text-[10px]" style={{ color: 'var(--muted)' }}>{timeAgo(interp.created_at)}</span>
             </div>
-            <p className="text-sm" style={{ color: 'rgba(226,232,240,0.7)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+            <p className="text-sm whitespace-pre-wrap break-words" style={{ color: 'rgba(226,232,240,0.7)', fontFamily: 'Georgia, serif', fontStyle: 'italic', overflowWrap: 'anywhere' }}>
               {interp.text}
             </p>
           </div>

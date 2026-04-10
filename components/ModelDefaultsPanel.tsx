@@ -1,28 +1,39 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
-type Provider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
+import OpenRouterModelField from '@/components/OpenRouterModelField'
+import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
+import {
+  DEFAULT_PROVIDER,
+  getDefaultModelForProvider,
+  getStoredModelPreference,
+  PROVIDER_DEFAULT_MODELS,
+  PROVIDER_LABELS,
+  saveModelPreference,
+} from '@/lib/modelPreferences'
+import type { LLMProvider } from '@/lib/llm'
 
 export default function ModelDefaultsPanel() {
-  const [provider, setProvider] = useState<Provider>('openrouter')
-  const [orModel, setOrModel] = useState('google/gemma-4-31b-it:free')
-  const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile')
+  const providerSelectId = 'model-default-provider'
+  const [provider, setProvider] = useState<LLMProvider>(DEFAULT_PROVIDER)
+  const [orModel, setOrModel] = useState(DEFAULT_OPENROUTER_MODEL)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const p = (localStorage.getItem('dreamscape_provider') as Provider) || 'openrouter'
-    const orm = localStorage.getItem('dreamscape_or_model') || 'google/gemma-4-31b-it:free'
-    const gm = localStorage.getItem('dreamscape_groq_model') || 'llama-3.3-70b-versatile'
-    setProvider(p)
-    setOrModel(orm)
-    setGroqModel(gm)
+    const stored = getStoredModelPreference()
+    setProvider(stored.provider)
+    setOrModel(localStorage.getItem('dreamscape_or_model') || DEFAULT_OPENROUTER_MODEL)
   }, [])
 
   const save = () => {
-    localStorage.setItem('dreamscape_provider', provider)
-    localStorage.setItem('dreamscape_or_model', orModel)
-    localStorage.setItem('dreamscape_groq_model', groqModel)
+    const next = provider === 'openrouter'
+      ? orModel.trim() || DEFAULT_OPENROUTER_MODEL
+      : getDefaultModelForProvider(provider)
+    saveModelPreference(provider, next)
+    if (provider === 'openrouter') setOrModel(next)
+    setSaved(true)
+    window.setTimeout(() => setSaved(false), 1500)
   }
 
   const usingKeys = (() => {
@@ -39,27 +50,36 @@ export default function ModelDefaultsPanel() {
         )}
       </div>
       <div className="grid gap-2">
-        <label className="text-xs" style={{ color: 'var(--muted)' }}>Default Provider</label>
-        <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)} className="text-xs rounded px-2 py-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)', width: 'fit-content' }}>
-          <option value="groq">Groq (free)</option>
-          <option value="openrouter">OpenRouter</option>
-          <option value="openai">OpenAI</option>
-          <option value="anthropic">Anthropic</option>
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+          Choose the default provider Dreamscape should prefer. OpenRouter still gives the widest coverage, but your saved keys can route calls through the others too.
+        </p>
+        <label htmlFor={providerSelectId} className="text-xs" style={{ color: 'var(--muted)' }}>Default provider</label>
+        <select
+          id={providerSelectId}
+          value={provider}
+          onChange={(event) => setProvider(event.target.value as LLMProvider)}
+          className="rounded px-3 py-2 text-sm outline-none"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }}
+        >
+          {(['openrouter', 'openai', 'anthropic', 'groq'] as LLMProvider[]).map((item) => (
+            <option key={item} value={item}>{PROVIDER_LABELS[item]}</option>
+          ))}
         </select>
-        {provider === 'openrouter' && (
-          <>
-            <label className="text-xs" style={{ color: 'var(--muted)' }}>OpenRouter Model</label>
-            <input type="text" value={orModel} onChange={(e) => setOrModel(e.target.value)} placeholder="google/gemma-4-31b-it:free" className="rounded px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-          </>
-        )}
-        {provider === 'groq' && (
-          <>
-            <label className="text-xs" style={{ color: 'var(--muted)' }}>Groq Model</label>
-            <input type="text" value={groqModel} onChange={(e) => setGroqModel(e.target.value)} placeholder="llama-3.3-70b-versatile" className="rounded px-3 py-2 text-sm outline-none" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-          </>
+        {provider === 'openrouter' ? (
+          <OpenRouterModelField
+            value={orModel}
+            onChange={setOrModel}
+            hint="Stored locally as your preferred OpenRouter override."
+          />
+        ) : (
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+            Default model for {PROVIDER_LABELS[provider]}: <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS[provider]}</span>
+          </p>
         )}
         <div className="flex justify-end pt-1">
-          <button onClick={save} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--violet)', color: '#07070f' }}>Save</button>
+          <button onClick={save} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--violet)', color: '#07070f' }}>
+            {saved ? 'Saved' : 'Save'}
+          </button>
         </div>
       </div>
     </div>

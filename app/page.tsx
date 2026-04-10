@@ -284,16 +284,22 @@ export default function Home() {
         <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--muted)' }}>
           Quick Start
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           <Link
-            href={isEveningWindow ? '/journal' : '/log'}
+            href="/journal"
             className="rounded-lg px-3 py-3 text-center transition-colors"
-            style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text)' }}
+            style={{ background: 'rgba(245,158,11,0.08)', color: '#f59e0b' }}
           >
-            <div className="text-lg" style={{ fontFamily: 'monospace' }}>{isEveningWindow ? '☾' : '☀'}</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-              {isEveningWindow ? 'Dusk' : 'Dawn'}
-            </div>
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>☾</div>
+            <div className="text-xs mt-1" style={{ color: '#f6ad55' }}>Dusk</div>
+          </Link>
+          <Link
+            href="/log"
+            className="rounded-lg px-3 py-3 text-center transition-colors"
+            style={{ background: 'rgba(244,201,93,0.09)', color: '#f4c95d' }}
+          >
+            <div className="text-lg" style={{ fontFamily: 'monospace' }}>☀</div>
+            <div className="text-xs mt-1" style={{ color: '#f4c95d' }}>Dawn</div>
           </Link>
           <Link
             href="/dreamscape"

@@ -1,13 +1,12 @@
+import { DEFAULT_OPENROUTER_MODEL, FALLBACK_OPENROUTER_MODELS } from '@/lib/openrouterModels'
+
 type Candidate = { id: string; score: number; coolUntil: number }
 
-const SEEDED: Candidate[] = [
-  { id: 'google/gemma-4-31b-it:free', score: 1.0, coolUntil: 0 },
-  { id: 'nvidia/nemotron-3-super-120b-a12b:free', score: 0.9, coolUntil: 0 },
-  { id: 'qwen/qwen3-next-80b-a3b-instruct:free', score: 0.70, coolUntil: 0 },
-  { id: 'nvidia/nemotron-3-nano-30b-a3b:free', score: 0.65, coolUntil: 0 },
-  { id: 'stepfun/step-3.5-flash:free', score: 0.60, coolUntil: 0 },
-  { id: 'arcee-ai/trinity-mini:free', score: 0.55, coolUntil: 0 },
-]
+const SEEDED: Candidate[] = FALLBACK_OPENROUTER_MODELS.map((id, index) => ({
+  id,
+  score: Math.max(1 - index * 0.08, 0.4),
+  coolUntil: 0,
+}))
 
 const state = new Map<string, Candidate>()
 for (const c of SEEDED) state.set(c.id, { ...c })
@@ -55,7 +54,7 @@ export function pickOpenRouterModel(preferred?: string): string {
   const available = Array.from(state.values())
     .filter(c => c.coolUntil <= now)
     .sort((a, b) => b.score - a.score)
-  return (available[0] || SEEDED[0]).id
+  return (available[0] || SEEDED[0] || { id: DEFAULT_OPENROUTER_MODEL }).id
 }
 
 export function markOpenRouterFailure(model: string, minutes = 10) {

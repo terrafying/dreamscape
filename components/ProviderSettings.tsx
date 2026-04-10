@@ -1,63 +1,59 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { LLMProvider } from '@/lib/llm'
-import { isPremium } from '@/lib/entitlements'
+import OpenRouterModelField from '@/components/OpenRouterModelField'
+import { DEFAULT_OPENROUTER_MODEL, shortOpenRouterModelName } from '@/lib/openrouterModels'
+import {
+  DEFAULT_PROVIDER,
+  getDefaultModelForProvider,
+  getStoredModelPreference,
+  PROVIDER_DEFAULT_MODELS,
+  PROVIDER_LABELS,
+  saveModelPreference,
+} from '@/lib/modelPreferences'
 
 interface ProviderSettingsProps {
   onChange?: (provider: LLMProvider, model: string | undefined) => void
 }
 
-const PREMIUM_PROVIDERS: LLMProvider[] = ['anthropic', 'openai']
-
 export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
-  const [provider, setProvider] = useState<LLMProvider>('openrouter')
-  const [orModel, setOrModel] = useState('google/gemma-4-31b-it:free')
+  const [provider, setProvider] = useState<LLMProvider>(DEFAULT_PROVIDER)
+  const [orModel, setOrModel] = useState(DEFAULT_OPENROUTER_MODEL)
   const [expanded, setExpanded] = useState(false)
-  const [premium, setPremium] = useState(false)
 
   useEffect(() => {
-    setPremium(isPremium())
-    const p = (localStorage.getItem('dreamscape_provider') as LLMProvider) || 'openrouter'
-    const orm = localStorage.getItem('dreamscape_or_model') || 'google/gemma-4-31b-it:free'
-    setProvider(p)
-    setOrModel(orm)
-    onChange?.(p, p === 'openrouter' ? orm : undefined)
-  }, [])
+    if (typeof window === 'undefined') return
+    const stored = getStoredModelPreference()
+    setProvider(stored.provider)
+    setOrModel(localStorage.getItem('dreamscape_or_model') || DEFAULT_OPENROUTER_MODEL)
+    onChange?.(stored.provider, stored.model)
+  }, [onChange])
 
-  const switchToGroq = () => {
-    localStorage.setItem('dreamscape_provider', 'groq')
-    setProvider('groq')
-    onChange?.('groq', 'llama-3.3-70b-versatile')
+  const saveProvider = (nextProvider: LLMProvider) => {
+    const nextModel = nextProvider === 'openrouter' ? orModel : getDefaultModelForProvider(nextProvider)
+    setProvider(nextProvider)
+    saveModelPreference(nextProvider, nextModel)
+    onChange?.(nextProvider, nextModel)
   }
 
-  const save = (p: LLMProvider, m: string) => {
-    if (!premium && PREMIUM_PROVIDERS.includes(p)) {
-      switchToGroq()
-      return
-    }
-    localStorage.setItem('dreamscape_provider', p)
-    if (p === 'openrouter') {
-      localStorage.setItem('dreamscape_or_model', m)
-      setOrModel(m)
-    }
-    setProvider(p)
-    onChange?.(p, p === 'openrouter' ? m : undefined)
+  const saveOpenRouterModel = (nextModel: string) => {
+    const value = nextModel.trim() || DEFAULT_OPENROUTER_MODEL
+    setOrModel(value)
+    saveModelPreference('openrouter', value)
+    onChange?.('openrouter', value)
   }
 
-  const label = provider === 'anthropic'
-    ? '☁ Anthropic'
-    : provider === 'openai'
-    ? '☁ OpenAI'
-    : provider === 'groq'
-    ? '☁ Groq (free)'
-    : `☁ OpenRouter (${orModel.split('/').pop()})`
+  const label = provider === 'openrouter'
+    ? `OpenRouter · ${shortOpenRouterModelName(orModel)}`
+    : `${PROVIDER_LABELS[provider]} · ${PROVIDER_DEFAULT_MODELS[provider]}`
 
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
+        aria-label="Model provider settings"
+        onClick={() => setExpanded((current) => !current)}
         className="flex items-center gap-2 text-xs transition-opacity hover:opacity-80"
         style={{ color: 'var(--muted)' }}
       >
@@ -73,68 +69,37 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
           <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
             AI Model
           </div>
-
-          <div className="flex gap-2 flex-wrap">
-            {(['anthropic', 'openai', 'groq', 'openrouter'] as LLMProvider[]).map((p) => {
-              const locked = !premium && PREMIUM_PROVIDERS.includes(p)
+          <div className="grid grid-cols-2 gap-2">
+            {(['openrouter', 'openai', 'anthropic', 'groq'] as LLMProvider[]).map((item) => {
+              const active = item === provider
               return (
                 <button
-                  key={p}
+                  key={item}
                   type="button"
-                  disabled={locked}
-                  onClick={() => save(p, p === 'openrouter' ? orModel : p === 'openai' ? 'gpt-4o-mini' : p === 'anthropic' ? 'claude-3-haiku-20240307' : 'llama-3.3-70b-versatile')}
-                  className="flex-1 py-2 rounded-lg text-xs font-medium transition-all"
+                  onClick={() => saveProvider(item)}
+                  className="rounded-lg px-3 py-2 text-xs text-left transition-opacity hover:opacity-90"
                   style={{
-                    background: provider === p ? 'rgba(167,139,250,0.2)' : locked ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${provider === p ? 'rgba(167,139,250,0.4)' : locked ? 'rgba(255,255,255,0.04)' : 'var(--border)'}`,
-                    color: locked ? 'rgba(200,200,200,0.25)' : provider === p ? 'var(--violet)' : 'var(--muted)',
-                    cursor: locked ? 'not-allowed' : 'pointer',
-                    opacity: locked ? 0.5 : 1,
+                    background: active ? 'rgba(167,139,250,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${active ? 'rgba(167,139,250,0.35)' : 'var(--border)'}`,
+                    color: active ? 'var(--text)' : 'var(--muted)',
                   }}
-                  title={locked ? 'Requires premium — switch to Groq (free) or upgrade' : undefined}
                 >
-                  {p === 'anthropic' ? '☁ Anthropic' : p === 'openai' ? '☁ OpenAI' : p === 'groq' ? '☁ Groq (free)' : '☁ OpenRouter'}
-                  {locked && ' 🔒'}
+                  {PROVIDER_LABELS[item]}
                 </button>
               )
             })}
           </div>
-
-          {provider === 'anthropic' && (
-            <p className="text-xs" style={{ color: 'var(--muted)' }}>
-              Uses Anthropic via your <span style={{ color: 'var(--violet)' }}>ANTHROPIC_API_KEY</span> with in-app fallbacks if rate-limited.
-            </p>
-          )}
-
-          {provider === 'openai' && (
-            <p className="text-xs" style={{ color: 'var(--muted)' }}>
-              Uses OpenAI via your <span style={{ color: 'var(--violet)' }}>OPENAI_API_KEY</span>. Model defaults to <span style={{ color: 'var(--text)' }}>gpt-4o-mini</span>.
-            </p>
-          )}
-
-          {provider === 'groq' && (
-            <p className="text-xs" style={{ color: 'var(--muted)' }}>
-              Uses Groq via your <span style={{ color: 'var(--violet)' }}>GROQ_API_KEY</span> (14,400 req/day free). Model defaults to <span style={{ color: 'var(--text)' }}>llama-3.3-70b-versatile</span>.
-            </p>
-          )}
-
-          {provider === 'openrouter' && (
-            <div className="space-y-2">
-              <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                Uses OpenRouter via your <span style={{ color: 'var(--violet)' }}>OPENROUTER_API_KEY</span>. Defaults to <span style={{ color: 'var(--text)' }}>google/gemma-4-31b-it:free</span>. Auto-rotates with cool-down on failures.
+          {provider === 'openrouter' ? (
+            <>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                OpenRouter covers the broadest model set. Pick from the current top recommendations or enter a custom id.
               </p>
-              <div className="space-y-1">
-                <label className="text-xs" style={{ color: 'var(--muted)' }}>Model override</label>
-                <input
-                  type="text"
-                  value={orModel}
-                  onChange={(e) => save('openrouter', e.target.value)}
-                  placeholder="google/gemma-4-31b-it:free"
-                  className="w-full rounded-lg px-3 py-1.5 text-xs font-mono outline-none"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                />
-              </div>
-            </div>
+              <OpenRouterModelField value={orModel} onChange={saveOpenRouterModel} />
+            </>
+          ) : (
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              Uses your <span style={{ color: 'var(--text)' }}>{PROVIDER_LABELS[provider]}</span> key with the default model <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS[provider]}</span>.
+            </p>
           )}
         </div>
       )}

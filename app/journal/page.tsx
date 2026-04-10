@@ -8,6 +8,8 @@ import { generateId, getBirthData, getJournals, saveJournal } from '@/lib/store'
 import VoiceButton from '@/components/VoiceButton'
 import ProviderSettings from '@/components/ProviderSettings'
 import HQVoiceButton from '@/components/HQVoiceButton'
+import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
+import { getStoredModelPreference } from '@/lib/modelPreferences'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 type EntryType = 'evening' | 'morning'
@@ -40,12 +42,15 @@ export default function JournalPage() {
   const [sourceProvider, setSourceProvider] = useState<string | null>(null)
   const [journals, setJournals] = useState<JournalLog[]>([])
   const [birthData, setBirthData] = useState<BirthData | null>(null)
-  const [provider, setProvider] = useState<LLMProvider>('anthropic')
-  const [model, setModel] = useState<string | undefined>(undefined)
+  const [provider, setProvider] = useState<LLMProvider>('openrouter')
+  const [model, setModel] = useState<string | undefined>(DEFAULT_OPENROUTER_MODEL)
   const [entryType, setEntryType] = useState<EntryType>('morning')
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
+    const stored = getStoredModelPreference()
+    setProvider(stored.provider)
+    setModel(stored.model)
     setEntryType(detectEntryType())
     getBirthData().then(setBirthData)
     getJournals().then(setJournals)
