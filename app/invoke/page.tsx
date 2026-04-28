@@ -1,15 +1,23 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { SPIRITS, PGM_INVOCATION, type GoetiaSpirit } from '@/lib/goetia'
+import { ENTITIES, UNIVERSAL_INVOCATION, type Entity, findResonantEntities } from '@/lib/entities'
 import { getDreams } from '@/lib/store'
 
 // ─── Sigil Canvas ─────────────────────────────────────────────────────────────
 
-function SigilCanvas({ spirit, active }: { spirit: GoetiaSpirit; active: boolean }) {
+function hexToRgb(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return [r, g, b]
+}
+
+function SigilCanvas({ entity, active }: { entity: Entity; active: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<number>(0)
   const tRef = useRef(0)
+  const [r, g, b] = hexToRgb(entity.color)
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -27,8 +35,8 @@ function SigilCanvas({ spirit, active }: { spirit: GoetiaSpirit; active: boolean
     // Outer glow ring
     const pulse = active ? 0.5 + Math.sin(tRef.current * 2.3) * 0.3 : 0.2
     const grad = ctx.createRadialGradient(cx, cy, sz * 0.25, cx, cy, sz * 0.48)
-    grad.addColorStop(0, `rgba(139,92,246,${pulse * 0.15})`)
-    grad.addColorStop(1, 'rgba(139,92,246,0)')
+    grad.addColorStop(0, `rgba(${r},${g},${b},${pulse * 0.15})`)
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`)
     ctx.fillStyle = grad
     ctx.beginPath()
     ctx.arc(cx, cy, sz * 0.48, 0, Math.PI * 2)
@@ -37,38 +45,37 @@ function SigilCanvas({ spirit, active }: { spirit: GoetiaSpirit; active: boolean
     // Outer circle
     ctx.beginPath()
     ctx.arc(cx, cy, sz * 0.42, 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(139,92,246,${active ? 0.5 : 0.2})`
+    ctx.strokeStyle = `rgba(${r},${g},${b},${active ? 0.5 : 0.2})`
     ctx.lineWidth = 1
     ctx.stroke()
 
     // Inner circle
     ctx.beginPath()
     ctx.arc(cx, cy, sz * 0.3, 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(139,92,246,${active ? 0.3 : 0.1})`
+    ctx.strokeStyle = `rgba(${r},${g},${b},${active ? 0.3 : 0.1})`
     ctx.lineWidth = 0.5
     ctx.stroke()
 
-    // Rotating hash derived from spirit number
-    const n = spirit.number
-    const points = (n % 7) + 4 // 4-10 points
+    // Rotating star polygon derived from entity number
+    const n = entity.number
+    const points = (n % 7) + 4 // 4–10 points
     const innerR = sz * 0.12
     const outerR = sz * 0.38
 
-    // Star polygon
     ctx.beginPath()
     for (let i = 0; i <= points; i++) {
       const angle = (i / points) * Math.PI * 2 - Math.PI / 2 + tRef.current * 0.15
-      const r = i % 2 === 0 ? outerR : innerR
-      const x = cx + Math.cos(angle) * r
-      const y = cy + Math.sin(angle) * r
+      const rad = i % 2 === 0 ? outerR : innerR
+      const x = cx + Math.cos(angle) * rad
+      const y = cy + Math.sin(angle) * rad
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
     }
     ctx.closePath()
-    ctx.strokeStyle = `rgba(167,139,250,${active ? 0.6 : 0.2})`
+    ctx.strokeStyle = `rgba(${r},${g},${b},${active ? 0.6 : 0.2})`
     ctx.lineWidth = 1
     ctx.stroke()
 
-    // Central cross from spirit rank
+    // Central cross
     const crossSize = sz * 0.07
     const rotation = tRef.current * (active ? 0.3 : 0.05)
     ctx.save()
@@ -77,28 +84,29 @@ function SigilCanvas({ spirit, active }: { spirit: GoetiaSpirit; active: boolean
     ctx.beginPath()
     ctx.moveTo(-crossSize, 0); ctx.lineTo(crossSize, 0)
     ctx.moveTo(0, -crossSize); ctx.lineTo(0, crossSize)
-    ctx.strokeStyle = `rgba(200,180,255,${active ? 0.8 : 0.3})`
+    ctx.strokeStyle = `rgba(${Math.min(r + 60, 255)},${Math.min(g + 60, 255)},${Math.min(b + 60, 255)},${active ? 0.8 : 0.3})`
     ctx.lineWidth = 1
     ctx.stroke()
     ctx.restore()
 
-    // Spirit number ring marks
-    for (let i = 0; i < 72; i++) {
-      const angle = (i / 72) * Math.PI * 2 - Math.PI / 2
+    // Sephirotic number ring marks (10 or 12 positions)
+    const total = ENTITIES.length
+    for (let i = 0; i < total; i++) {
+      const angle = (i / total) * Math.PI * 2 - Math.PI / 2
       const markR = sz * 0.44
       const x = cx + Math.cos(angle) * markR
       const y = cy + Math.sin(angle) * markR
-      const isSpirit = i === spirit.number - 1
+      const isCurrent = i === ENTITIES.findIndex(e => e.id === entity.id)
       ctx.beginPath()
-      ctx.arc(x, y, isSpirit ? 3 : 0.8, 0, Math.PI * 2)
-      ctx.fillStyle = isSpirit
-        ? `rgba(200,180,255,${active ? 1 : 0.5})`
-        : `rgba(139,92,246,${active ? 0.3 : 0.1})`
+      ctx.arc(x, y, isCurrent ? 3 : 0.8, 0, Math.PI * 2)
+      ctx.fillStyle = isCurrent
+        ? `rgba(${r},${g},${b},${active ? 1 : 0.5})`
+        : `rgba(${r},${g},${b},${active ? 0.3 : 0.1})`
       ctx.fill()
     }
 
     frameRef.current = requestAnimationFrame(draw)
-  }, [spirit, active])
+  }, [entity, active, r, g, b])
 
   useEffect(() => {
     frameRef.current = requestAnimationFrame(draw)
@@ -115,9 +123,9 @@ function SigilCanvas({ spirit, active }: { spirit: GoetiaSpirit; active: boolean
   )
 }
 
-// ─── Barbarous Word Display ───────────────────────────────────────────────────
+// ─── Invocation Word Display ──────────────────────────────────────────────────
 
-function BarbarousDisplay({ words, active }: { words: string; active: boolean }) {
+function InvocationDisplay({ words, active }: { words: string; active: boolean }) {
   const parts = words.split('·').map(w => w.trim()).filter(Boolean)
   const [visibleIdx, setVisibleIdx] = useState(-1)
 
@@ -158,39 +166,44 @@ function BarbarousDisplay({ words, active }: { words: string; active: boolean })
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function InvokePage() {
-  const [selectedSpirit, setSelectedSpirit] = useState<GoetiaSpirit>(SPIRITS[8]) // Paimon default
+  const defaultEntity = ENTITIES.find(e => e.id === 'michael')!
+  const [selectedEntity, setSelectedEntity] = useState<Entity>(defaultEntity)
   const [search, setSearch] = useState('')
   const [active, setActive] = useState(false)
   const [phase, setPhase] = useState<'idle' | 'opening' | 'invocation' | 'closing'>('idle')
-  const [suggestedSpirits, setSuggestedSpirits] = useState<GoetiaSpirit[]>([])
+  const [suggestedEntities, setSuggestedEntities] = useState<Entity[]>([])
   const [showAll, setShowAll] = useState(false)
   const phaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load suggested spirits from dream resonances
+  // Load suggested entities from dream resonances
   useEffect(() => {
     getDreams().then(dreams => {
       const recent = dreams.filter(d => d.extraction).slice(0, 6)
-      const allSymbols = recent.flatMap(d => d.extraction?.symbols?.map(s => s.name) ?? [])
-      const allThemes = recent.flatMap(d => d.extraction?.themes?.map(t => t.name) ?? [])
-      const goeticNames = recent
-        .map(d => d.extraction?.goetic_resonance?.spirit)
-        .filter((s): s is string => Boolean(s))
+      const allSymbols = recent.flatMap(d =>
+        d.extraction?.symbols?.map((s: any) => typeof s === 'string' ? s : s?.name || '') ?? []
+      ).filter(Boolean)
+      const allThemes = recent.flatMap(d =>
+        d.extraction?.themes?.map((t: any) => typeof t === 'string' ? t : t?.name || '') ?? []
+      ).filter(Boolean)
 
-      // Named spirits from past extractions first
-      const fromExtractions = goeticNames
-        .filter((name, i, arr) => arr.indexOf(name) === i)
-        .map(name => SPIRITS.find(s => s.name === name))
-        .filter((s): s is GoetiaSpirit => Boolean(s))
-        .slice(0, 3)
-
-      setSuggestedSpirits(fromExtractions.length > 0 ? fromExtractions : [SPIRITS[8], SPIRITS[36], SPIRITS[70]])
+      const resonant = findResonantEntities(allThemes, allSymbols, 3)
+      setSuggestedEntities(
+        resonant.length > 0
+          ? resonant
+          : [
+            ENTITIES.find(e => e.id === 'michael')!,
+            ENTITIES.find(e => e.id === 'gabriel')!,
+            ENTITIES.find(e => e.id === 'raphael')!,
+          ]
+      )
     })
   }, [])
 
-  const filteredSpirits = search.length > 1
-    ? SPIRITS.filter(s =>
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.domains.some(d => d.toLowerCase().includes(search.toLowerCase()))
+  const filteredEntities = search.length > 1
+    ? ENTITIES.filter(e =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        e.domains.some(d => d.toLowerCase().includes(search.toLowerCase())) ||
+        e.sephirah.toLowerCase().includes(search.toLowerCase())
       )
     : []
 
@@ -215,11 +228,8 @@ export default function InvokePage() {
     setPhase('idle')
   }
 
-  const RANK_COLOR: Record<string, string> = {
-    King: '#fbbf24', Duke: '#60a5fa', Prince: '#a78bfa',
-    Marquis: '#34d399', President: '#f472b6', Earl: '#fb923c',
-    Knight: '#94a3b8', Count: '#fb923c',
-  }
+  const [er, eg, eb] = hexToRgb(selectedEntity.color)
+  const entityRgb = `${er},${eg},${eb}`
 
   return (
     <div className="max-w-xl mx-auto px-4 pt-8 pb-24 space-y-8">
@@ -233,29 +243,29 @@ export default function InvokePage() {
           Invocation
         </h1>
         <p className="text-sm" style={{ color: 'var(--muted)' }}>
-          The 72 spirits of the Ars Goetia — drawn from your dream symbols and the current sky.
+          Archangels, intelligences, and archetypes — drawn from your dream symbols and current sky.
         </p>
       </div>
 
       {/* Suggested from dreams */}
-      {suggestedSpirits.length > 0 && (
+      {suggestedEntities.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'rgba(139,92,246,0.6)' }}>
             Resonant with Your Dreams
           </div>
           <div className="flex gap-2 flex-wrap">
-            {suggestedSpirits.map(spirit => (
+            {suggestedEntities.map(entity => (
               <button
-                key={spirit.number}
-                onClick={() => { setSelectedSpirit(spirit); setSearch('') }}
+                key={entity.id}
+                onClick={() => { setSelectedEntity(entity); setSearch('') }}
                 className="px-3 py-1.5 rounded-full text-xs transition-all"
                 style={{
-                  background: selectedSpirit.number === spirit.number ? 'rgba(139,92,246,0.2)' : 'rgba(15,15,26,0.7)',
-                  border: `1px solid ${selectedSpirit.number === spirit.number ? 'rgba(139,92,246,0.5)' : 'var(--border)'}`,
-                  color: selectedSpirit.number === spirit.number ? 'var(--violet)' : 'var(--muted)',
+                  background: selectedEntity.id === entity.id ? 'rgba(139,92,246,0.2)' : 'rgba(15,15,26,0.7)',
+                  border: `1px solid ${selectedEntity.id === entity.id ? 'rgba(139,92,246,0.5)' : 'var(--border)'}`,
+                  color: selectedEntity.id === entity.id ? 'var(--violet)' : 'var(--muted)',
                 }}
               >
-                {spirit.name}
+                {entity.name}
               </button>
             ))}
           </div>
@@ -266,7 +276,7 @@ export default function InvokePage() {
       <div className="relative">
         <input
           type="text"
-          placeholder="Search spirits or domains..."
+          placeholder="Search by name, domain, or sphere..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
@@ -276,77 +286,81 @@ export default function InvokePage() {
             color: 'var(--text)',
           }}
         />
-        {filteredSpirits.length > 0 && (
+        {filteredEntities.length > 0 && (
           <div
             className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-10"
             style={{ background: 'rgba(10,8,22,0.97)', border: '1px solid var(--border)' }}
           >
-            {filteredSpirits.slice(0, 8).map(spirit => (
-              <button
-                key={spirit.number}
-                onClick={() => { setSelectedSpirit(spirit); setSearch('') }}
-                className="w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-white/5 transition-colors"
-              >
-                <span className="text-xs font-mono w-6 text-right" style={{ color: 'var(--muted)' }}>
-                  {spirit.number}
-                </span>
-                <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{spirit.name}</span>
-                <span className="text-xs" style={{ color: RANK_COLOR[spirit.rank] || 'var(--muted)' }}>
-                  {spirit.rank}
-                </span>
-                <span className="text-xs ml-auto" style={{ color: 'var(--muted)' }}>
-                  {spirit.domains[0]}
-                </span>
-              </button>
-            ))}
+            {filteredEntities.slice(0, 8).map(entity => {
+              const [cr, cg, cb] = hexToRgb(entity.color)
+              return (
+                <button
+                  key={entity.id}
+                  onClick={() => { setSelectedEntity(entity); setSearch('') }}
+                  className="w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-white/5 transition-colors"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: entity.color }}
+                  />
+                  <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{entity.name}</span>
+                  <span className="text-xs" style={{ color: `rgba(${cr},${cg},${cb},0.8)` }}>
+                    {entity.sephirah}
+                  </span>
+                  <span className="text-xs ml-auto" style={{ color: 'var(--muted)' }}>
+                    {entity.domains[0]}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
 
-      {/* Selected spirit + sigil */}
+      {/* Selected entity + sigil */}
       <div
         className="rounded-2xl p-6 space-y-5"
         style={{
           background: 'rgba(8,5,18,0.9)',
-          border: `1px solid ${active ? 'rgba(139,92,246,0.4)' : 'rgba(139,92,246,0.15)'}`,
+          border: `1px solid ${active ? `rgba(${entityRgb},0.4)` : `rgba(${entityRgb},0.15)`}`,
           transition: 'border-color 1s ease',
-          boxShadow: active ? '0 0 60px rgba(139,92,246,0.08)' : 'none',
+          boxShadow: active ? `0 0 60px rgba(${entityRgb},0.08)` : 'none',
         }}
       >
-        {/* Spirit header */}
+        {/* Entity header */}
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>
-                #{selectedSpirit.number}
-              </span>
               <span
                 className="text-xs px-2 py-0.5 rounded-full font-mono"
                 style={{
-                  background: `${RANK_COLOR[selectedSpirit.rank] || '#888'}20`,
-                  color: RANK_COLOR[selectedSpirit.rank] || 'var(--muted)',
-                  border: `1px solid ${RANK_COLOR[selectedSpirit.rank] || '#888'}40`,
+                  background: `rgba(${entityRgb},0.12)`,
+                  color: selectedEntity.color,
+                  border: `1px solid rgba(${entityRgb},0.3)`,
                 }}
               >
-                {selectedSpirit.rank}
+                {selectedEntity.sephirah}
+              </span>
+              <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>
+                {selectedEntity.planet}
               </span>
             </div>
             <h2
               className="text-2xl font-medium"
               style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}
             >
-              {selectedSpirit.name}
+              {selectedEntity.name}
             </h2>
           </div>
         </div>
 
         {/* Domains */}
         <div className="flex flex-wrap gap-1.5">
-          {selectedSpirit.domains.map(d => (
+          {selectedEntity.domains.map(d => (
             <span
               key={d}
               className="text-xs px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(139,92,246,0.08)', color: 'var(--muted)', border: '1px solid rgba(139,92,246,0.15)' }}
+              style={{ background: `rgba(${entityRgb},0.08)`, color: 'var(--muted)', border: `1px solid rgba(${entityRgb},0.15)` }}
             >
               {d}
             </span>
@@ -355,7 +369,7 @@ export default function InvokePage() {
 
         {/* Sigil */}
         <div className="flex justify-center py-2">
-          <SigilCanvas spirit={selectedSpirit} active={active} />
+          <SigilCanvas entity={selectedEntity} active={active} />
         </div>
 
         {/* Appearance */}
@@ -363,7 +377,17 @@ export default function InvokePage() {
           className="rounded-lg px-4 py-3 text-xs italic leading-relaxed"
           style={{ background: 'rgba(5,2,12,0.6)', color: 'var(--muted)', fontFamily: 'Georgia, serif' }}
         >
-          {selectedSpirit.appearance}
+          {selectedEntity.appearance}
+        </div>
+
+        {/* Tibetan correspondence */}
+        <div className="space-y-1.5">
+          <div className="text-xs font-mono uppercase tracking-widest" style={{ color: `rgba(${entityRgb},0.5)` }}>
+            Tibetan Correspondence
+          </div>
+          <p className="text-xs italic" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}>
+            {selectedEntity.tibetan}
+          </p>
         </div>
 
         {/* Dream resonance */}
@@ -372,7 +396,7 @@ export default function InvokePage() {
             Dream Signs
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {selectedSpirit.dream_resonance.map(r => (
+            {selectedEntity.dream_resonance.map(r => (
               <span
                 key={r}
                 className="text-xs px-2 py-0.5 rounded"
@@ -384,7 +408,7 @@ export default function InvokePage() {
           </div>
         </div>
 
-        {/* Barbarous words */}
+        {/* Invocation words */}
         <div
           className="rounded-xl px-4 py-4 text-center space-y-1"
           style={{ background: 'rgba(3,1,10,0.8)', border: '1px solid rgba(139,92,246,0.12)' }}
@@ -392,15 +416,15 @@ export default function InvokePage() {
           <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: 'rgba(139,92,246,0.4)' }}>
             Words of Invocation
           </div>
-          <BarbarousDisplay words={selectedSpirit.barbarous} active={active} />
+          <InvocationDisplay words={selectedEntity.invocation} active={active} />
         </div>
 
         {/* Phase indicator */}
         {active && (
           <div className="text-center text-xs font-mono tracking-widest animate-pulse" style={{ color: 'rgba(167,139,250,0.6)' }}>
-            {phase === 'opening' && 'OPENING THE GATE · ' + PGM_INVOCATION.opening}
-            {phase === 'invocation' && 'SPIRIT APPROACHED'}
-            {phase === 'closing' && 'CLOSING · ' + PGM_INVOCATION.closing}
+            {phase === 'opening' && 'OPENING · ' + UNIVERSAL_INVOCATION.opening}
+            {phase === 'invocation' && 'PRESENT'}
+            {phase === 'closing' && 'SEALING · ' + UNIVERSAL_INVOCATION.closing}
           </div>
         )}
 
@@ -410,16 +434,27 @@ export default function InvokePage() {
           className="w-full py-4 rounded-2xl text-sm font-medium transition-all duration-500"
           style={{
             background: active
-              ? 'rgba(139,92,246,0.08)'
-              : 'rgba(139,92,246,0.15)',
-            border: `1px solid ${active ? 'rgba(139,92,246,0.3)' : 'rgba(139,92,246,0.35)'}`,
-            color: active ? 'rgba(167,139,250,0.6)' : 'var(--violet)',
+              ? `rgba(${entityRgb},0.08)`
+              : `rgba(${entityRgb},0.12)`,
+            border: `1px solid ${active ? `rgba(${entityRgb},0.3)` : `rgba(${entityRgb},0.35)`}`,
+            color: active ? `rgba(${entityRgb},0.6)` : selectedEntity.color,
             letterSpacing: '0.2em',
             fontFamily: 'monospace',
           }}
         >
-          {active ? '◼  CLOSE THE GATE' : `⬡  INVOKE ${selectedSpirit.name.toUpperCase()}`}
+          {active ? '◼  CLOSE' : `⬡  INVOKE ${selectedEntity.name.toUpperCase()}`}
         </button>
+      </div>
+
+      {/* Pathwork link */}
+      <div className="text-center">
+        <a
+          href="/pathwork"
+          className="text-xs font-mono tracking-widest"
+          style={{ color: 'rgba(139,92,246,0.5)' }}
+        >
+          △ Begin daily pathwork practice →
+        </a>
       </div>
 
       {/* Browse all */}
@@ -429,32 +464,33 @@ export default function InvokePage() {
           className="text-xs font-mono uppercase tracking-widest"
           style={{ color: 'var(--muted)' }}
         >
-          {showAll ? '▲ Hide' : '▼ Browse all 72 spirits'}
+          {showAll ? '▲ Hide' : '▼ Browse all intelligences'}
         </button>
         {showAll && (
           <div className="space-y-1 max-h-96 overflow-y-auto">
-            {SPIRITS.map(spirit => (
-              <button
-                key={spirit.number}
-                onClick={() => setSelectedSpirit(spirit)}
-                className="w-full px-4 py-2.5 rounded-lg flex items-center gap-3 text-left transition-colors"
-                style={{
-                  background: selectedSpirit.number === spirit.number ? 'rgba(139,92,246,0.1)' : 'transparent',
-                  border: `1px solid ${selectedSpirit.number === spirit.number ? 'rgba(139,92,246,0.3)' : 'transparent'}`,
-                }}
-              >
-                <span className="text-xs font-mono w-6 text-right shrink-0" style={{ color: 'var(--muted)' }}>
-                  {spirit.number}
-                </span>
-                <span className="text-sm flex-1" style={{ color: 'var(--text)' }}>{spirit.name}</span>
-                <span className="text-xs" style={{ color: RANK_COLOR[spirit.rank] || 'var(--muted)' }}>
-                  {spirit.rank}
-                </span>
-                <span className="text-xs ml-2 truncate max-w-32" style={{ color: 'var(--muted)' }}>
-                  {spirit.domains.slice(0, 2).join(', ')}
-                </span>
-              </button>
-            ))}
+            {ENTITIES.map(entity => {
+              const [cr, cg, cb] = hexToRgb(entity.color)
+              return (
+                <button
+                  key={entity.id}
+                  onClick={() => setSelectedEntity(entity)}
+                  className="w-full px-4 py-2.5 rounded-lg flex items-center gap-3 text-left transition-colors"
+                  style={{
+                    background: selectedEntity.id === entity.id ? `rgba(${cr},${cg},${cb},0.08)` : 'transparent',
+                    border: `1px solid ${selectedEntity.id === entity.id ? `rgba(${cr},${cg},${cb},0.3)` : 'transparent'}`,
+                  }}
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entity.color }} />
+                  <span className="text-sm flex-1" style={{ color: 'var(--text)' }}>{entity.name}</span>
+                  <span className="text-xs" style={{ color: `rgba(${cr},${cg},${cb},0.8)` }}>
+                    {entity.sephirah}
+                  </span>
+                  <span className="text-xs ml-2 truncate max-w-32" style={{ color: 'var(--muted)' }}>
+                    {entity.domains.slice(0, 2).join(', ')}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
