@@ -367,18 +367,7 @@ export default function LogPage() {
               </div>
             </div>
 
-            <div
-              className="rounded-xl p-4 text-sm leading-relaxed"
-              style={{
-                background: 'rgba(15,15,26,0.5)',
-                border: '1px solid var(--border)',
-                color: 'rgba(226,232,240,0.6)',
-                fontFamily: 'Georgia, serif',
-                fontStyle: 'italic',
-              }}
-            >
-              {transcript.length > 200 ? transcript.slice(0, 200) + '...' : transcript}
-            </div>
+            <ExpandableTranscript text={transcript} />
 
             <DreamOracle extraction={extraction} autoReveal />
 
@@ -507,6 +496,36 @@ function DreamEntry({ dream, onSelect, onShare }: { dream: DreamLog; onSelect: (
         </div>
       </div>
     </button>
+  )
+}
+
+function ExpandableTranscript({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const PREVIEW_LENGTH = 200
+  const isLong = text.length > PREVIEW_LENGTH
+
+  return (
+    <div
+      className="rounded-xl p-4 text-sm leading-relaxed"
+      style={{
+        background: 'rgba(15,15,26,0.5)',
+        border: '1px solid var(--border)',
+        color: 'rgba(226,232,240,0.6)',
+        fontFamily: 'Georgia, serif',
+        fontStyle: 'italic',
+      }}
+    >
+      {isLong && !expanded ? text.slice(0, PREVIEW_LENGTH) + '…' : text}
+      {isLong && (
+        <button
+          onClick={() => setExpanded(p => !p)}
+          className="ml-2 text-xs not-italic"
+          style={{ color: 'rgba(167,139,250,0.6)', textDecoration: 'underline' }}
+        >
+          {expanded ? 'less' : 'more'}
+        </button>
+      )}
+    </div>
   )
 }
 

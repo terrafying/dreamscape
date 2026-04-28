@@ -16,6 +16,8 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
   const pathname = usePathname()
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
+  // Guard: only process touchend when touchstart was accepted (not a form/no-swipe target)
+  const swipeEnabled = useRef(false)
 
   // Determine current hour for Dusk/Dawn toggle
   function isEveningHour(): boolean {
@@ -63,23 +65,33 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
 
   // Handle touch start
   const handleTouchStart = (e: TouchEvent) => {
-    // Don't swipe if user is interacting with form elements
+    // Don't swipe if user is interacting with form elements or opted-out containers
     const target = e.target as HTMLElement
     if (
       target.tagName === 'INPUT' ||
       target.tagName === 'TEXTAREA' ||
       target.tagName === 'SELECT' ||
-      target.closest('[data-no-swipe]')
+      target.closest('[data-no-swipe]') ||
+      target.closest('[contenteditable]')
     ) {
+      swipeEnabled.current = false
       return
     }
 
+    swipeEnabled.current = true
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }
 
   // Handle touch end
   const handleTouchEnd = (e: TouchEvent) => {
+    // Reject if the start was on a form element (guard against stale coordinates)
+    if (!swipeEnabled.current) return
+
+    // Reject if user selected text — they were highlighting, not swiping
+    const selection = window.getSelection()
+    if (selection && selection.type === 'Range' && selection.toString().length > 0) return
+
     const touchEndX = e.changedTouches[0].clientX
     const touchEndY = e.changedTouches[0].clientY
 
@@ -88,8 +100,8 @@ export function useSwipeNavigation(config: SwipeConfig = {}) {
 
     // Only register as swipe if:
     // 1. Horizontal distance > threshold
-    // 2. Vertical distance < horizontal distance (more horizontal than vertical)
-    if (Math.abs(diffX) > threshold && Math.abs(diffX) > diffY) {
+    // 2. Horizontal movement dominates vertical (ratio > 1.5 to avoid diagonal false triggers)
+    if (Math.abs(diffX) > threshold && Math.abs(diffX) > diffY * 1.5) {
       const currentIndex = getTabIndex(pathname)
       let nextIndex: number
 
