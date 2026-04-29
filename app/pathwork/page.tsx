@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { THOTH_ARCHETYPES, type ThothArchetype } from '@/lib/thoth-tarot'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Phase = 'idle' | 'purification' | 'invocation' | 'pathworking' | 'scrying' | 'closing' | 'done'
-type Mode = 'tibetan' | 'western'
+type Mode = 'tibetan' | 'western' | 'middle-pillar' | 'tarot'
+
+// Middle Pillar types
+type PillarStep = 'kether' | 'daath' | 'tiphareth' | 'yesod' | 'malkuth'
 
 interface TibetanContent { mantra?: string; instruction: string }
 interface WesternContent { lines?: string[]; close?: string; instruction: string }
@@ -14,7 +18,7 @@ interface PhaseConfig {
   tibetan: TibetanContent; western: WesternContent
 }
 
-// ─── Phase definitions ────────────────────────────────────────────────────────
+// ─── Standard Phase definitions ───────────────────────────────────────────────
 
 const PHASES: PhaseConfig[] = [
   {
@@ -91,7 +95,136 @@ const PHASES: PhaseConfig[] = [
 
 const PHASE_IDS = PHASES.map(p => p.id) as Phase[]
 
-// ─── PathworkCanvas ────────────────────────────────────────────────────────────
+// ─── Middle Pillar Centers ─────────────────────────────────────────────────────
+
+interface PillarCenter {
+  id: PillarStep
+  name: string
+  hebrewName: string
+  tibetanSeed: string
+  location: string
+  color: string
+  hexColor: string
+  duration: number
+  instruction: string
+}
+
+const PILLAR_CENTERS: PillarCenter[] = [
+  {
+    id: 'kether',
+    name: 'Kether',
+    hebrewName: 'AHIH',
+    tibetanSeed: 'AH',
+    location: 'Crown',
+    color: 'rgba(240,240,255,',
+    hexColor: '#f0f0ff',
+    duration: 90,
+    instruction: 'Above the crown of your head, a sphere of brilliant white light. Vibrate AHIH (or AH) and feel it blaze. This is the divine crown — your highest nature, pure existence.',
+  },
+  {
+    id: 'daath',
+    name: 'Daath',
+    hebrewName: 'YHVH ELOHIM',
+    tibetanSeed: 'OM',
+    location: 'Throat',
+    color: 'rgba(180,180,255,',
+    hexColor: '#b4b4ff',
+    duration: 90,
+    instruction: 'At the throat, a sphere of lavender light. Vibrate YHVH ELOHIM (or OM). The sphere of hidden knowledge, the abyss-bridge — your voice carries divine intelligence.',
+  },
+  {
+    id: 'tiphareth',
+    name: 'Tiphareth',
+    hebrewName: 'YHVH ELOAH VE-DAATH',
+    tibetanSeed: 'HRIH',
+    location: 'Heart',
+    color: 'rgba(255,200,80,',
+    hexColor: '#ffc850',
+    duration: 120,
+    instruction: 'At the heart, a blazing sun of golden light. Vibrate YHVH ELOAH VE-DAATH (or HRIH). This is Tiphareth — the heart of the Tree, the solar self, the seat of the HGA.',
+  },
+  {
+    id: 'yesod',
+    name: 'Yesod',
+    hebrewName: 'SHADDAI EL CHAI',
+    tibetanSeed: 'OM',
+    location: 'Sacral',
+    color: 'rgba(167,139,250,',
+    hexColor: '#a78bfa',
+    duration: 90,
+    instruction: 'At the sacral center, a sphere of silver-violet lunar light. Vibrate SHADDAI EL CHAI (or OM). Yesod — the foundation, the dream body, the astral gate.',
+  },
+  {
+    id: 'malkuth',
+    name: 'Malkuth',
+    hebrewName: 'ADONAI HA-ARETZ',
+    tibetanSeed: 'TAM',
+    location: 'Feet / Earth',
+    color: 'rgba(161,98,7,',
+    hexColor: '#a16207',
+    duration: 90,
+    instruction: 'At the soles of the feet, a sphere of earthy russet-olive-black light descends into the ground. Vibrate ADONAI HA-ARETZ (or TAM). The kingdom — your body, the earth, the completed work.',
+  },
+]
+
+// ─── Tarot Phase Config ───────────────────────────────────────────────────────
+
+function getTarotPhases(archetype: ThothArchetype): PhaseConfig[] {
+  return [
+    {
+      id: 'purification',
+      label: 'Entry',
+      duration: 120,
+      icon: '◇',
+      tibetan: {
+        instruction: `Breathe and settle. You are about to enter the path of ${archetype.name} — ${archetype.hebrewLetter}. ${archetype.dreamResonance}`,
+      },
+      western: {
+        instruction: `Breathe and settle. You are about to enter the path of ${archetype.name} — ${archetype.hebrewLetter}. ${archetype.dreamResonance}`,
+      },
+    },
+    {
+      id: 'pathworking',
+      label: 'Threshold',
+      duration: 480,
+      icon: '△',
+      tibetan: {
+        instruction: `You stand before a gate marked with the letter ${archetype.hebrewLetter}. The gate opens. Enter. The archetype of ${archetype.name} rises before you. ${archetype.meaning} Remain open. Receive what is shown.`,
+      },
+      western: {
+        instruction: `You stand before a gate marked with the letter ${archetype.hebrewLetter}. The gate opens. Enter. The archetype of ${archetype.name} rises before you. ${archetype.meaning} Remain open. Receive what is shown.`,
+      },
+    },
+    {
+      id: 'scrying',
+      label: 'Return',
+      duration: 300,
+      icon: '◉',
+      tibetan: {
+        instruction: `You are returning from the path of ${archetype.name}. Record what you received — symbols, feelings, words, images. Nothing is too small.`,
+      },
+      western: {
+        instruction: `You are returning from the path of ${archetype.name}. Record what you received — symbols, feelings, words, images. Nothing is too small.`,
+      },
+    },
+    {
+      id: 'closing',
+      label: 'Closing',
+      duration: 60,
+      icon: '◌',
+      tibetan: {
+        mantra: 'OM · AH · HUM',
+        instruction: 'Dedicate the merit. The path is sealed. Carry the teaching forward.',
+      },
+      western: {
+        close: 'AEĒIOUŌ',
+        instruction: 'This work is sealed. Carry what you received into your life.',
+      },
+    },
+  ]
+}
+
+// ─── PathworkCanvas (Yesod→Tiphareth) ────────────────────────────────────────
 
 function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -128,7 +261,6 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
     const dimmed = phase === 'idle' || phase === 'purification' || phase === 'invocation'
 
     if (!isScrying) {
-      // Stars
       for (const s of starsRef.current) {
         const a = (dimmed ? 0.06 : 0.18) + Math.sin(t / s.spd) * 0.05
         ctx.beginPath()
@@ -137,12 +269,11 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
         ctx.fill()
       }
 
-      const yy = H * 0.77   // Yesod center
-      const ty = H * 0.23   // Tiphareth center
+      const yy = H * 0.77
+      const ty = H * 0.23
       const pathTop = ty + 28
       const pathBottom = yy - 24
 
-      // Connecting pillar
       const pG = ctx.createLinearGradient(cx, pathBottom, cx, pathTop)
       pG.addColorStop(0, `rgba(180,130,255,${isActive ? 0.45 : 0.1})`)
       pG.addColorStop(0.5, `rgba(220,190,255,${isActive ? 0.2 : 0.05})`)
@@ -150,7 +281,6 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
       ctx.strokeStyle = pG; ctx.lineWidth = 2
       ctx.beginPath(); ctx.moveTo(cx, pathBottom); ctx.lineTo(cx, pathTop); ctx.stroke()
 
-      // Yesod sphere
       const yPulse = dimmed ? 0.12 : 0.55 + Math.sin(t * 1.9) * 0.25
       const yGlow = ctx.createRadialGradient(cx, yy, 0, cx, yy, 52)
       yGlow.addColorStop(0, `rgba(160,100,255,${yPulse * 0.45})`)
@@ -167,7 +297,6 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
       ctx.textAlign = 'center'
       ctx.fillText('YESOD · MOON', cx, yy + 38)
 
-      // Tiphareth sphere
       const tPulse = dimmed ? 0.12 : 0.6 + Math.sin(t * 1.4) * 0.25
       const tGlow = ctx.createRadialGradient(cx, ty, 0, cx, ty, 64)
       tGlow.addColorStop(0, `rgba(255,200,80,${tPulse * 0.55})`)
@@ -178,7 +307,6 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
       ctx.strokeStyle = `rgba(255,200,80,${isActive ? 0.9 : 0.22})`
       ctx.lineWidth = 1.5; ctx.stroke()
 
-      // Rotating cross at Tiphareth
       const cs = 10
       ctx.save(); ctx.translate(cx, ty); ctx.rotate(t * 0.18)
       ctx.beginPath()
@@ -194,7 +322,6 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
       ctx.textAlign = 'center'
       ctx.fillText('TIPHARETH · SUN', cx, ty - 40)
 
-      // Soul point — rises during pathworking, rests at Tiphareth during closing
       if (isPathworking || isClosing) {
         const p = isClosing ? 1 : progress
         const sY = pathBottom + p * (pathTop - pathBottom)
@@ -209,7 +336,6 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
         ctx.fillStyle = `rgba(255,255,240,${sp})`; ctx.fill()
       }
     } else {
-      // Scrying: pure dark with a single soft pulsing point
       const sp = 0.25 + Math.sin(t * 0.7) * 0.12
       const sGlow = ctx.createRadialGradient(cx, H / 2, 0, cx, H / 2, 40)
       sGlow.addColorStop(0, `rgba(180,160,255,${sp * 0.5})`)
@@ -238,7 +364,186 @@ function PathworkCanvas({ phase, progress }: { phase: Phase; progress: number })
   )
 }
 
+// ─── Middle Pillar Canvas ──────────────────────────────────────────────────────
+
+function MiddlePillarCanvas({ activeStep }: { activeStep: PillarStep | null }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const frameRef = useRef<number>(0)
+  const tRef = useRef(0)
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const W = canvas.width, H = canvas.height, cx = W / 2
+    tRef.current += 0.008
+
+    ctx.clearRect(0, 0, W, H)
+    ctx.fillStyle = '#05031a'
+    ctx.fillRect(0, 0, W, H)
+
+    // Center positions (y as fraction of height)
+    const positions: Record<PillarStep, number> = {
+      kether: 0.08,
+      daath: 0.28,
+      tiphareth: 0.50,
+      yesod: 0.72,
+      malkuth: 0.90,
+    }
+
+    // Draw central pillar
+    ctx.beginPath()
+    ctx.moveTo(cx, H * 0.08)
+    ctx.lineTo(cx, H * 0.90)
+    ctx.strokeStyle = 'rgba(200,180,255,0.08)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    PILLAR_CENTERS.forEach(center => {
+      const isActive = center.id === activeStep
+      const y = H * positions[center.id]
+      const r = isActive ? 28 : 16
+      const pulse = isActive ? 0.6 + Math.sin(tRef.current * 2) * 0.3 : 0.12
+
+      // Glow
+      const hexColor = center.hexColor
+      const [cr, cg, cb] = [
+        parseInt(hexColor.slice(1, 3), 16),
+        parseInt(hexColor.slice(3, 5), 16),
+        parseInt(hexColor.slice(5, 7), 16),
+      ]
+      const glow = ctx.createRadialGradient(cx, y, 0, cx, y, r * 2.5)
+      glow.addColorStop(0, `rgba(${cr},${cg},${cb},${pulse * 0.5})`)
+      glow.addColorStop(1, `rgba(${cr},${cg},${cb},0)`)
+      ctx.fillStyle = glow
+      ctx.beginPath(); ctx.arc(cx, y, r * 2.5, 0, Math.PI * 2); ctx.fill()
+
+      // Sphere ring
+      ctx.beginPath(); ctx.arc(cx, y, r, 0, Math.PI * 2)
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${isActive ? 0.9 : 0.25})`
+      ctx.lineWidth = isActive ? 2 : 1
+      ctx.stroke()
+
+      // Center dot
+      ctx.beginPath(); ctx.arc(cx, y, r * 0.35, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${isActive ? 0.9 : 0.2})`
+      ctx.fill()
+
+      // Label
+      ctx.font = `${isActive ? 9 : 7}px monospace`
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${isActive ? 0.8 : 0.3})`
+      ctx.textAlign = 'center'
+      ctx.fillText(isActive ? `${center.name} · ${center.hebrewName}` : center.name, cx, y + r + 14)
+    })
+
+    frameRef.current = requestAnimationFrame(draw)
+  }, [activeStep])
+
+  useEffect(() => {
+    frameRef.current = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(frameRef.current)
+  }, [draw])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={280}
+      height={360}
+      style={{ width: 280, height: 360, display: 'block', margin: '0 auto' }}
+    />
+  )
+}
+
+// ─── Tarot Canvas ─────────────────────────────────────────────────────────────
+
+function TarotCanvas({ archetype, phase }: { archetype: ThothArchetype; phase: Phase }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const frameRef = useRef<number>(0)
+  const tRef = useRef(0)
+  const isActive = phase === 'pathworking'
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2
+    tRef.current += 0.005
+
+    ctx.clearRect(0, 0, W, H)
+    ctx.fillStyle = '#05031a'
+    ctx.fillRect(0, 0, W, H)
+
+    const pulse = isActive
+      ? 0.5 + Math.sin(tRef.current * 1.5) * 0.4
+      : 0.2 + Math.sin(tRef.current * 0.6) * 0.1
+
+    // Outer ring
+    ctx.beginPath(); ctx.arc(cx, cy, W * 0.42, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(167,139,250,${isActive ? 0.35 : 0.12})`
+    ctx.lineWidth = 1; ctx.stroke()
+
+    // Inner ring, slowly rotating
+    const ringR = W * 0.3
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(tRef.current * 0.05)
+    ctx.beginPath()
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2
+      const x = Math.cos(a) * ringR
+      const y = Math.sin(a) * ringR
+      ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(200,180,255,${isActive ? pulse * 0.5 : 0.12})`
+      ctx.fill()
+    }
+    ctx.restore()
+
+    // Large central archetype number
+    ctx.font = `bold ${W * 0.18}px Georgia`
+    ctx.fillStyle = `rgba(255,200,80,${pulse * 0.6})`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(archetype.number), cx, cy - H * 0.06)
+
+    // Hebrew letter
+    ctx.font = `${W * 0.09}px Georgia`
+    ctx.fillStyle = `rgba(200,180,255,${pulse * 0.5})`
+    ctx.fillText(archetype.hebrewLetter, cx, cy + H * 0.08)
+
+    // Name
+    ctx.font = `${W * 0.055}px monospace`
+    ctx.fillStyle = `rgba(167,139,250,${isActive ? 0.8 : 0.35})`
+    ctx.fillText(archetype.name.toUpperCase(), cx, cy + H * 0.22)
+
+    // Element / planet badge
+    const badge = archetype.element ?? archetype.planet ?? ''
+    if (badge) {
+      ctx.font = `${W * 0.042}px monospace`
+      ctx.fillStyle = `rgba(167,139,250,${isActive ? 0.45 : 0.2})`
+      ctx.fillText(badge.toUpperCase(), cx, cy + H * 0.31)
+    }
+
+    frameRef.current = requestAnimationFrame(draw)
+  }, [archetype, isActive])
+
+  useEffect(() => {
+    frameRef.current = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(frameRef.current)
+  }, [draw])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={280}
+      height={360}
+      style={{ width: 280, height: 360, display: 'block', margin: '0 auto' }}
+    />
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
+
+const ALL_ARCHETYPES = Object.values(THOTH_ARCHETYPES).sort((a, b) => a.number - b.number)
 
 export default function PathworkPage() {
   const [phase, setPhase] = useState<Phase>('idle')
@@ -248,6 +553,15 @@ export default function PathworkPage() {
   const [scryingNotes, setScryingNotes] = useState('')
   const [paused, setPaused] = useState(false)
   const [sessionCount, setSessionCount] = useState(0)
+
+  // Middle Pillar state
+  const [pillarStepIdx, setPillarStepIdx] = useState(0)
+  const [pillarTimeLeft, setPillarTimeLeft] = useState(0)
+
+  // Tarot state
+  const [selectedArchetype, setSelectedArchetype] = useState<ThothArchetype>(THOTH_ARCHETYPES[6]) // The Lovers
+  const [showArchetypeList, setShowArchetypeList] = useState(false)
+  const [tarotPhases, setTarotPhases] = useState<PhaseConfig[]>([])
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const durationRef = useRef(0)
@@ -264,8 +578,15 @@ export default function PathworkPage() {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
   }
 
+  // Get phases for current mode
+  const getActivePhases = (): PhaseConfig[] => {
+    if (mode === 'tarot') return tarotPhases
+    return PHASES
+  }
+
   function startPhase(p: Phase) {
-    const cfg = PHASES.find(c => c.id === p)
+    const phases = getActivePhases()
+    const cfg = phases.find(c => c.id === p)
     if (!cfg) return
     clearTimer()
     durationRef.current = cfg.duration
@@ -280,8 +601,10 @@ export default function PathworkPage() {
   }
 
   function advancePhase(currentPhase: Phase) {
-    const idx = PHASE_IDS.indexOf(currentPhase)
-    const next = PHASE_IDS[idx + 1]
+    const phases = getActivePhases()
+    const ids = phases.map(p => p.id) as Phase[]
+    const idx = ids.indexOf(currentPhase)
+    const next = ids[idx + 1]
     if (!next) {
       finishSession()
     } else {
@@ -296,6 +619,7 @@ export default function PathworkPage() {
       date: new Date().toISOString(),
       mode,
       scrying_notes: scryingNotes,
+      tarot_card: mode === 'tarot' ? selectedArchetype.name : undefined,
       duration: Math.floor((Date.now() - sessionStartRef.current) / 1000),
     }
     try {
@@ -309,17 +633,77 @@ export default function PathworkPage() {
   function beginSession() {
     sessionStartRef.current = Date.now()
     setScryingNotes('')
+
+    if (mode === 'middle-pillar') {
+      setPillarStepIdx(0)
+      setPillarTimeLeft(PILLAR_CENTERS[0].duration)
+      startPillarTimer(0)
+      setPhase('pathworking')
+      return
+    }
+
+    if (mode === 'tarot') {
+      const phases = getTarotPhases(selectedArchetype)
+      setTarotPhases(phases)
+      // slight delay so state updates first
+      setTimeout(() => {
+        durationRef.current = phases[0].duration
+        setPhase(phases[0].id)
+        setTimeLeft(phases[0].duration)
+        setProgress(0)
+        setPaused(false)
+        timerRef.current = setInterval(() => {
+          setTimeLeft(prev => {
+            const n = Math.max(0, prev - 1)
+            setProgress(1 - n / durationRef.current)
+            return n
+          })
+        }, 1000)
+      }, 50)
+      return
+    }
+
     startPhase('purification')
+  }
+
+  function startPillarTimer(stepIdx: number) {
+    clearTimer()
+    const center = PILLAR_CENTERS[stepIdx]
+    if (!center) { finishSession(); return }
+    setPillarTimeLeft(center.duration)
+    timerRef.current = setInterval(() => {
+      setPillarTimeLeft(prev => {
+        const n = Math.max(0, prev - 1)
+        if (n === 0) {
+          clearInterval(timerRef.current!)
+        }
+        return n
+      })
+    }, 1000)
+  }
+
+  function advancePillar() {
+    const next = pillarStepIdx + 1
+    if (next >= PILLAR_CENTERS.length) {
+      finishSession()
+    } else {
+      setPillarStepIdx(next)
+      startPillarTimer(next)
+    }
   }
 
   function togglePause() {
     if (paused) {
       timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          const n = Math.max(0, prev - 1)
-          setProgress(1 - n / durationRef.current)
-          return n
-        })
+        if (mode === 'middle-pillar') {
+          setPillarTimeLeft(prev => Math.max(0, prev - 1))
+        } else {
+          setTimeLeft(prev => {
+            const n = Math.max(0, prev - 1)
+            setProgress(1 - n / durationRef.current)
+            return n
+          })
+        }
       }, 1000)
       setPaused(false)
     } else {
@@ -329,7 +713,7 @@ export default function PathworkPage() {
 
   useEffect(() => () => clearTimer(), [])
 
-  // Auto-advance all phases except scrying (requires manual tap after notes)
+  // Auto-advance standard phases (not scrying, not tarot return)
   useEffect(() => {
     if (timeLeft === 0 && phase !== 'idle' && phase !== 'done' && phase !== 'scrying') {
       const t = setTimeout(() => advancePhase(phase), 2000)
@@ -337,10 +721,11 @@ export default function PathworkPage() {
     }
   }, [timeLeft, phase])
 
-  const cfg = PHASES.find(p => p.id === phase)
-  const phaseIdx = PHASE_IDS.indexOf(phase)
+  const activePhases = getActivePhases()
+  const cfg = activePhases.find(p => p.id === phase)
+  const phaseIdx = activePhases.map(p => p.id).indexOf(phase)
   const instruction = cfg
-    ? (mode === 'tibetan' ? cfg.tibetan.instruction : cfg.western.instruction)
+    ? (mode === 'tibetan' || mode === 'tarot' ? cfg.tibetan.instruction : cfg.western.instruction)
     : null
   const mantra = cfg && mode === 'tibetan' ? cfg.tibetan.mantra : undefined
   const westernLines = cfg && mode === 'western' ? cfg.western.lines : undefined
@@ -355,6 +740,19 @@ export default function PathworkPage() {
   const totalDuration = PHASES.reduce((sum, p) => sum + p.duration, 0)
   const totalMin = Math.round(totalDuration / 60)
 
+  const pillarCenter = PILLAR_CENTERS[pillarStepIdx]
+  const activePillarStep = mode === 'middle-pillar' && phase === 'pathworking'
+    ? pillarCenter?.id ?? null
+    : null
+
+  // Mode descriptions for idle card
+  const modeDescriptions: Record<Mode, string> = {
+    tibetan: 'Tibetan mantra tradition',
+    western: 'Western Hermetic tradition',
+    'middle-pillar': 'Sephirothic body meditation',
+    tarot: 'Thoth Tarot gate pathworking',
+  }
+
   return (
     <div className="max-w-sm mx-auto px-4 pt-8 pb-28 space-y-6">
 
@@ -367,32 +765,43 @@ export default function PathworkPage() {
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
             {sessionCount > 0
               ? `${sessionCount} session${sessionCount !== 1 ? 's' : ''} completed`
-              : 'Daily practice · Yesod to Tiphareth'}
+              : 'Daily practice · ascent on the Tree'}
           </p>
         </div>
         {/* Mode toggle */}
         <div
-          className="flex gap-0.5 rounded-lg p-0.5"
+          className="flex flex-wrap gap-0.5 rounded-lg p-0.5"
           style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}
         >
-          {(['tibetan', 'western'] as Mode[]).map(m => (
+          {([
+            { id: 'tibetan', label: 'TIB' },
+            { id: 'western', label: 'WST' },
+            { id: 'middle-pillar', label: 'MPL' },
+            { id: 'tarot', label: 'TAR' },
+          ] as Array<{ id: Mode; label: string }>).map(m => (
             <button
-              key={m}
-              onClick={() => setMode(m)}
-              className="px-3 py-1 rounded text-xs transition-all"
+              key={m.id}
+              onClick={() => { setMode(m.id); setPhase('idle') }}
+              disabled={phase !== 'idle' && phase !== 'done'}
+              className="px-2 py-1 rounded text-[10px] transition-all font-mono"
               style={{
-                background: mode === m ? 'rgba(139,92,246,0.25)' : 'transparent',
-                color: mode === m ? 'var(--violet)' : 'var(--muted)',
+                background: mode === m.id ? 'rgba(139,92,246,0.25)' : 'transparent',
+                color: mode === m.id ? 'var(--violet)' : 'var(--muted)',
               }}
             >
-              {m === 'tibetan' ? 'Tibetan' : 'Western'}
+              {m.label}
             </button>
           ))}
         </div>
       </div>
 
       {/* Canvas — always visible */}
-      <PathworkCanvas phase={phase} progress={progress} />
+      {mode === 'middle-pillar'
+        ? <MiddlePillarCanvas activeStep={activePillarStep} />
+        : mode === 'tarot'
+        ? <TarotCanvas archetype={selectedArchetype} phase={phase} />
+        : <PathworkCanvas phase={phase} progress={progress} />
+      }
 
       {/* Idle state */}
       {phase === 'idle' && (
@@ -401,19 +810,92 @@ export default function PathworkPage() {
             className="rounded-2xl p-5 space-y-3"
             style={{ background: 'rgba(8,5,18,0.9)', border: '1px solid rgba(139,92,246,0.15)' }}
           >
-            <div className="space-y-2">
-              {PHASES.map(p => (
-                <div key={p.id} className="flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
-                  <span style={{ color: 'rgba(139,92,246,0.5)', fontFamily: 'monospace', minWidth: '12px' }}>{p.icon}</span>
-                  <span className="flex-1">{p.label}</span>
-                  <span className="opacity-50 font-mono">{fmt(p.duration)}</span>
+            {/* Standard mode: show phase list */}
+            {(mode === 'tibetan' || mode === 'western') && (
+              <>
+                <div className="space-y-2">
+                  {PHASES.map(p => (
+                    <div key={p.id} className="flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
+                      <span style={{ color: 'rgba(139,92,246,0.5)', fontFamily: 'monospace', minWidth: '12px' }}>{p.icon}</span>
+                      <span className="flex-1">{p.label}</span>
+                      <span className="opacity-50 font-mono">{fmt(p.duration)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="pt-2 text-xs" style={{ color: 'var(--muted)', borderTop: '1px solid rgba(139,92,246,0.1)' }}>
-              ~{totalMin} min total · {mode === 'tibetan' ? 'Tibetan mantra tradition' : 'Western Hermetic tradition'}
-            </div>
+                <div className="pt-2 text-xs" style={{ color: 'var(--muted)', borderTop: '1px solid rgba(139,92,246,0.1)' }}>
+                  ~{totalMin} min total · {modeDescriptions[mode]}
+                </div>
+              </>
+            )}
+
+            {/* Middle Pillar: show center list */}
+            {mode === 'middle-pillar' && (
+              <>
+                <div className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: 'rgba(139,92,246,0.5)' }}>
+                  Five Centers
+                </div>
+                <div className="space-y-2">
+                  {PILLAR_CENTERS.map(c => (
+                    <div key={c.id} className="flex items-center gap-2 text-xs" style={{ color: 'var(--muted)' }}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.hexColor, opacity: 0.7 }} />
+                      <span className="flex-1">{c.name} · {c.location}</span>
+                      <span className="font-mono opacity-60" style={{ color: c.hexColor }}>{c.hebrewName}</span>
+                      <span className="opacity-50 font-mono">{fmt(c.duration)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 text-xs" style={{ color: 'var(--muted)', borderTop: '1px solid rgba(139,92,246,0.1)' }}>
+                  ~{Math.round(PILLAR_CENTERS.reduce((s, c) => s + c.duration, 0) / 60)} min total · Sephirothic body meditation
+                </div>
+              </>
+            )}
+
+            {/* Tarot: archetype selector */}
+            {mode === 'tarot' && (
+              <div className="space-y-3">
+                <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'rgba(139,92,246,0.5)' }}>
+                  Select Path Gate
+                </div>
+                <button
+                  onClick={() => setShowArchetypeList(p => !p)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm"
+                  style={{ background: 'rgba(15,15,26,0.8)', border: '1px solid rgba(139,92,246,0.25)', color: 'var(--text)' }}
+                >
+                  <span style={{ fontFamily: 'Georgia, serif' }}>
+                    {selectedArchetype.number}. {selectedArchetype.name}
+                  </span>
+                  <span style={{ color: 'var(--muted)', fontFamily: 'monospace', fontSize: '11px' }}>
+                    {selectedArchetype.hebrewLetter} ▾
+                  </span>
+                </button>
+                {showArchetypeList && (
+                  <div
+                    className="max-h-56 overflow-y-auto rounded-xl"
+                    style={{ background: 'rgba(8,5,18,0.97)', border: '1px solid rgba(139,92,246,0.2)' }}
+                  >
+                    {ALL_ARCHETYPES.map(a => (
+                      <button
+                        key={a.number}
+                        onClick={() => { setSelectedArchetype(a); setShowArchetypeList(false) }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-white/5 transition-colors"
+                      >
+                        <span className="text-xs font-mono w-4 text-right" style={{ color: 'rgba(255,200,80,0.5)' }}>{a.number}</span>
+                        <span className="text-sm flex-1" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>{a.name}</span>
+                        <span className="text-xs" style={{ color: 'var(--muted)' }}>{a.hebrewLetter}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div
+                  className="rounded-lg px-3 py-2 text-xs italic leading-relaxed"
+                  style={{ background: 'rgba(5,2,12,0.6)', color: 'var(--muted)', fontFamily: 'Georgia, serif' }}
+                >
+                  {selectedArchetype.dreamResonance}
+                </div>
+              </div>
+            )}
           </div>
+
           <button
             onClick={beginSession}
             className="w-full py-4 rounded-2xl text-sm font-medium transition-all duration-300"
@@ -430,13 +912,99 @@ export default function PathworkPage() {
         </div>
       )}
 
-      {/* Active phase */}
-      {phase !== 'idle' && phase !== 'done' && cfg && (
+      {/* ─── Middle Pillar active ─── */}
+      {mode === 'middle-pillar' && phase === 'pathworking' && pillarCenter && (
         <div className="space-y-4">
+          {/* Progress dots */}
+          <div className="flex items-center justify-center gap-2">
+            {PILLAR_CENTERS.map((c, i) => (
+              <div
+                key={c.id}
+                className="w-2 h-2 rounded-full transition-all duration-500"
+                style={{
+                  background: i < pillarStepIdx ? c.hexColor : i === pillarStepIdx ? c.hexColor : 'rgba(139,92,246,0.12)',
+                  opacity: i < pillarStepIdx ? 0.5 : 1,
+                  boxShadow: i === pillarStepIdx ? `0 0 8px ${c.hexColor}` : 'none',
+                }}
+              />
+            ))}
+          </div>
 
+          {/* Active center header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <div
+                className="text-xs font-mono uppercase tracking-widest"
+                style={{ color: pillarCenter.hexColor + 'aa' }}
+              >
+                {pillarCenter.location} · {pillarStepIdx + 1} of {PILLAR_CENTERS.length}
+              </div>
+              <div className="text-lg font-medium" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
+                {pillarCenter.name}
+              </div>
+            </div>
+            <div
+              className="text-2xl font-mono tabular-nums"
+              style={{ color: pillarTimeLeft < 15 ? pillarCenter.hexColor : 'var(--muted)' }}
+            >
+              {fmt(pillarTimeLeft)}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div
+            className="rounded-xl px-4 py-4 space-y-3"
+            style={{ background: 'rgba(5,3,14,0.85)', border: `1px solid ${pillarCenter.hexColor}22` }}
+          >
+            <div className="text-center py-2">
+              <div
+                className="text-xl tracking-widest"
+                style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: pillarCenter.hexColor, letterSpacing: '0.3em' }}
+              >
+                {`${pillarCenter.tibetanSeed} · ${pillarCenter.hebrewName}`}
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              {pillarCenter.instruction}
+            </p>
+          </div>
+
+          {/* Controls */}
+          <div className="flex gap-2">
+            <button
+              onClick={togglePause}
+              className="px-4 py-2.5 rounded-xl text-xs font-mono tracking-widest transition-all"
+              style={{
+                background: 'rgba(139,92,246,0.08)',
+                border: '1px solid rgba(139,92,246,0.18)',
+                color: 'var(--muted)',
+              }}
+            >
+              {paused ? '▶ RESUME' : '‖ PAUSE'}
+            </button>
+            <button
+              onClick={advancePillar}
+              className="flex-1 py-2.5 rounded-xl text-xs font-mono tracking-widest transition-all"
+              style={{
+                background: pillarTimeLeft === 0 ? 'rgba(255,200,80,0.12)' : 'rgba(139,92,246,0.12)',
+                border: `1px solid ${pillarTimeLeft === 0 ? 'rgba(255,200,80,0.4)' : 'rgba(139,92,246,0.3)'}`,
+                color: pillarTimeLeft === 0 ? 'rgba(255,200,80,0.9)' : 'var(--violet)',
+              }}
+            >
+              {pillarStepIdx >= PILLAR_CENTERS.length - 1
+                ? '◼ COMPLETE'
+                : `NEXT: ${PILLAR_CENTERS[pillarStepIdx + 1]?.name.toUpperCase()} →`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Standard and Tarot active phases ─── */}
+      {phase !== 'idle' && phase !== 'done' && mode !== 'middle-pillar' && cfg && (
+        <div className="space-y-4">
           {/* Progress bar */}
           <div className="flex items-center gap-1.5">
-            {PHASES.map((p, i) => (
+            {activePhases.map((p, i) => (
               <div
                 key={p.id}
                 className="flex-1 h-0.5 rounded-full transition-all duration-500"
@@ -455,7 +1023,7 @@ export default function PathworkPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'rgba(139,92,246,0.6)' }}>
-                {cfg.icon} Phase {phaseIdx + 1} of {PHASES.length}
+                {cfg.icon} Phase {phaseIdx + 1} of {activePhases.length}
               </div>
               <div className="text-lg font-medium" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
                 {cfg.label}
@@ -474,7 +1042,6 @@ export default function PathworkPage() {
             className="rounded-xl px-4 py-4 space-y-3"
             style={{ background: 'rgba(5,3,14,0.85)', border: '1px solid rgba(139,92,246,0.12)' }}
           >
-            {/* Tibetan mantra */}
             {mantra && (
               <div className="text-center py-2">
                 <div
@@ -485,8 +1052,6 @@ export default function PathworkPage() {
                 </div>
               </div>
             )}
-
-            {/* Western invocation lines */}
             {westernLines && (
               <div className="space-y-2 py-1">
                 {westernLines.map((line, i) => (
@@ -500,8 +1065,6 @@ export default function PathworkPage() {
                 ))}
               </div>
             )}
-
-            {/* Western closing word */}
             {westernClose && (
               <div className="text-center pt-1">
                 <span
@@ -512,8 +1075,6 @@ export default function PathworkPage() {
                 </span>
               </div>
             )}
-
-            {/* Instruction */}
             {instruction && (
               <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
                 {instruction}
@@ -535,6 +1096,7 @@ export default function PathworkPage() {
                 color: 'var(--text)',
                 fontFamily: 'Georgia, serif',
               }}
+              data-no-swipe
             />
           )}
 
@@ -562,8 +1124,7 @@ export default function PathworkPage() {
             >
               {phase === 'closing'
                 ? '◼ SEAL & CLOSE'
-                : `NEXT: ${PHASES[phaseIdx + 1]?.label?.toUpperCase() ?? 'CLOSE'} →`
-              }
+                : `NEXT: ${activePhases[phaseIdx + 1]?.label?.toUpperCase() ?? 'CLOSE'} →`}
             </button>
           </div>
         </div>
@@ -581,11 +1142,13 @@ export default function PathworkPage() {
               style={{ color: 'rgba(255,200,80,0.85)', fontFamily: 'Georgia, serif' }}
             >
               Session complete.
+              {mode === 'tarot' && ` Path of ${selectedArchetype.name} walked.`}
+              {mode === 'middle-pillar' && ' The Middle Pillar is established.'}
             </div>
             {scryingNotes && (
               <div className="space-y-1.5">
                 <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'rgba(139,92,246,0.5)' }}>
-                  Scrying Notes
+                  Notes
                 </div>
                 <p
                   className="text-sm italic leading-relaxed"
@@ -595,12 +1158,17 @@ export default function PathworkPage() {
                 </p>
               </div>
             )}
+            {mode === 'tarot' && (
+              <div className="text-xs italic" style={{ color: 'rgba(139,92,246,0.5)', fontFamily: 'Georgia, serif' }}>
+                {selectedArchetype.meaning}
+              </div>
+            )}
             <p className="text-xs leading-relaxed" style={{ color: 'rgba(139,92,246,0.5)' }}>
-              Record any impressions that continue to surface through the day. The practice continues below the threshold of conscious attention.
+              Record any impressions that continue to surface through the day.
             </p>
           </div>
           <button
-            onClick={() => { setPhase('idle'); setScryingNotes('') }}
+            onClick={() => { setPhase('idle'); setScryingNotes(''); setPillarStepIdx(0) }}
             className="w-full py-3 rounded-xl text-xs font-mono tracking-widest transition-all"
             style={{
               background: 'rgba(139,92,246,0.08)',

@@ -10,6 +10,7 @@ import ProviderSettings from '@/components/ProviderSettings'
 import HQVoiceButton from '@/components/HQVoiceButton'
 import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
 import { getStoredModelPreference } from '@/lib/modelPreferences'
+import { findResonantEntities } from '@/lib/entities'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 type EntryType = 'evening' | 'morning'
@@ -248,6 +249,10 @@ export default function JournalPage() {
         </div>
       ) : null}
 
+      {extraction && status === 'done' && isEvening && (
+        <IncubationRitual extraction={extraction} accent={accent} />
+      )}
+
       {extraction && status === 'done' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -331,6 +336,117 @@ export default function JournalPage() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function IncubationRitual({ extraction, accent }: { extraction: JournalExtraction; accent: string }) {
+  const themes = (extraction.themes || []).filter(Boolean)
+  const intentions = (extraction.intentions || []).filter(Boolean)
+  const query = [...themes, ...intentions].slice(0, 3)
+
+  const resonant = findResonantEntities(query, [], 1)
+  const entity = resonant[0] ?? null
+
+  // Extract seed syllable: "Deity · SEED · Description" → second segment
+  const seed = entity
+    ? (entity.tibetan.split(' · ')[1] ?? entity.tibetan.split(' · ')[0])
+    : 'OM'
+
+  const [intention, setIntention] = useState(intentions[0] ?? themes[0] ?? '')
+  const [saved, setSaved] = useState(false)
+
+  const handleSave = () => {
+    try {
+      const entry = {
+        id: Math.random().toString(36).slice(2),
+        date: new Date().toISOString().split('T')[0],
+        intention,
+        seed,
+        entity: entity?.name ?? null,
+      }
+      const existing = JSON.parse(localStorage.getItem('incubation-seeds') || '[]')
+      localStorage.setItem('incubation-seeds', JSON.stringify([entry, ...existing].slice(0, 30)))
+      setSaved(true)
+    } catch {}
+  }
+
+  return (
+    <div
+      className="rounded-2xl p-5 space-y-4"
+      style={{ background: 'rgba(18,8,35,0.85)', border: `1px solid ${accent}22` }}
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
+        <div className="text-xs font-mono uppercase tracking-widest" style={{ color: accent }}>
+          Dream Incubation
+        </div>
+      </div>
+
+      <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+        Carry this intention into sleep. The dreaming mind will work with it.
+      </p>
+
+      {/* Intention */}
+      <div className="space-y-1.5">
+        <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+          Intention Seed
+        </div>
+        <textarea
+          value={intention}
+          onChange={e => setIntention(e.target.value)}
+          rows={2}
+          className="w-full rounded-lg px-3 py-2 text-sm leading-relaxed outline-none resize-none"
+          style={{
+            background: 'rgba(15,15,26,0.8)',
+            border: '1px solid var(--border)',
+            color: 'var(--text)',
+          }}
+          data-no-swipe
+        />
+      </div>
+
+      {/* Mantra seed */}
+      {entity && (
+        <div className="space-y-1">
+          <div className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            Mantra Seed · {entity.name}
+          </div>
+          <div
+            className="text-xl tracking-widest text-center py-2"
+            style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: entity.color, letterSpacing: '0.35em' }}
+          >
+            {seed}
+          </div>
+          <p className="text-xs text-center" style={{ color: 'var(--muted)' }}>
+            {entity.sephirah} · {entity.planet}
+          </p>
+        </div>
+      )}
+
+      {/* Three steps */}
+      <div className="space-y-2 text-xs" style={{ color: 'var(--muted)', fontFamily: 'Georgia, serif' }}>
+        <p>1. Lie down. State your intention three times aloud, slowly.</p>
+        <p>
+          2. Vibrate{' '}
+          <span style={{ color: accent, fontStyle: 'italic' }}>{seed}</span>{' '}
+          7–9 times as you drift toward sleep.
+        </p>
+        <p>3. On waking, remain still. Record immediately.</p>
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saved}
+        className="w-full py-3 rounded-xl text-xs font-mono uppercase tracking-widest transition-all"
+        style={{
+          background: saved ? `${accent}0a` : `${accent}14`,
+          border: `1px solid ${saved ? `${accent}22` : `${accent}40`}`,
+          color: saved ? `${accent}66` : accent,
+        }}
+      >
+        {saved ? '✓ Seed Saved' : '◎ Save Incubation Seed'}
+      </button>
     </div>
   )
 }
