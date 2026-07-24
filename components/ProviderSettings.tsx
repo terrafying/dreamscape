@@ -96,6 +96,10 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
               </p>
               <OpenRouterModelField value={orModel} onChange={saveOpenRouterModel} />
             </>
+          ) : provider === 'openai' ? (
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              Uses your <span style={{ color: 'var(--text)' }}>OpenAI</span> key with <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS.openai}</span>. Without a key, falls back to ChatGPT OAuth (<span style={{ color: 'var(--text)' }}>gpt-5.4-mini</span>) if the server is signed in.
+            </p>
           ) : (
             <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
               Uses your <span style={{ color: 'var(--text)' }}>{PROVIDER_LABELS[provider]}</span> key with the default model <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS[provider]}</span>.

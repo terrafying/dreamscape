@@ -1,6 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { generateText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { pickOpenRouterModel, markOpenRouterFailure, markOpenRouterSuccess } from '@/lib/openrouter'
 
 export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
@@ -35,22 +38,76 @@ function getAnthropicClient(apiKey?: string) {
   return _anthropicClient
 }
 
+// Default model for the ChatGPT OAuth path. The Codex backend only serves its
+// own model set (gpt-5.x family), so this is intentionally separate from the
+// API-key default and ignores any user-supplied model preference.
+const OPENAI_OAUTH_DEFAULT_MODEL = 'gpt-5.4-mini'
+
+function codexAuthFileCandidates(): string[] {
+  const candidates: string[] = []
+  if (process.env.CODEX_HOME) candidates.push(path.join(process.env.CODEX_HOME, 'auth.json'))
+  candidates.push(path.join(os.homedir(), '.codex', 'auth.json'))
+  return candidates
+}
+
+// Fast, synchronous check so fallback chains can skip OpenAI without paying
+// for dynamic imports when no credentials exist at all.
+function hasOpenAIOAuthCredentials(): boolean {
+  if (process.env.OPENAI_OAUTH_AUTH_JSON) return true
+  return codexAuthFileCandidates().some((p) => fs.existsSync(p))
+}
+
+async function getOpenAIOAuthProvider() {
+  const [{ createOpenAIOAuth }, { openaiCredentials }] = await Promise.all([
+    import('@openai-oauth/ai-sdk'),
+    import('@openai-oauth/local'),
+  ])
+  // Serverless hosts (Vercel) can't run `npx openai-oauth login`, so the auth
+  // JSON can be supplied via env and materialized to a tmp file. Note: OAuth
+  // refresh tokens rotate, so on serverless the env value needs occasional
+  // re-copying from ~/.codex/auth.json; persistent hosts self-maintain.
+  const authJson = process.env.OPENAI_OAUTH_AUTH_JSON
+  if (authJson) {
+    const tmp = path.join(os.tmpdir(), 'dreamscape-openai-oauth.json')
+    try {
+      if (!fs.existsSync(tmp) || fs.readFileSync(tmp, 'utf8') !== authJson) {
+        fs.writeFileSync(tmp, authJson, { mode: 0o600 })
+      }
+    } catch { /* read-only fs — try anyway with a fresh write */ fs.writeFileSync(tmp, authJson) }
+    return createOpenAIOAuth(openaiCredentials({ authFilePath: tmp }))
+  }
+  return createOpenAIOAuth(openaiCredentials())
+}
+
 async function tryCall(provider: LLMProvider, prompt: string, model: string | undefined, maxTokens: number, keys?: LLMOptions['apiKeys']): Promise<{ text: string; source: string } | null> {
   try {
     if (provider === 'openai') {
-      const m = model || process.env.OPENAI_MODEL || 'gpt-4o-mini'
       const key = keys?.openai || process.env.OPENAI_API_KEY
-      if (!key) throw new Error('Missing OPENAI_API_KEY')
-      const openaiProvider = createOpenAI({ apiKey: key })
+      if (key) {
+        const m = model || process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+        const openaiProvider = createOpenAI({ apiKey: key })
+        const result = await generateText({
+          model: openaiProvider(m),
+          prompt,
+          maxOutputTokens: maxTokens,
+        })
+        return { text: result.text, source: `openai:${m}` }
+      }
+      // No API key — fall back to ChatGPT OAuth (free via the operator's
+      // ChatGPT account through Codex credentials). Requested models are
+      // ignored: the Codex backend only serves its own model set.
+      if (!hasOpenAIOAuthCredentials()) throw new Error('Missing OPENAI_API_KEY and no ChatGPT OAuth credentials')
+      const m = process.env.OPENAI_OAUTH_MODEL || OPENAI_OAUTH_DEFAULT_MODEL
+      const oauthProvider = await getOpenAIOAuthProvider()
       const result = await generateText({
-        model: openaiProvider(m),
+        model: oauthProvider(m),
         prompt,
         maxOutputTokens: maxTokens,
       })
-      return { text: result.text, source: `openai:${m}` }
+      return { text: result.text, source: `openai-oauth:${m}` }
     }
     if (provider === 'groq') {
-      const m = model || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
+      const m = model || process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
       const key = keys?.groq || process.env.GROQ_API_KEY
       if (!key) throw new Error('Missing GROQ_API_KEY')
       const result = await generateText({
@@ -72,7 +129,7 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
       markOpenRouterSuccess(m)
       return { text: result.text, source: `openrouter:${m}` }
     }
-    const m = model || 'claude-3-haiku-20240307'
+    const m = model || 'claude-haiku-4-5'
     const client = getAnthropicClient(keys?.anthropic)
     const response = await client.messages.create({
       model: m,
@@ -90,10 +147,12 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
 export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): Promise<{ text: string; source: string }> {
   const { provider = 'openrouter', model, maxTokens = 2000 } = opts
 
+  // OpenAI rejoins chains: with ChatGPT OAuth configured it's a free
+  // high-quality fallback; without credentials it fails fast and is skipped.
   const chain: LLMProvider[] = provider === 'anthropic'
-    ? ['anthropic', 'openrouter', 'openai', 'groq']
+    ? ['anthropic', 'groq', 'openrouter', 'openai']
     : provider === 'openai'
-    ? ['openai', 'openrouter', 'groq', 'anthropic']
+    ? ['openai', 'groq', 'openrouter', 'anthropic']
     : provider === 'groq'
     ? ['groq', 'openrouter', 'openai', 'anthropic']
     : ['openrouter', 'groq', 'openai', 'anthropic']

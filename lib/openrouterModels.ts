@@ -1,33 +1,24 @@
-export const DEFAULT_OPENROUTER_MODEL = 'google/gemma-4-31b-it:free'
+export const DEFAULT_OPENROUTER_MODEL = 'openai/gpt-oss-20b:free'
 
 export const FALLBACK_OPENROUTER_MODELS = [
   DEFAULT_OPENROUTER_MODEL,
   'nvidia/nemotron-3-super-120b-a12b:free',
-  'openai/gpt-oss-120b:free',
-  'qwen/qwen3-next-80b-a3b-instruct:free',
-  'openai/gpt-oss-20b:free',
+  'google/gemma-4-31b-it:free',
   'google/gemma-4-26b-a4b-it:free',
   'nvidia/nemotron-3-nano-30b-a3b:free',
-  'qwen/qwen3-coder:free',
 ] as const
 
 export const RECOMMENDED_OPENROUTER_MODELS = [
   DEFAULT_OPENROUTER_MODEL,
-  'anthropic/claude-opus-4.1',
-  'anthropic/claude-sonnet-4',
-  'google/gemini-2.5-pro',
-  'google/gemini-2.5-flash',
-  'openai/gpt-4.1',
-  'openai/gpt-4.1-mini',
-  'openai/o4-mini',
-  'openai/gpt-oss-120b:free',
-  'openai/gpt-oss-20b:free',
-  'deepseek/deepseek-chat-v3.1',
-  'deepseek/deepseek-r1',
-  'qwen/qwen3-next-80b-a3b-instruct:free',
-  'qwen/qwen3-coder:free',
   'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-31b-it:free',
   'google/gemma-4-26b-a4b-it:free',
+  'anthropic/claude-haiku-4-5',
+  'google/gemini-2.5-flash',
+  'openai/gpt-4.1-mini',
+  'deepseek/deepseek-chat-v3.1',
+  'qwen/qwen3-coder:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
 ] as const
 
 type OpenRouterModelRecord = {

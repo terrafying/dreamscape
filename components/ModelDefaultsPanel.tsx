@@ -71,6 +71,10 @@ export default function ModelDefaultsPanel() {
             onChange={setOrModel}
             hint="Stored locally as your preferred OpenRouter override."
           />
+        ) : provider === 'openai' ? (
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+            Default model for OpenAI: <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS.openai}</span> with an API key, or <span style={{ color: 'var(--text)' }}>gpt-5.4-mini</span> via ChatGPT OAuth when no key is set.
+          </p>
         ) : (
           <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
             Default model for {PROVIDER_LABELS[provider]}: <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS[provider]}</span>

@@ -1,7 +1,7 @@
 import type { LLMProvider } from '@/lib/llm'
 import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
 
-export const DEFAULT_PROVIDER: LLMProvider = 'openrouter'
+export const DEFAULT_PROVIDER: LLMProvider = 'groq'
 
 export const PROVIDER_LABELS: Record<LLMProvider, string> = {
   openrouter: 'OpenRouter',
@@ -12,9 +12,9 @@ export const PROVIDER_LABELS: Record<LLMProvider, string> = {
 
 export const PROVIDER_DEFAULT_MODELS: Record<LLMProvider, string> = {
   openrouter: DEFAULT_OPENROUTER_MODEL,
-  openai: 'gpt-4o-mini',
-  anthropic: 'claude-3-haiku-20240307',
-  groq: 'llama-3.3-70b-versatile',
+  openai: 'gpt-4.1-mini',
+  anthropic: 'claude-haiku-4-5',
+  groq: 'openai/gpt-oss-120b',
 }
 
 export function getDefaultModelForProvider(provider: LLMProvider): string {

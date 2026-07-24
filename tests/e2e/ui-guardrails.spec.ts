@@ -15,16 +15,16 @@ test('provider settings show top models and allow a custom OpenRouter id', async
     await route.fulfill({
       json: {
         models: [
+          'openai/gpt-oss-20b:free',
+          'nvidia/nemotron-3-super-120b-a12b:free',
           'google/gemma-4-31b-it:free',
-          'anthropic/claude-opus-4.1',
-          'anthropic/claude-sonnet-4',
-          'google/gemini-2.5-pro',
+          'google/gemma-4-26b-a4b-it:free',
+          'anthropic/claude-haiku-4-5',
           'google/gemini-2.5-flash',
-          'openai/gpt-4.1',
           'openai/gpt-4.1-mini',
-          'openai/o4-mini',
-          'openai/gpt-oss-120b:free',
           'deepseek/deepseek-chat-v3.1',
+          'qwen/qwen3-coder:free',
+          'nvidia/nemotron-3-nano-30b-a3b:free',
         ],
       },
     })
@@ -38,7 +38,7 @@ test('provider settings show top models and allow a custom OpenRouter id', async
   await expect(page.getByRole('button', { name: 'Groq' })).toBeVisible()
 
   const select = page.getByRole('combobox', { name: 'OpenRouter model' })
-  await expect(select).toHaveValue('google/gemma-4-31b-it:free')
+  await expect(select).toHaveValue('openai/gpt-oss-20b:free')
   await expect(select.locator('option')).toHaveCount(11)
 
   await select.selectOption('__custom__')

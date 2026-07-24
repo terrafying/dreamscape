@@ -39,6 +39,7 @@ export default function ApiKeysPanel() {
             <button onClick={save} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--violet)', color: '#07070f' }}>Save</button>
           </div>
           <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Keys are stored locally in your browser and sent only to your own API routes when needed as request headers.</p>
+          <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Tip: OpenAI also works without a key when the server is signed in with ChatGPT (OAuth via <span style={{ color: 'var(--text)' }}>npx openai-oauth login</span>).</p>
         </div>
       )}
     </div>

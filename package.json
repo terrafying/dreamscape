@@ -34,6 +34,8 @@
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",
     "@capacitor/preferences": "^8.0.1",
+    "@openai-oauth/ai-sdk": "^2.0.0",
+    "@openai-oauth/local": "^2.0.0",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@react-three/postprocessing": "^2.19.1",
