@@ -138,11 +138,16 @@ export default function ChatGPTSignIn({ onSessionChange }: ChatGPTSignInProps) {
   if (phase.name === 'pending') {
     return (
       <div className="rounded-lg p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)' }}>
-        <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted)' }}>
-          Finish signing in in the browser window that just opened. At the end the page will fail to load
-          (it points at <span style={{ color: 'var(--text)' }}>localhost</span> — that is expected).
-          Copy the full URL from the address bar and paste it here.
-        </p>
+        <ol className="list-decimal pl-4 space-y-1 text-[11px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+          <li>Finish signing in in the browser window that just opened.</li>
+          <li>
+            Your browser will then show an error like <span style={{ color: 'var(--text)' }}>“This site can’t be reached”</span> or
+            “can’t connect to the server” at a <span style={{ color: 'var(--text)' }}>localhost:1455</span> address.{' '}
+            <span style={{ color: 'var(--text)' }}>That’s expected — nothing is broken.</span> No app is listening on that
+            address; your sign-in code is carried in the page’s URL itself.
+          </li>
+          <li>Copy the entire URL from the address bar (starts with http://localhost:1455/…) and paste it below.</li>
+        </ol>
         <textarea
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
