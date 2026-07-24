@@ -12,6 +12,7 @@ import {
   PROVIDER_LABELS,
   saveModelPreference,
 } from '@/lib/modelPreferences'
+import { getOpenAIOAuthModel, getOpenAIOAuthSession, hasByoOpenAIKey } from '@/lib/openaiOAuth'
 
 interface ProviderSettingsProps {
   onChange?: (provider: LLMProvider, model: string | undefined) => void
@@ -21,12 +22,14 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
   const [provider, setProvider] = useState<LLMProvider>(DEFAULT_PROVIDER)
   const [orModel, setOrModel] = useState(DEFAULT_OPENROUTER_MODEL)
   const [expanded, setExpanded] = useState(false)
+  const [chatGptActive, setChatGptActive] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const stored = getStoredModelPreference()
     setProvider(stored.provider)
     setOrModel(localStorage.getItem('dreamscape_or_model') || DEFAULT_OPENROUTER_MODEL)
+    setChatGptActive(!!getOpenAIOAuthSession() && !hasByoOpenAIKey())
     onChange?.(stored.provider, stored.model)
   }, [onChange])
 
@@ -46,6 +49,8 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
 
   const label = provider === 'openrouter'
     ? `OpenRouter · ${shortOpenRouterModelName(orModel)}`
+    : provider === 'openai' && chatGptActive
+    ? `OpenAI · ${getOpenAIOAuthModel()} (ChatGPT)`
     : `${PROVIDER_LABELS[provider]} · ${PROVIDER_DEFAULT_MODELS[provider]}`
 
   return (
@@ -97,9 +102,15 @@ export default function ProviderSettings({ onChange }: ProviderSettingsProps) {
               <OpenRouterModelField value={orModel} onChange={saveOpenRouterModel} />
             </>
           ) : provider === 'openai' ? (
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
-              Uses your <span style={{ color: 'var(--text)' }}>OpenAI</span> key with <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS.openai}</span>. Without a key, falls back to ChatGPT OAuth (<span style={{ color: 'var(--text)' }}>gpt-5.4-mini</span>) if the server is signed in.
-            </p>
+            chatGptActive ? (
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                Signed in with ChatGPT — OpenAI requests use your account with <span style={{ color: 'var(--text)' }}>{getOpenAIOAuthModel()}</span>. Manage the connection and model on the account page.
+              </p>
+            ) : (
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+                Uses your <span style={{ color: 'var(--text)' }}>OpenAI</span> key with <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS.openai}</span>. No key? Sign in with ChatGPT on the account page to use your own subscription. Without either, falls back to server-side OAuth if configured.
+              </p>
+            )
           ) : (
             <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
               Uses your <span style={{ color: 'var(--text)' }}>{PROVIDER_LABELS[provider]}</span> key with the default model <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS[provider]}</span>.

@@ -12,6 +12,7 @@ import {
   saveModelPreference,
 } from '@/lib/modelPreferences'
 import type { LLMProvider } from '@/lib/llm'
+import { getOpenAIOAuthModel, getOpenAIOAuthSession, hasByoOpenAIKey } from '@/lib/openaiOAuth'
 
 export default function ModelDefaultsPanel() {
   const providerSelectId = 'model-default-provider'
@@ -72,9 +73,15 @@ export default function ModelDefaultsPanel() {
             hint="Stored locally as your preferred OpenRouter override."
           />
         ) : provider === 'openai' ? (
-          <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
-            Default model for OpenAI: <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS.openai}</span> with an API key, or <span style={{ color: 'var(--text)' }}>gpt-5.4-mini</span> via ChatGPT OAuth when no key is set.
-          </p>
+          getOpenAIOAuthSession() && !hasByoOpenAIKey() ? (
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              Signed in with ChatGPT — requests use <span style={{ color: 'var(--text)' }}>{getOpenAIOAuthModel()}</span> on your account. Change the model in the sign-in section below.
+            </p>
+          ) : (
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
+              Default model for OpenAI: <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS.openai}</span> with an API key. Without a key, sign in with ChatGPT below to use your own subscription.
+            </p>
+          )
         ) : (
           <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
             Default model for {PROVIDER_LABELS[provider]}: <span style={{ color: 'var(--text)' }}>{PROVIDER_DEFAULT_MODELS[provider]}</span>

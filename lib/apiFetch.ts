@@ -6,6 +6,7 @@
  */
 
 import { getSupabase } from '@/lib/supabaseClient'
+import { getOpenAIOAuthHeader, refreshOpenAISessionIfNeeded } from '@/lib/openaiOAuth'
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY
 
@@ -29,6 +30,11 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (local.openrouter) headers['x-openrouter-key'] = local.openrouter
   if (local.anthropic) headers['x-anthropic-key'] = local.anthropic
   if (local.deepgram) headers['x-deepgram-key'] = local.deepgram
+
+  // Per-user ChatGPT OAuth session (proactively refreshed near expiry)
+  await refreshOpenAISessionIfNeeded()
+  const oauthHeader = getOpenAIOAuthHeader()
+  if (oauthHeader) headers['x-openai-oauth'] = oauthHeader
 
   // Get the Supabase token if available (client-side only)
   if (typeof window !== 'undefined') {

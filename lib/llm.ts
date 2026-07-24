@@ -5,6 +5,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { pickOpenRouterModel, markOpenRouterFailure, markOpenRouterSuccess } from '@/lib/openrouter'
+import type { OpenAIOAuthSessionData } from '@/lib/openaiOAuthShared'
 
 export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
 
@@ -13,7 +14,7 @@ export interface LLMOptions {
   model?: string
   maxTokens?: number
   json?: boolean
-  apiKeys?: { openai?: string; anthropic?: string; openrouter?: string; groq?: string }
+  apiKeys?: { openai?: string; anthropic?: string; openrouter?: string; groq?: string; openaiOAuth?: OpenAIOAuthSessionData }
 }
 
 function getGroqProvider(apiKey: string) {
@@ -93,6 +94,21 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
         })
         return { text: result.text, source: `openai:${m}` }
       }
+      // Per-user ChatGPT OAuth (BYO session, sent as x-openai-oauth header).
+      // Requested models are only honored because the client resolves them
+      // against the Codex catalog (lib/openaiOAuth.resolveOpenAIModel).
+      if (keys?.openaiOAuth) {
+        const m = model || process.env.OPENAI_OAUTH_MODEL || OPENAI_OAUTH_DEFAULT_MODEL
+        const { createOpenAIOAuth } = await import('@openai-oauth/ai-sdk')
+        const session = keys.openaiOAuth
+        const oauthProvider = createOpenAIOAuth({ kind: 'openai-oauth', getSession: async () => session })
+        const result = await generateText({
+          model: oauthProvider(m),
+          prompt,
+          maxOutputTokens: maxTokens,
+        })
+        return { text: result.text, source: `openai-oauth-user:${m}` }
+      }
       // No API key — fall back to ChatGPT OAuth (free via the operator's
       // ChatGPT account through Codex credentials). Requested models are
       // ignored: the Codex backend only serves its own model set.
@@ -161,7 +177,10 @@ export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): 
   for (const p of chain) {
     if (tried.has(p)) continue
     tried.add(p)
-    const result = await tryCall(p, prompt, model, maxTokens, opts.apiKeys)
+    // Only the requested provider honors the explicit model — provider-specific
+    // ids (e.g. Codex gpt-5.x or openrouter slugs) would 404 on other backends,
+    // so fallback steps use their own defaults instead.
+    const result = await tryCall(p, prompt, p === provider ? model : undefined, maxTokens, opts.apiKeys)
     if (result) return result
   }
 

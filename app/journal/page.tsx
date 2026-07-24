@@ -10,6 +10,7 @@ import ProviderSettings from '@/components/ProviderSettings'
 import HQVoiceButton from '@/components/HQVoiceButton'
 import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
 import { getStoredModelPreference } from '@/lib/modelPreferences'
+import { resolveOpenAIModel } from '@/lib/openaiOAuth'
 import { findResonantEntities } from '@/lib/entities'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
@@ -90,7 +91,7 @@ export default function JournalPage() {
     try {
       const res = await apiFetch('/api/journal-extract', {
         method: 'POST',
-        body: JSON.stringify({ transcript, date, birthData, entryType, provider, model }),
+        body: JSON.stringify({ transcript, date, birthData, entryType, provider, model: resolveOpenAIModel(provider, model) }),
         signal: abortRef.current.signal,
       })
 

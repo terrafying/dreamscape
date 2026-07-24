@@ -1,4 +1,5 @@
 import { callLLM, type LLMProvider } from '@/lib/llm'
+import { OPENAI_OAUTH_HEADER, parseOpenAIOAuthHeader } from '@/lib/openaiOAuthShared'
 import type { DreamLog, BirthData } from '@/lib/types'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 import { checkAuth } from '@/lib/auth'
@@ -95,6 +96,12 @@ Chapter III: [title]
           provider: provider ?? 'groq',
           model,
           maxTokens: 800,
+          apiKeys: {
+            openai: req.headers.get('x-openai-key') || undefined,
+            openrouter: req.headers.get('x-openrouter-key') || undefined,
+            anthropic: req.headers.get('x-anthropic-key') || undefined,
+            openaiOAuth: parseOpenAIOAuthHeader(req.headers.get(OPENAI_OAUTH_HEADER)),
+          },
         })
 
         await setCache(cacheKey, text)

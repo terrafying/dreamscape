@@ -13,6 +13,7 @@ import VisionBoardCard from '@/components/VisionBoardCard'
 import ShareableVisionCard from '@/components/ShareableVisionCard'
 import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
 import { getStoredModelPreference } from '@/lib/modelPreferences'
+import { resolveOpenAIModel } from '@/lib/openaiOAuth'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
@@ -79,7 +80,7 @@ export default function VisionRitualPage() {
     try {
       const res = await apiFetch('/api/visions/extract', {
         method: 'POST',
-        body: JSON.stringify({ transcript, date, birthData, provider, model }),
+        body: JSON.stringify({ transcript, date, birthData, provider, model: resolveOpenAIModel(provider, model) }),
         signal: abortRef.current.signal,
       })
       if (!res.ok || !res.body) throw new Error('Vision extraction failed')

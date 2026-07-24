@@ -1,4 +1,5 @@
 import { callLLM, type LLMProvider } from '@/lib/llm'
+import { OPENAI_OAUTH_HEADER, parseOpenAIOAuthHeader } from '@/lib/openaiOAuthShared'
 import { buildAstroContext } from '@/lib/astro'
 import type { DreamLog, BirthData } from '@/lib/types'
 import { checkAuth } from '@/lib/auth'
@@ -87,6 +88,12 @@ Format your response as:
           provider,
           model,
           maxTokens: 3000,
+          apiKeys: {
+            openai: req.headers.get('x-openai-key') || undefined,
+            openrouter: req.headers.get('x-openrouter-key') || undefined,
+            anthropic: req.headers.get('x-anthropic-key') || undefined,
+            openaiOAuth: parseOpenAIOAuthHeader(req.headers.get(OPENAI_OAUTH_HEADER)),
+          },
         })
 
         const parts = raw.split('---JSON---')

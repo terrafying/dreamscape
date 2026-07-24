@@ -1,4 +1,5 @@
 import { callLLMWithSource, type LLMProvider } from '@/lib/llm'
+import { OPENAI_OAUTH_HEADER, parseOpenAIOAuthHeader } from '@/lib/openaiOAuthShared'
 import { checkAuth } from '@/lib/auth'
 
 function sse(event: string, data: unknown): string {
@@ -52,6 +53,7 @@ Return only valid JSON. No preamble, no explanation, no markdown.`
             openai: req.headers.get('x-openai-key') || undefined,
             openrouter: req.headers.get('x-openrouter-key') || undefined,
             anthropic: req.headers.get('x-anthropic-key') || undefined,
+            openaiOAuth: parseOpenAIOAuthHeader(req.headers.get(OPENAI_OAUTH_HEADER)),
           },
         })
         

@@ -1,4 +1,5 @@
 import { callLLMWithSource, type LLMProvider } from '@/lib/llm'
+import { OPENAI_OAUTH_HEADER, parseOpenAIOAuthHeader } from '@/lib/openaiOAuthShared'
 import { buildAstroContext, getCurrentTransits } from '@/lib/astro'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 import { checkAuth } from '@/lib/auth'
@@ -204,6 +205,7 @@ Guidelines:
             openai: req.headers.get('x-openai-key') || undefined,
             openrouter: req.headers.get('x-openrouter-key') || undefined,
             anthropic: req.headers.get('x-anthropic-key') || undefined,
+            openaiOAuth: parseOpenAIOAuthHeader(req.headers.get(OPENAI_OAUTH_HEADER)),
           },
         })
         send('source', { provider: source })

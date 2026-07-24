@@ -10,6 +10,7 @@ import Paywall from '@/components/Paywall'
 import { isPaywallEnforced } from '@/lib/entitlements'
 import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
 import { getStoredModelPreference } from '@/lib/modelPreferences'
+import { resolveOpenAIModel } from '@/lib/openaiOAuth'
 
 interface StructuredLetter {
   key_patterns: { pattern: string; frequency: number; significance: string }[]
@@ -106,7 +107,7 @@ export default function LettersPage() {
     try {
       const res = await apiFetch('/api/letter', {
         method: 'POST',
-        body: JSON.stringify({ dreams: analyzed, birthData, date: today, provider, model }),
+        body: JSON.stringify({ dreams: analyzed, birthData, date: today, provider, model: resolveOpenAIModel(provider, model) }),
       })
 
       if (!res.ok) throw new Error('API error')

@@ -37,6 +37,8 @@ test('provider settings show top models and allow a custom OpenRouter id', async
   await expect(page.getByRole('button', { name: 'Anthropic' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Groq' })).toBeVisible()
 
+  // Groq is the default provider — switch to OpenRouter to see its model field
+  await page.getByRole('button', { name: 'OpenRouter' }).click()
   const select = page.getByRole('combobox', { name: 'OpenRouter model' })
   await expect(select).toHaveValue('openai/gpt-oss-20b:free')
   await expect(select.locator('option')).toHaveCount(11)
@@ -63,6 +65,9 @@ test('account page model defaults include provider choice and OpenRouter top mod
   await page.goto('/account')
   await expect(page.getByText('Choose the default provider Dreamscape should prefer.')).toBeVisible()
   await expect(page.getByLabel('Default provider')).toBeVisible()
+
+  // Groq is the default provider — switch to OpenRouter to see its model field
+  await page.getByLabel('Default provider').selectOption('openrouter')
   await expect(page.getByRole('combobox', { name: 'OpenRouter model' })).toBeVisible()
 
   await page.getByLabel('Default provider').selectOption('groq')

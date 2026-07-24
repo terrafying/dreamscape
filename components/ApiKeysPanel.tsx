@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import ChatGPTSignIn from '@/components/ChatGPTSignIn'
 
 export default function ApiKeysPanel() {
   const [open, setOpen] = useState(false)
@@ -39,7 +40,12 @@ export default function ApiKeysPanel() {
             <button onClick={save} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--violet)', color: '#07070f' }}>Save</button>
           </div>
           <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Keys are stored locally in your browser and sent only to your own API routes when needed as request headers.</p>
-          <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Tip: OpenAI also works without a key when the server is signed in with ChatGPT (OAuth via <span style={{ color: 'var(--text)' }}>npx openai-oauth login</span>).</p>
+          <div className="pt-2 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="text-xs" style={{ color: 'var(--muted)' }}>
+              No OpenAI key? Use your ChatGPT subscription instead:
+            </div>
+            <ChatGPTSignIn />
+          </div>
         </div>
       )}
     </div>
