@@ -92,62 +92,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div
-        className="rounded-2xl p-4 space-y-3 transition-all hover:opacity-95"
-        style={{
-          background: 'linear-gradient(160deg, rgba(12,10,28,0.97), rgba(20,14,38,0.90))',
-          border: '1px solid rgba(167,139,250,0.30)',
-          boxShadow: '0 0 40px rgba(167,139,250,0.10), inset 0 0 20px rgba(167,139,250,0.04)',
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm" style={{ fontFamily: 'monospace', color: 'var(--violet)' }}>◇</span>
-          <div className="text-xs uppercase tracking-[0.16em]" style={{ color: 'var(--violet)' }}>
-            New — Sleep Stories
-          </div>
-        </div>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
-          Your dream symbols woven into a guided cinematic narrative. Breathe, listen, and drift.
-        </p>
-        <Link
-          href="/dreamscape"
-          className="inline-block rounded-xl px-4 py-2.5 text-xs font-medium transition-all hover:opacity-90"
-          style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.35)', color: 'var(--violet)' }}
-        >
-          Open Sleep Stories →
-        </Link>
-      </div>
-
-      <div
-        className="rounded-2xl p-4 space-y-3 transition-all hover:opacity-95"
-        style={{
-          background: 'radial-gradient(circle at 12% 0%, rgba(244,201,93,0.12), rgba(0,0,0,0) 36%), linear-gradient(160deg, rgba(22,10,34,0.97), rgba(10,10,24,0.92))',
-          border: '1px solid rgba(192,132,252,0.26)',
-          boxShadow: '0 0 36px rgba(192,132,252,0.08), inset 0 0 18px rgba(244,201,93,0.05)',
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm" style={{ fontFamily: 'monospace', color: '#f4c95d' }}>✦</span>
-          <div className="text-xs uppercase tracking-[0.16em]" style={{ color: '#f4c95d' }}>
-            New — Vision Ritual
-          </div>
-        </div>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--text)', fontFamily: 'Georgia, serif' }}>
-          Speak the life you are summoning. Dreamscape condenses it into a sigil, a future-facing ritual, and an image board you can publish.
-        </p>
-        <Link
-          href="/visions"
-          className="inline-block rounded-xl px-4 py-2.5 text-xs font-medium transition-all hover:opacity-90"
-          style={{ background: 'rgba(192,132,252,0.18)', border: '1px solid rgba(192,132,252,0.34)', color: '#e9d5ff' }}
-        >
-          Enter Vision Ritual →
-        </Link>
-      </div>
-
-      <div className="space-y-3">
-        <div className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--muted)' }}>
-          Ritual Timeline
-        </div>
+      {/* Ritual Timeline */}
         <div
           className="rounded-xl p-4 space-y-3"
           style={{ background: 'rgba(15,15,26,0.65)', border: '1px solid var(--border)' }}
@@ -179,7 +124,6 @@ export default function Home() {
             </Link>
           ))}
         </div>
-      </div>
 
       <div
         className="rounded-xl p-4 space-y-3"
@@ -276,7 +220,6 @@ export default function Home() {
         </div>
       </Link>
 
-      {/* Quick Start */}
       <div
         className="rounded-xl p-4 space-y-3"
         style={{ background: 'rgba(15,15,26,0.65)', border: '1px solid var(--border)' }}

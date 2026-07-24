@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { deriveAccountId, exchangeOpenAIOAuthCode } from '@openai-oauth/core'
 import type { OpenAIOAuthSessionData } from '@/lib/openaiOAuthShared'
-import { OAUTH_REDIRECT_URI } from '@/app/api/auth/openai/start/route'
+import { OAUTH_REDIRECT_URI } from '@/lib/openaiOAuthConfig'
 
 // Accepts either the full pasted redirect URL (http://localhost:1455/auth/callback?code=...&state=...)
 // or a bare authorization code.

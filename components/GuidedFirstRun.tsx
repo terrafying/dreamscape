@@ -2,33 +2,40 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { getSupabase } from '@/lib/supabaseClient'
+import { accountRedirectUrl } from '@/lib/site'
 import { seedDemoDreams } from '@/lib/store'
-import { saveBiometricDataBatch } from '@/lib/biometrics'
-import { getAppleHealthSampleData } from '@/lib/integrations/health'
+
+const APP_VERSION = '0.1.1'
+const SEEN_KEY = `dreamscape_guided_v${APP_VERSION}`
 
 export default function GuidedFirstRun() {
   const [show, setShow] = useState(false)
+  const supabase = getSupabase()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const seen = localStorage.getItem('dreamscape_guided_seen')
-    if (!seen) setShow(true)
+    // Only show if this version hasn't been seen before
+    if (!localStorage.getItem(SEEN_KEY)) setShow(true)
   }, [])
 
   const dismiss = () => {
-    localStorage.setItem('dreamscape_guided_seen', new Date().toISOString())
+    localStorage.setItem(SEEN_KEY, '1')
     setShow(false)
   }
 
   const loadDemo = async () => {
     await seedDemoDreams()
-    const days = [0, -1, -2].map((o) => {
-      const d = new Date(); d.setDate(d.getDate() + o)
-      return d.toISOString().split('T')[0]
-    })
-    await saveBiometricDataBatch(getAppleHealthSampleData(days))
     dismiss()
-    // Soft navigate: let user continue
+  }
+
+  const signInWithGoogle = async () => {
+    if (!supabase) return
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: accountRedirectUrl() },
+    })
+    if (error) console.error('sign in failed', error)
   }
 
   if (!show) return null
@@ -70,6 +77,19 @@ export default function GuidedFirstRun() {
             <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>See insights</div>
           </Link>
         </div>
+
+        {/* Auth prompt integrated into the welcome sheet — no second popup */}
+        {supabase && (
+          <div className="pt-1 border-t border-white/5">
+            <button
+              onClick={signInWithGoogle}
+              className="w-full rounded-xl px-3 py-2.5 text-xs font-medium text-left"
+              style={{ background: 'rgba(167,139,250,0.14)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--violet)' }}
+            >
+              Sign in with Google to sync across devices
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

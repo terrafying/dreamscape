@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getSupabase } from '@/lib/supabaseClient'
 import { accountRedirectUrl } from '@/lib/site'
 
@@ -9,18 +9,7 @@ export default function AuthSheet() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'error'>('idle')
   const supabase = getSupabase()
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const prompted = localStorage.getItem('dreamscape_auth_prompted')
-    const guidedSeen = localStorage.getItem('dreamscape_guided_seen')
-    if (!prompted && guidedSeen) {
-      const t = setTimeout(() => setOpen(true), 400)
-      return () => clearTimeout(t)
-    }
-  }, [])
-
   const dismiss = () => {
-    localStorage.setItem('dreamscape_auth_prompted', '1')
     setOpen(false)
   }
 
