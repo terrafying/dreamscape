@@ -6,7 +6,7 @@ const { refs, getSupabaseFn, getAuthenticatedClientMock } = vi.hoisted(() => {
   const fn = vi.fn()
   const getSupabaseFn = vi.fn(() => ({ from } as any))
   const refs = { supabase: { from }, getUser: fn }
-  const getAuthenticatedClientMock = vi.fn(() => ({ from: refs.supabase.from }))
+  const getAuthenticatedClientMock = vi.fn((): { from: typeof refs.supabase.from } | null => ({ from: refs.supabase.from }))
   return {
     refs,
     getSupabaseFn,
