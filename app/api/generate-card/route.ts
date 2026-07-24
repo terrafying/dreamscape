@@ -27,7 +27,7 @@ export async function POST(req: Request) {
       try {
         send('status', { message: 'Rendering your dream card...' })
 
-        // Use smart fallback: OpenRouter first, then OpenAI
+        // Provider chain: Replicate Flux Schnell → Gemini (AI Gateway) → OpenAI
         const result = await generateImageSmart(prompt)
         
         // Convert to base64 if needed

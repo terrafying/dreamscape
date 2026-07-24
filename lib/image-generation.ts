@@ -1,44 +1,44 @@
 /**
- * Smart image generation with fallback support.
- * Tries Replicate first (cheaper, no billing limits), falls back to OpenAI.
+ * Unified image generation with provider fallback.
+ * Chain order: Replicate Flux Schnell (cheapest) → Gemini 2.5 Flash Image via
+ * Vercel AI Gateway (quality) → OpenAI (last resort).
+ *
+ * Model IDs live in lib/models.ts — never hardcode provider version hashes here.
  */
 
-const REPLICATE_KEY = process.env.REPLICATE_API_TOKEN
-const OPENAI_KEY = process.env.OPENAI_API_KEY
+import { gateway } from '@ai-sdk/gateway'
+import { generateText } from 'ai'
+import { imageModel } from '@/lib/models'
 
-interface ImageResult {
+export interface ImageResult {
   url?: string
   base64?: string
+  mediaType?: string
   model: string
-  provider: 'openrouter' | 'openai'
+  provider: 'replicate' | 'gemini' | 'openai'
 }
 
 /**
- * Generate image via Replicate (preferred: cheaper, no billing limits)
- * Uses Flux Schnell (fast, free tier available)
+ * Generate image via Replicate using the official-model endpoint
+ * (resolves the latest model version server-side — no version hashes).
  */
-async function generateViaReplicate(prompt: string, model = 'black-forest-labs/flux-schnell'): Promise<ImageResult> {
-  if (!REPLICATE_KEY) throw new Error('REPLICATE_API_TOKEN is not set')
+async function generateViaReplicate(prompt: string): Promise<ImageResult> {
+  const key = process.env.REPLICATE_API_TOKEN
+  if (!key) throw new Error('REPLICATE_API_TOKEN is not set')
+  const model = imageModel.replicate()
 
-  // Start prediction
-  const startResponse = await fetch('https://api.replicate.com/v1/predictions', {
+  const startResponse = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Token ${REPLICATE_KEY}`,
+      Authorization: `Token ${key}`,
     },
     body: JSON.stringify({
-      version: model === 'black-forest-labs/flux-schnell' 
-        ? '3f0457e4a4202e302f7a14bdd7df1b04a3eccd2e' // Flux Schnell
-        : 'a25d7920246ce30010671ca59a0f1450733641ae', // SDXL
       input: {
         prompt,
-        width: 1024,
-        height: 1024,
         num_outputs: 1,
-        scheduler: 'K_EULER',
-        num_inference_steps: 4,
-        guidance_scale: 7.5,
+        aspect_ratio: '1:1',
+        output_format: 'webp',
       },
     }),
   })
@@ -49,13 +49,13 @@ async function generateViaReplicate(prompt: string, model = 'black-forest-labs/f
   }
 
   const prediction = await startResponse.json()
-  const predictionId = prediction.id
+  const pollUrl: string = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`
 
   // Poll for completion (max 60 seconds)
   let attempts = 0
   while (attempts < 60) {
-    const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-      headers: { Authorization: `Token ${REPLICATE_KEY}` },
+    const statusResponse = await fetch(pollUrl, {
+      headers: { Authorization: `Token ${key}` },
     })
 
     if (!statusResponse.ok) {
@@ -65,23 +65,19 @@ async function generateViaReplicate(prompt: string, model = 'black-forest-labs/f
     const status = await statusResponse.json()
 
     if (status.status === 'succeeded') {
-      const imageUrl = status.output?.[0]
-      if (!imageUrl) {
+      const output = status.output
+      const imageUrl = Array.isArray(output) ? output[0] : output
+      if (!imageUrl || typeof imageUrl !== 'string') {
         throw new Error('Replicate: No image URL in output')
       }
-      return {
-        url: imageUrl,
-        model,
-        provider: 'openrouter', // Keep as openrouter for compatibility
-      }
+      return { url: imageUrl, mediaType: 'image/webp', model, provider: 'replicate' }
     }
 
-    if (status.status === 'failed') {
-      throw new Error(`Replicate: Prediction failed: ${JSON.stringify(status.error)}`)
+    if (status.status === 'failed' || status.status === 'canceled') {
+      throw new Error(`Replicate: Prediction ${status.status}: ${JSON.stringify(status.error)}`)
     }
 
-    // Wait before polling again
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     attempts++
   }
 
@@ -89,23 +85,54 @@ async function generateViaReplicate(prompt: string, model = 'black-forest-labs/f
 }
 
 /**
- * Generate image via OpenAI (fallback)
+ * Generate image via Gemini 2.5 Flash Image through the Vercel AI Gateway.
+ * Locally requires AI_GATEWAY_API_KEY; on Vercel, OIDC auth is automatic.
  */
-async function generateViaOpenAI(prompt: string, model = 'dall-e-3'): Promise<ImageResult> {
-  if (!OPENAI_KEY) throw new Error('OPENAI_API_KEY is not set')
+async function generateViaGemini(prompt: string): Promise<ImageResult> {
+  if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL) {
+    throw new Error('AI Gateway not configured (set AI_GATEWAY_API_KEY or deploy on Vercel)')
+  }
+  const model = imageModel.gemini()
+  const result = await generateText({
+    model: gateway(model),
+    prompt,
+  })
+
+  const file = result.files.find((f) => f.mediaType?.startsWith('image/'))
+  if (!file?.uint8Array?.length) {
+    throw new Error('Gemini returned no image file')
+  }
+
+  const mediaType = file.mediaType ?? 'image/png'
+  return {
+    base64: Buffer.from(file.uint8Array).toString('base64'),
+    mediaType,
+    model,
+    provider: 'gemini',
+  }
+}
+
+/**
+ * Generate image via OpenAI (last resort).
+ * No response_format param: gpt-image models reject it and url is the
+ * default for dall-e — handle both url and b64_json response shapes.
+ */
+async function generateViaOpenAI(prompt: string): Promise<ImageResult> {
+  const key = process.env.OPENAI_API_KEY
+  if (!key) throw new Error('OPENAI_API_KEY is not set')
+  const model = imageModel.openai()
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_KEY}`,
+      Authorization: `Bearer ${key}`,
     },
     body: JSON.stringify({
       model,
       prompt,
       size: '1024x1024',
       n: 1,
-      response_format: 'url',
     }),
   })
 
@@ -115,47 +142,48 @@ async function generateViaOpenAI(prompt: string, model = 'dall-e-3'): Promise<Im
   }
 
   const data = await response.json()
-  const imageUrl = data.data?.[0]?.url
+  const item = data.data?.[0]
 
-  if (!imageUrl) {
-    throw new Error('OpenAI: No image URL in response')
+  if (item?.url) {
+    return { url: item.url, mediaType: 'image/png', model, provider: 'openai' }
   }
-
-  return {
-    url: imageUrl,
-    model,
-    provider: 'openai',
+  if (item?.b64_json) {
+    return { base64: item.b64_json, mediaType: 'image/png', model, provider: 'openai' }
   }
+  throw new Error('OpenAI: No image URL or b64_json in response')
 }
 
 /**
  * Smart image generation with fallback.
- * Tries Replicate first (cheaper, no billing limits), falls back to OpenAI.
+ * Tries Replicate Flux Schnell → Gemini (AI Gateway) → OpenAI.
  */
 export async function generateImageSmart(prompt: string): Promise<ImageResult> {
   const errors: string[] = []
 
-  // Try Replicate first (cheaper, no billing limits)
   try {
-    const repResult = await generateViaReplicate(prompt, 'black-forest-labs/flux-schnell')
-    return repResult
+    return await generateViaReplicate(prompt)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.warn('Replicate error:', msg)
     errors.push(`Replicate: ${msg}`)
   }
 
-  // Fall back to OpenAI
   try {
-    const oaiResult = await generateViaOpenAI(prompt, 'dall-e-3')
-    return oaiResult
+    return await generateViaGemini(prompt)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('Gemini error:', msg)
+    errors.push(`Gemini: ${msg}`)
+  }
+
+  try {
+    return await generateViaOpenAI(prompt)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.warn('OpenAI error:', msg)
     errors.push(`OpenAI: ${msg}`)
   }
 
-  // No provider available
   throw new Error(`No image generation provider available. Errors: ${errors.join(' | ')}`)
 }
 

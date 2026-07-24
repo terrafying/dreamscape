@@ -3,6 +3,8 @@
  * Tries ElevenLabs first (better quality), falls back to Replicate (cheaper).
  */
 
+import { ttsModel } from '@/lib/models'
+
 const ELEVENLABS_KEY = process.env.ELEVENLABS_API_KEY
 const REPLICATE_KEY = process.env.REPLICATE_API_TOKEN
 
@@ -71,42 +73,32 @@ async function generateViaElevenLabs(
 
 /**
  * Generate TTS via Replicate (fallback: cheaper, no billing limits)
- * Uses Coqui TTS (open source, good quality)
+ * Uses MiniMax Speech 02 HD via the official-model endpoint (no version hash;
+ * model + default voice live in lib/models.ts).
  */
 async function generateViaReplicate(
   text: string,
-  voiceId: string
+  speed = 0.85
 ): Promise<TTSResult | null> {
   if (!REPLICATE_KEY) return null
 
   try {
-    // Map ElevenLabs voice IDs to speaker names (Replicate uses speaker names)
-    // For now, use a default speaker if mapping not found
-    const speakerMap: Record<string, string> = {
-      '21m00Tcm4TlvDq8ikWAM': 'p225', // Rachel → p225
-      'EXAVITQu4vr4xnSDxMaL': 'p226', // Bella → p226
-      'IZSifMMVzhvvsNo7aZ0E': 'p227', // Antoni → p227
-      'TxGEqnHWrfWFTfGW9XjX': 'p228', // Elli → p228
-      'VR6AewLVsFNMjlBFvXnJ': 'p229', // Josh → p229
-      'pNInz6obpgDQGcFmaJgB': 'p230', // Arnold → p230
-      'EL1pdR02b3DQrJLSCgaG': 'p231', // Sam → p231
-    }
+    const model = ttsModel.replicate()
 
-    const speaker = speakerMap[voiceId] || 'p225' // Default to p225 if not found
-
-    // Start prediction
-    const startResponse = await fetch('https://api.replicate.com/v1/predictions', {
+    // Start prediction via the official-model endpoint (latest version)
+    const startResponse = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Token ${REPLICATE_KEY}`,
       },
       body: JSON.stringify({
-        version: 'f6fa537afc617ee169b7db263bfb2167a512f489b434e66e12fb5e11a7f8a0a9', // Coqui TTS
         input: {
           text,
-          speaker,
-          language: 'en',
+          voice_id: ttsModel.replicateVoice(),
+          speed,
+          emotion: 'auto',
+          audio_format: 'mp3',
         },
       }),
     })
@@ -118,12 +110,12 @@ async function generateViaReplicate(
     }
 
     const prediction = await startResponse.json()
-    const predictionId = prediction.id
+    const pollUrl: string = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`
 
     // Poll for completion (max 60 seconds)
     let attempts = 0
     while (attempts < 60) {
-      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+      const statusResponse = await fetch(pollUrl, {
         headers: { Authorization: `Token ${REPLICATE_KEY}` },
       })
 
@@ -135,8 +127,9 @@ async function generateViaReplicate(
       const status = await statusResponse.json()
 
       if (status.status === 'succeeded') {
-        const audioUrl = status.output
-        if (!audioUrl) {
+        const output = status.output
+        const audioUrl = typeof output === 'string' ? output : output?.audio || output?.[0]
+        if (!audioUrl || typeof audioUrl !== 'string') {
           console.warn('Replicate TTS: No audio URL in output')
           return null
         }
@@ -152,12 +145,12 @@ async function generateViaReplicate(
         return {
           audioBuffer,
           provider: 'replicate',
-          model: 'coqui-tts',
+          model,
         }
       }
 
-      if (status.status === 'failed') {
-        console.warn('Replicate TTS: Prediction failed', status.error)
+      if (status.status === 'failed' || status.status === 'canceled') {
+        console.warn(`Replicate TTS: Prediction ${status.status}`, status.error)
         return null
       }
 
@@ -181,7 +174,7 @@ async function generateViaReplicate(
 export async function generateTTSSmart(
   text: string,
   voiceId: string,
-  model = 'eleven_multilingual_v2',
+  model = ttsModel.elevenlabs(),
   stability = 0.5,
   similarityBoost = 0.75,
   speed = 0.85
@@ -191,7 +184,7 @@ export async function generateTTSSmart(
   if (elResult) return elResult
 
   // Fall back to Replicate (cheaper, no billing limits)
-  const repResult = await generateViaReplicate(text, voiceId)
+  const repResult = await generateViaReplicate(text, speed)
   if (repResult) return repResult
 
   // No provider available

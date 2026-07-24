@@ -5,6 +5,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { pickOpenRouterModel, markOpenRouterFailure, markOpenRouterSuccess } from '@/lib/openrouter'
+import { textModel } from '@/lib/models'
 import type { OpenAIOAuthSessionData } from '@/lib/openaiOAuthShared'
 
 export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
@@ -42,7 +43,8 @@ function getAnthropicClient(apiKey?: string) {
 // Default model for the ChatGPT OAuth path. The Codex backend only serves its
 // own model set (gpt-5.x family), so this is intentionally separate from the
 // API-key default and ignores any user-supplied model preference.
-const OPENAI_OAUTH_DEFAULT_MODEL = 'gpt-5.4-mini'
+// Registry: lib/models.ts (OPENAI_OAUTH_MODEL env override).
+const OPENAI_OAUTH_DEFAULT_MODEL = textModel.openaiOauth()
 
 function codexAuthFileCandidates(): string[] {
   const candidates: string[] = []
@@ -85,7 +87,7 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
     if (provider === 'openai') {
       const key = keys?.openai || process.env.OPENAI_API_KEY
       if (key) {
-        const m = model || process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+        const m = model || textModel.openai()
         const openaiProvider = createOpenAI({ apiKey: key })
         const result = await generateText({
           model: openaiProvider(m),
@@ -98,7 +100,7 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
       // Requested models are only honored because the client resolves them
       // against the Codex catalog (lib/openaiOAuth.resolveOpenAIModel).
       if (keys?.openaiOAuth) {
-        const m = model || process.env.OPENAI_OAUTH_MODEL || OPENAI_OAUTH_DEFAULT_MODEL
+        const m = model || OPENAI_OAUTH_DEFAULT_MODEL
         const { createOpenAIOAuth } = await import('@openai-oauth/ai-sdk')
         const session = keys.openaiOAuth
         const oauthProvider = createOpenAIOAuth({ kind: 'openai-oauth', getSession: async () => session })
@@ -113,7 +115,7 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
       // ChatGPT account through Codex credentials). Requested models are
       // ignored: the Codex backend only serves its own model set.
       if (!hasOpenAIOAuthCredentials()) throw new Error('Missing OPENAI_API_KEY and no ChatGPT OAuth credentials')
-      const m = process.env.OPENAI_OAUTH_MODEL || OPENAI_OAUTH_DEFAULT_MODEL
+      const m = OPENAI_OAUTH_DEFAULT_MODEL
       const oauthProvider = await getOpenAIOAuthProvider()
       const result = await generateText({
         model: oauthProvider(m),
@@ -123,7 +125,7 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
       return { text: result.text, source: `openai-oauth:${m}` }
     }
     if (provider === 'groq') {
-      const m = model || process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
+      const m = model || textModel.groq()
       const key = keys?.groq || process.env.GROQ_API_KEY
       if (!key) throw new Error('Missing GROQ_API_KEY')
       const result = await generateText({
@@ -145,7 +147,7 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
       markOpenRouterSuccess(m)
       return { text: result.text, source: `openrouter:${m}` }
     }
-    const m = model || 'claude-haiku-4-5'
+    const m = model || textModel.anthropic()
     const client = getAnthropicClient(keys?.anthropic)
     const response = await client.messages.create({
       model: m,

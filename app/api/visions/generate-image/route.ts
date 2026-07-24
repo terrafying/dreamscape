@@ -1,7 +1,6 @@
-import { generateImage } from 'ai'
-import { openai } from '@ai-sdk/openai'
 import { checkAuth } from '@/lib/auth'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
+import { generateImageSmart } from '@/lib/image-generation'
 import { buildVisionBoardPrompt } from '@/lib/image-prompts'
 import type { VisionExtraction } from '@/lib/types'
 
@@ -9,13 +8,12 @@ export async function POST(req: Request) {
   const denied = checkAuth(req)
   if (denied) return denied
 
-  const { extraction, model } = await req.json() as {
+  const { extraction } = await req.json() as {
     extraction: VisionExtraction
-    model?: string
   }
 
   const prompt = buildVisionBoardPrompt(extraction)
-  const cacheKey = `vision_image_${generateCacheKey({ extraction, model: model || 'dall-e-3' })}`
+  const cacheKey = `vision_image_${generateCacheKey({ extraction })}`
 
   try {
     const cached = await getCached<string>(cacheKey)
@@ -23,13 +21,9 @@ export async function POST(req: Request) {
       return Response.json({ ok: true, imageUrl: cached, prompt, cached: true })
     }
 
-    const result = await generateImage({
-      model: (openai as any).image(model || 'dall-e-3'),
-      prompt,
-    }) as { image?: { base64?: string; url?: string } }
-
-    const raw = result?.image?.url || result?.image?.base64 || ''
-    const imageUrl = raw.startsWith('http') ? raw : raw ? `data:image/png;base64,${raw}` : ''
+    const result = await generateImageSmart(prompt)
+    const imageUrl = result.url
+      || (result.base64 ? `data:${result.mediaType ?? 'image/png'};base64,${result.base64}` : '')
     if (imageUrl) await setCache(cacheKey, imageUrl)
     return Response.json({ ok: true, imageUrl, prompt, cached: false })
   } catch (err) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { checkAuth } from '@/lib/auth'
-import { generateNanoBananaDataUrl } from '@/lib/nano-banana-image'
+import { generateImageSmart, fetchImageAsBase64 } from '@/lib/image-generation'
 
 export async function POST(req: Request) {
   const denied = checkAuth(req)
@@ -19,8 +19,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { dataUrl, mediaType } = await generateNanoBananaDataUrl(prompt)
-    return NextResponse.json({ ok: true, dataUrl, mediaType })
+    const result = await generateImageSmart(prompt)
+    const mediaType = result.mediaType ?? 'image/png'
+    const base64 = result.base64 ?? (result.url ? await fetchImageAsBase64(result.url) : '')
+    if (!base64) throw new Error('No image produced')
+    return NextResponse.json({ ok: true, dataUrl: `data:${mediaType};base64,${base64}`, mediaType })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Image generation failed'
     return NextResponse.json({ error: message }, { status: 502 })
