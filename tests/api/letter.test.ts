@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const mockCallLLM = vi.hoisted(() => vi.fn<[string, object?], Promise<string>>())
+const mockCallLLM = vi.hoisted(() => vi.fn<(prompt: string, opts?: object) => Promise<string>>())
 vi.mock('@/lib/llm', () => ({ callLLM: mockCallLLM }))
 
 import { POST } from '@/app/api/letter/route'
@@ -156,7 +156,7 @@ describe('POST /api/letter', () => {
       body: JSON.stringify({ dreams, date: '2026-03-16' }),
     })
     await POST(req)
-    const prompt = mockCallLLM.mock.calls.at(-1)![0] as string
+    const prompt = (mockCallLLM.mock.calls.at(-1)?.[0] ?? '') as string
     expect(prompt).toContain('Dream 10')
     expect(prompt).not.toContain('Dream 11')
   })

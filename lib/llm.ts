@@ -6,7 +6,9 @@ import os from 'os'
 import path from 'path'
 import { pickOpenRouterModel, markOpenRouterFailure, markOpenRouterSuccess } from '@/lib/openrouter'
 import { textModel } from '@/lib/models'
+import { isAutoModel } from '@/lib/modelPreferences'
 import type { OpenAIOAuthSessionData } from '@/lib/openaiOAuthShared'
+import { trackGeneration, captureError } from '@/lib/observability'
 
 export type LLMProvider = 'anthropic' | 'openai' | 'groq' | 'openrouter'
 
@@ -164,6 +166,7 @@ async function tryCall(provider: LLMProvider, prompt: string, model: string | un
 
 export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): Promise<{ text: string; source: string }> {
   const { provider = 'openrouter', model, maxTokens = 2000 } = opts
+  const startedAt = Date.now()
 
   // OpenAI rejoins chains: with ChatGPT OAuth configured it's a free
   // high-quality fallback; without credentials it fails fast and is skipped.
@@ -181,11 +184,19 @@ export async function callLLMWithSource(prompt: string, opts: LLMOptions = {}): 
     tried.add(p)
     // Only the requested provider honors the explicit model — provider-specific
     // ids (e.g. Codex gpt-5.x or openrouter slugs) would 404 on other backends,
-    // so fallback steps use their own defaults instead.
-    const result = await tryCall(p, prompt, p === provider ? model : undefined, maxTokens, opts.apiKeys)
-    if (result) return result
+    // so fallback steps use their own defaults instead. 'auto' / empty resolves
+    // through each provider's own default path (pickOpenRouterModel's live
+    // catalog ranking for OpenRouter).
+    const requested = p === provider ? (isAutoModel(model) ? undefined : model) : undefined
+    const result = await tryCall(p, prompt, requested, maxTokens, opts.apiKeys)
+    if (result) {
+      trackGeneration({ kind: 'text', provider: p, model: result.source.split(':').slice(1).join(':'), outcome: 'success', durationMs: Date.now() - startedAt })
+      return result
+    }
   }
 
+  trackGeneration({ kind: 'text', provider, model, outcome: 'error', durationMs: Date.now() - startedAt })
+  await captureError('llm.chain', new Error('All LLM providers failed'), { requestedProvider: provider, requestedModel: model })
   throw new Error('All LLM providers failed')
 }
 

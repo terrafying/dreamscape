@@ -9,6 +9,7 @@
 import { gateway } from '@ai-sdk/gateway'
 import { generateText } from 'ai'
 import { imageModel } from '@/lib/models'
+import { trackGeneration, captureError } from '@/lib/observability'
 
 export interface ImageResult {
   url?: string
@@ -159,31 +160,36 @@ async function generateViaOpenAI(prompt: string): Promise<ImageResult> {
  */
 export async function generateImageSmart(prompt: string): Promise<ImageResult> {
   const errors: string[] = []
+  const startedAt = Date.now()
 
-  try {
-    return await generateViaReplicate(prompt)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn('Replicate error:', msg)
-    errors.push(`Replicate: ${msg}`)
+  const step = async (labelKey: 'replicate' | 'gemini' | 'openai', fn: () => Promise<ImageResult>): Promise<ImageResult> => {
+    const label = labelKey === 'replicate' ? 'Replicate' : labelKey === 'gemini' ? 'Gemini' : 'OpenAI'
+    try {
+      const result = await fn()
+      trackGeneration({ kind: 'image', provider: labelKey, model: result.model, outcome: 'success', durationMs: Date.now() - startedAt })
+      return result
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`${label} error:`, msg)
+      trackGeneration({ kind: 'image', provider: labelKey, outcome: 'error', durationMs: Date.now() - startedAt })
+      errors.push(`${label}: ${msg}`)
+      throw err
+    }
   }
 
-  try {
-    return await generateViaGemini(prompt)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn('Gemini error:', msg)
-    errors.push(`Gemini: ${msg}`)
+  const chain: Array<() => Promise<ImageResult>> = [
+    () => step('replicate', () => generateViaReplicate(prompt)),
+    () => step('gemini', () => generateViaGemini(prompt)),
+    () => step('openai', () => generateViaOpenAI(prompt)),
+  ]
+
+  for (const attempt of chain) {
+    try {
+      return await attempt()
+    } catch { /* errors already recorded by step() */ }
   }
 
-  try {
-    return await generateViaOpenAI(prompt)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn('OpenAI error:', msg)
-    errors.push(`OpenAI: ${msg}`)
-  }
-
+  await captureError('image.chain', new Error('No image generation provider available'), { errors: errors.join(' | ') })
   throw new Error(`No image generation provider available. Errors: ${errors.join(' | ')}`)
 }
 

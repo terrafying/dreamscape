@@ -1,6 +1,7 @@
 import { callLLMWithSource, type LLMProvider } from '@/lib/llm'
 import { OPENAI_OAUTH_HEADER, parseOpenAIOAuthHeader } from '@/lib/openaiOAuthShared'
 import { checkAuth } from '@/lib/auth'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_LLM } from '@/lib/rateLimit'
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -10,7 +11,12 @@ export async function POST(req: Request) {
   const denied = checkAuth(req)
   if (denied) return denied
 
-  const { intention, journal, provider, model } = (await req.json()) as {
+  const rate = checkRateLimit(req, 'wander', RATE_LLM)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req)
+  if (!parsed.ok) return parsed.response
+  const { intention, journal, provider, model } = parsed.body as {
     intention: string
     journal: string
     provider?: LLMProvider

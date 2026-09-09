@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import OpenRouterModelField from '@/components/OpenRouterModelField'
-import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
+import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_AUTO } from '@/lib/openrouterModels'
 import {
   DEFAULT_PROVIDER,
   getDefaultModelForProvider,
@@ -17,19 +17,19 @@ import { getOpenAIOAuthModel, getOpenAIOAuthSession, hasByoOpenAIKey } from '@/l
 export default function ModelDefaultsPanel() {
   const providerSelectId = 'model-default-provider'
   const [provider, setProvider] = useState<LLMProvider>(DEFAULT_PROVIDER)
-  const [orModel, setOrModel] = useState(DEFAULT_OPENROUTER_MODEL)
+  const [orModel, setOrModel] = useState<string>(OPENROUTER_AUTO)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const stored = getStoredModelPreference()
     setProvider(stored.provider)
-    setOrModel(localStorage.getItem('dreamscape_or_model') || DEFAULT_OPENROUTER_MODEL)
+    setOrModel(localStorage.getItem('dreamscape_or_model') || OPENROUTER_AUTO)
   }, [])
 
   const save = () => {
     const next = provider === 'openrouter'
-      ? orModel.trim() || DEFAULT_OPENROUTER_MODEL
+      ? orModel.trim() || OPENROUTER_AUTO
       : getDefaultModelForProvider(provider)
     saveModelPreference(provider, next)
     if (provider === 'openrouter') setOrModel(next)
@@ -70,7 +70,7 @@ export default function ModelDefaultsPanel() {
           <OpenRouterModelField
             value={orModel}
             onChange={setOrModel}
-            hint="Stored locally as your preferred OpenRouter override."
+            hint="Auto tracks the best cheap OpenRouter model as the catalog changes. Pick a specific model to pin it."
           />
         ) : provider === 'openai' ? (
           getOpenAIOAuthSession() && !hasByoOpenAIKey() ? (

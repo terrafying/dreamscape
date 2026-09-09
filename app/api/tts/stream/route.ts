@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 import { generateBlobCacheKey, getCachedBlob, setCachedBlob } from '@/lib/blob-cache'
 import { generateTTSSmart } from '@/lib/tts-generation'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_MEDIA } from '@/lib/rateLimit'
 
 interface TTSOptions {
   text: string
@@ -22,12 +23,19 @@ function parseVoices(raw: string | undefined): Array<{ id: string; label: string
 }
 
 export async function POST(req: Request) {
-  const { text, voiceId, model = 'eleven_multilingual_v2', stability = 0.5, similarityBoost = 0.75, speed = 0.85 } = await req.json() as TTSOptions
+  const rate = checkRateLimit(req, 'tts', RATE_MEDIA)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req, 20_000)
+  if (!parsed.ok) return parsed.response
+  const { text, voiceId, model = 'eleven_multilingual_v2', stability = 0.5, similarityBoost = 0.75, speed = 0.85 } = parsed.body as TTSOptions
   if (!text || !voiceId) {
     return NextResponse.json({ ok: false, error: 'text and voiceId required' }, { status: 400 })
   }
+  // TTS text is capped hard: voiceover-grade input, not document narration.
+  const cappedText = String(text).slice(0, 4_000)
 
-  const blobCacheKey = generateBlobCacheKey({ text, voiceId, model, stability, similarityBoost, speed })
+  const blobCacheKey = generateBlobCacheKey({ text: cappedText, voiceId, model, stability, similarityBoost, speed })
   
   // Try blob cache first (persistent across deploys)
   const cachedBlob = await getCachedBlob(blobCacheKey)
@@ -43,7 +51,7 @@ export async function POST(req: Request) {
 
   try {
     // Use smart fallback: ElevenLabs first, then Replicate
-    const result = await generateTTSSmart(text, voiceId, model, stability, similarityBoost, speed)
+    const result = await generateTTSSmart(cappedText, voiceId, model, stability, similarityBoost, speed)
     
     // Cache the audio in blob storage (persistent, 30-day TTL)
     await setCachedBlob(blobCacheKey, result.audioBuffer)

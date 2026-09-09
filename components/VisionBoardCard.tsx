@@ -1,7 +1,10 @@
 'use client'
 
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { VisionExtraction } from '@/lib/types'
 import VisionSigil from '@/components/VisionSigil'
+
+const POLL_INTERVAL_MS = 10_000
 
 export default function VisionBoardCard({
   extraction,
@@ -14,6 +17,87 @@ export default function VisionBoardCard({
   generating?: boolean
   onGenerate?: () => void
 }) {
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [videoState, setVideoState] = useState<'idle' | 'starting' | 'rendering' | 'ready' | 'error'>('idle')
+  const [videoError, setVideoError] = useState('')
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearPoll = () => {
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current)
+      pollTimer.current = null
+    }
+  }
+
+  useEffect(() => clearPoll, [])
+
+  const poll = useCallback((predictionId: string, cacheKeySeed: string) => {
+    clearPoll()
+    pollTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/visions/generate-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ predictionId, cacheKeySeed }),
+        })
+        const json = await res.json() as { status?: string; videoUrl?: string; error?: string }
+        if (json.status === 'succeeded' && json.videoUrl) {
+          setVideoUrl(json.videoUrl)
+          setVideoState('ready')
+          return
+        }
+        if (json.status === 'failed' || json.status === 'canceled' || json.error) {
+          setVideoState('error')
+          setVideoError(json.error || 'Video render failed')
+          return
+        }
+        setVideoState('rendering')
+        poll(predictionId, cacheKeySeed)
+      } catch {
+        // Transient network hiccup — keep polling.
+        setVideoState('rendering')
+        poll(predictionId, cacheKeySeed)
+      }
+    }, POLL_INTERVAL_MS)
+  }, [])
+
+  const generateVideo = async () => {
+    setVideoState('starting')
+    setVideoError('')
+    try {
+      const res = await fetch('/api/visions/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extraction }),
+      })
+      const json = await res.json() as {
+        predictionId?: string
+        status?: string
+        videoUrl?: string
+        cacheKeySeed?: string
+        error?: string
+      }
+      if (json.error) {
+        setVideoState('error')
+        setVideoError(json.error)
+        return
+      }
+      if (json.status === 'succeeded' && json.videoUrl) {
+        // Cache hit — instant.
+        setVideoUrl(json.videoUrl)
+        setVideoState('ready')
+        return
+      }
+      if (json.predictionId && json.cacheKeySeed) {
+        setVideoState('rendering')
+        poll(json.predictionId, json.cacheKeySeed)
+      }
+    } catch {
+      setVideoState('error')
+      setVideoError('Could not reach the video service')
+    }
+  }
+
   return (
     <div className="rounded-2xl p-4 space-y-4" style={{ background: 'rgba(15,15,26,0.72)', border: '1px solid rgba(244,201,93,0.16)' }}>
       <div className="flex items-center justify-between gap-3">
@@ -88,6 +172,50 @@ export default function VisionBoardCard({
           </div>
         </div>
       )}
+
+      <div className="rounded-2xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(244,201,93,0.18)' }}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs uppercase tracking-[0.12em]" style={{ color: 'rgba(244,201,93,0.7)' }}>
+            Living Vision — video
+          </div>
+          <button
+            type="button"
+            onClick={() => void generateVideo()}
+            disabled={videoState === 'starting' || videoState === 'rendering'}
+            className="px-3 py-1.5 rounded-xl text-xs font-medium"
+            style={{
+              background: videoState === 'starting' || videoState === 'rendering' ? 'rgba(244,201,93,0.16)' : 'rgba(244,201,93,0.22)',
+              color: videoState === 'starting' || videoState === 'rendering' ? 'rgba(244,201,93,0.55)' : '#f4c95d',
+              border: '1px solid rgba(244,201,93,0.28)',
+            }}
+          >
+            {videoState === 'starting' && 'Conjuring...'}
+            {videoState === 'rendering' && 'Rendering... (minutes)'}
+            {videoState === 'ready' && 'Regenerate Video'}
+            {(videoState === 'idle' || videoState === 'error') && (videoUrl ? 'Regenerate Video' : 'Animate Vision')}
+          </button>
+        </div>
+        {videoState === 'rendering' && (
+          <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
+            The vision is unfolding — this takes a few minutes. You can leave this page; completed videos are kept.
+          </p>
+        )}
+        {videoState === 'error' && (
+          <p className="text-[11px]" style={{ color: 'rgba(255,120,120,0.85)' }}>{videoError}</p>
+        )}
+        {videoUrl && (
+          <video
+            key={videoUrl}
+            src={videoUrl}
+            controls
+            loop
+            muted
+            playsInline
+            className="w-full rounded-xl"
+            style={{ border: '1px solid rgba(255,255,255,0.08)', maxHeight: 420 }}
+          />
+        )}
+      </div>
 
       <div className="grid sm:grid-cols-2 gap-2">
         {extraction.ritual_steps.map((step) => (

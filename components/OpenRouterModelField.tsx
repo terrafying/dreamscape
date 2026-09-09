@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useMemo, useState } from 'react'
-import { DEFAULT_OPENROUTER_MODEL, RECOMMENDED_OPENROUTER_MODELS } from '@/lib/openrouterModels'
+import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_AUTO, RECOMMENDED_OPENROUTER_MODELS } from '@/lib/openrouterModels'
 
 type OpenRouterModelFieldProps = {
   value: string
@@ -19,10 +19,12 @@ export default function OpenRouterModelField({
   const selectId = useId()
   const inputId = useId()
   const [models, setModels] = useState<string[]>([...RECOMMENDED_OPENROUTER_MODELS].slice(0, 10))
+  const [autoModel, setAutoModel] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showCustom, setShowCustom] = useState(false)
-  const isCustomValue = Boolean(value.trim()) && !models.includes(value.trim())
+  const isAuto = !value.trim() || value.trim() === OPENROUTER_AUTO
+  const isCustomValue = !isAuto && Boolean(value.trim()) && !models.includes(value.trim())
 
   useEffect(() => {
     void loadModels()
@@ -33,8 +35,12 @@ export default function OpenRouterModelField({
   }, [isCustomValue])
 
   const selectedValue = useMemo(
-    () => (showCustom || isCustomValue ? '__custom__' : value.trim() || DEFAULT_OPENROUTER_MODEL),
-    [isCustomValue, showCustom, value],
+    () => {
+      if (isAuto && !showCustom) return OPENROUTER_AUTO
+      if (showCustom || isCustomValue) return '__custom__'
+      return value.trim() || DEFAULT_OPENROUTER_MODEL
+    },
+    [isAuto, isCustomValue, showCustom, value],
   )
 
   const loadModels = async () => {
@@ -42,11 +48,12 @@ export default function OpenRouterModelField({
     setError('')
     try {
       const res = await fetch('/api/openrouter/models', { cache: 'no-store' })
-      const json = (await res.json()) as { models?: string[] }
+      const json = (await res.json()) as { models?: string[]; default?: string }
       const next = Array.isArray(json.models) && json.models.length > 0
         ? json.models
         : [...RECOMMENDED_OPENROUTER_MODELS].slice(0, 10)
       setModels(Array.from(new Set(next)).slice(0, 10))
+      setAutoModel(typeof json.default === 'string' ? json.default : '')
     } catch {
       setError('Using fallback model list.')
       setModels([...RECOMMENDED_OPENROUTER_MODELS].slice(0, 10))
@@ -76,6 +83,9 @@ export default function OpenRouterModelField({
         className="w-full rounded-lg px-3 py-2 text-sm outline-none"
         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)' }}
       >
+        <option value={OPENROUTER_AUTO}>
+          {autoModel ? `Auto — best cheap right now (${autoModel})` : 'Auto — best cheap right now'}
+        </option>
         {models.map((model) => (
           <option key={model} value={model}>{model}</option>
         ))}
@@ -85,7 +95,7 @@ export default function OpenRouterModelField({
         <input
           id={inputId}
           aria-label="Custom OpenRouter model"
-          value={value}
+          value={isAuto ? '' : value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={DEFAULT_OPENROUTER_MODEL}
           autoComplete="off"

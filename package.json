@@ -50,8 +50,7 @@
     "@vercel/analytics": "^1.6.1",
     "ai": "^6.0.116",
     "howler": "^2.2.4",
-    "hyperspace.js": "^0.1.0",
-    "next": "14.2.5",
+    "next": "^14.2.35",
     "postprocessing": "^6.36.3",
     "react": "^18",
     "react-dom": "^18",
@@ -75,6 +74,6 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
-    "vitest": "^1.6.0"
+    "vitest": "^3.2.7"
   }
 }

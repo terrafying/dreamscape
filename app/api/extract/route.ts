@@ -4,16 +4,22 @@ import { buildAstroContext, getCurrentTransits, getDominantTransit } from '@/lib
 import type { BirthData } from '@/lib/types'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 import { checkAuth } from '@/lib/auth'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_LLM } from '@/lib/rateLimit'
 
 
 function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 }
-
 export async function POST(req: Request) {
   const denied = checkAuth(req)
   if (denied) return denied
-  const { transcript, date, birthData, provider, model } = (await req.json()) as {
+
+  const rate = checkRateLimit(req, 'extract', RATE_LLM)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req)
+  if (!parsed.ok) return parsed.response
+  const { transcript: rawTranscript, date, birthData, provider, model } = parsed.body as {
     transcript: string
     date: string
     birthData?: BirthData | null
@@ -21,9 +27,21 @@ export async function POST(req: Request) {
     model?: string
   }
 
+  if (!rawTranscript || !date) {
+    return Response.json({ error: 'transcript and date are required' }, { status: 400 })
+  }
+  // Cap before prompt build + cache key: oversized input is a cost attack.
+  const transcript: string = String(rawTranscript).slice(0, 20_000)
+
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     async start(controller) {
+      let closed = false
+      const closeOnce = () => {
+        if (closed) return
+        closed = true
+        controller.close()
+      }
       const send = (event: string, data: unknown) => {
         controller.enqueue(encoder.encode(sse(event, data)))
       }
@@ -42,7 +60,7 @@ export async function POST(req: Request) {
           send('status', { message: 'Restoring analysis from dream journal...' })
           send('extraction', { data: cached })
           send('done', {})
-          controller.close()
+          closeOnce()
           return
         }
 
@@ -130,7 +148,7 @@ Return only valid JSON. No preamble, no explanation, no markdown.`
           extraction = JSON.parse(cleaned)
         } catch {
           send('error', { message: 'Failed to parse dream extraction. Please try again.' })
-          controller.close()
+          closeOnce()
           return
         }
 
@@ -143,7 +161,7 @@ Return only valid JSON. No preamble, no explanation, no markdown.`
         const message = err instanceof Error ? err.message : 'Unknown error'
         send('error', { message })
       } finally {
-        controller.close()
+        closeOnce()
       }
     },
   })

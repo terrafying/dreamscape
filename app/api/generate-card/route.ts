@@ -1,6 +1,7 @@
 import type { DreamLog } from '@/lib/types'
 import { buildDreamCardPrompt, buildStoryCardPrompt } from '@/lib/image-prompts'
 import { generateImageSmart, fetchImageAsBase64 } from '@/lib/image-generation'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_MEDIA } from '@/lib/rateLimit'
 
 interface CardOptions {
   dreams: DreamLog[]
@@ -11,7 +12,16 @@ interface CardOptions {
 }
 
 export async function POST(req: Request) {
-  const { dreams, storyTitle, subtitle } = await req.json() as CardOptions
+  const rate = checkRateLimit(req, 'generate-card', RATE_MEDIA)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req, 100_000)
+  if (!parsed.ok) return parsed.response
+  const { dreams, storyTitle, subtitle } = parsed.body as CardOptions
+
+  if (dreams !== undefined && !Array.isArray(dreams)) {
+    return Response.json({ error: 'dreams must be an array' }, { status: 400 })
+  }
 
   const isStory = !dreams?.length
   const { prompt, title } = isStory

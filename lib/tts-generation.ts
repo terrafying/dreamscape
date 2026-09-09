@@ -4,6 +4,7 @@
  */
 
 import { ttsModel } from '@/lib/models'
+import { trackGeneration } from '@/lib/observability'
 
 const ELEVENLABS_KEY = process.env.ELEVENLABS_API_KEY
 const REPLICATE_KEY = process.env.REPLICATE_API_TOKEN
@@ -179,14 +180,23 @@ export async function generateTTSSmart(
   similarityBoost = 0.75,
   speed = 0.85
 ): Promise<TTSResult> {
+  const startedAt = Date.now()
+
   // Try ElevenLabs first (better quality)
   const elResult = await generateViaElevenLabs(text, voiceId, model, stability, similarityBoost, speed)
-  if (elResult) return elResult
+  if (elResult) {
+    trackGeneration({ kind: 'tts', provider: 'elevenlabs', model: elResult.model, outcome: 'success', durationMs: Date.now() - startedAt })
+    return elResult
+  }
 
   // Fall back to Replicate (cheaper, no billing limits)
   const repResult = await generateViaReplicate(text, speed)
-  if (repResult) return repResult
+  if (repResult) {
+    trackGeneration({ kind: 'tts', provider: 'replicate', model: repResult.model, outcome: 'success', durationMs: Date.now() - startedAt })
+    return repResult
+  }
 
   // No provider available
+  trackGeneration({ kind: 'tts', provider: 'none', outcome: 'error', durationMs: Date.now() - startedAt })
   throw new Error('No TTS provider available (ElevenLabs and Replicate both unavailable)')
 }

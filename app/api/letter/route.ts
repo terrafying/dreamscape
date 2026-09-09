@@ -3,6 +3,7 @@ import { OPENAI_OAUTH_HEADER, parseOpenAIOAuthHeader } from '@/lib/openaiOAuthSh
 import { buildAstroContext } from '@/lib/astro'
 import type { DreamLog, BirthData } from '@/lib/types'
 import { checkAuth } from '@/lib/auth'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_LLM } from '@/lib/rateLimit'
 
 
 function sse(event: string, data: unknown): string {
@@ -12,12 +13,22 @@ function sse(event: string, data: unknown): string {
 export async function POST(req: Request) {
   const denied = checkAuth(req)
   if (denied) return denied
-  const { dreams, birthData, date, provider, model } = (await req.json()) as {
+
+  const rate = checkRateLimit(req, 'letter', RATE_LLM)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req)
+  if (!parsed.ok) return parsed.response
+  const { dreams, birthData, date, provider, model } = parsed.body as {
     dreams: DreamLog[]
     birthData?: BirthData | null
     date: string
     provider?: LLMProvider
     model?: string
+  }
+
+  if (!Array.isArray(dreams) || !date) {
+    return Response.json({ error: 'dreams and date are required' }, { status: 400 })
   }
 
   const encoder = new TextEncoder()

@@ -1,4 +1,5 @@
 import { checkAuth } from '@/lib/auth'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_MEDIA } from '@/lib/rateLimit'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 import { generateImageSmart } from '@/lib/image-generation'
 import { buildVisionBoardPrompt } from '@/lib/image-prompts'
@@ -8,7 +9,12 @@ export async function POST(req: Request) {
   const denied = checkAuth(req)
   if (denied) return denied
 
-  const { extraction } = await req.json() as {
+  const rate = checkRateLimit(req, 'visions-image', RATE_MEDIA)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req, 50_000)
+  if (!parsed.ok) return parsed.response
+  const { extraction } = parsed.body as {
     extraction: VisionExtraction
   }
 

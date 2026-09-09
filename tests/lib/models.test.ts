@@ -3,21 +3,29 @@ import {
   DEFAULT_TEXT_MODELS,
   DEFAULT_IMAGE_MODELS,
   DEFAULT_TTS_MODELS,
+  DEFAULT_VIDEO_MODELS,
+  DEFAULT_AUDIO_MODELS,
   textModel,
   imageModel,
   ttsModel,
+  videoModel,
+  audioModel,
 } from '@/lib/models'
 
 const ALL_DEFAULTS = {
   ...DEFAULT_TEXT_MODELS,
   ...DEFAULT_IMAGE_MODELS,
   ...DEFAULT_TTS_MODELS,
+  ...DEFAULT_VIDEO_MODELS,
+  ...DEFAULT_AUDIO_MODELS,
 } as Record<string, string>
 
 const ENV_VARS = [
   'GROQ_MODEL', 'ANTHROPIC_MODEL', 'OPENAI_MODEL', 'OPENAI_OAUTH_MODEL',
   'REPLICATE_IMAGE_MODEL', 'GEMINI_IMAGE_MODEL', 'NANO_BANANA_MODEL', 'OPENAI_IMAGE_MODEL',
   'ELEVENLABS_MODEL', 'REPLICATE_TTS_MODEL', 'REPLICATE_TTS_VOICE',
+  'REPLICATE_VIDEO_MODEL',
+  'REPLICATE_AUDIO_MODEL', 'REPLICATE_AUDIO_VERSION', 'REPLICATE_AUDIO_FORMAT',
 ]
 
 afterEach(() => {
@@ -42,6 +50,8 @@ describe('model registry defaults', () => {
   it('replicate models use owner/name form (official-model endpoints)', () => {
     expect(DEFAULT_IMAGE_MODELS.replicate).toMatch(/^[a-z0-9-]+\/[a-z0-9._-]+$/i)
     expect(DEFAULT_TTS_MODELS.replicate).toMatch(/^[a-z0-9-]+\/[a-z0-9._-]+$/i)
+    expect(DEFAULT_VIDEO_MODELS.replicate).toMatch(/^[a-z0-9-]+\/[a-z0-9._-]+$/i)
+    expect(DEFAULT_AUDIO_MODELS.replicate).toMatch(/^[a-z0-9-]+\/[a-z0-9._-]+$/i)
   })
 
   it('documents the expected defaults', () => {
@@ -54,6 +64,10 @@ describe('model registry defaults', () => {
     expect(DEFAULT_IMAGE_MODELS.openai).toBe('gpt-image-1-mini')
     expect(DEFAULT_TTS_MODELS.elevenlabs).toBe('eleven_multilingual_v2')
     expect(DEFAULT_TTS_MODELS.replicate).toBe('minimax/speech-02-hd')
+    expect(DEFAULT_VIDEO_MODELS.replicate).toBe('minimax/hailuo-2.3-fast')
+    expect(DEFAULT_AUDIO_MODELS.replicate).toBe('meta/musicgen')
+    expect(DEFAULT_AUDIO_MODELS.replicateVersion).toBe('stereo-melody-large')
+    expect(DEFAULT_AUDIO_MODELS.replicateFormat).toBe('mp3')
   })
 })
 
@@ -88,6 +102,20 @@ describe('env overrides', () => {
     expect(ttsModel.elevenlabs()).toBe('eleven_v3')
     expect(ttsModel.replicate()).toBe('owner/tts-x')
     expect(ttsModel.replicateVoice()).toBe('Narrator_X')
+  })
+
+  it('videoModel respects overrides', () => {
+    process.env.REPLICATE_VIDEO_MODEL = 'minimax/hailuo-2.3'
+    expect(videoModel.replicate()).toBe('minimax/hailuo-2.3')
+  })
+
+  it('audioModel respects overrides', () => {
+    process.env.REPLICATE_AUDIO_MODEL = 'meta/musicgen-x'
+    process.env.REPLICATE_AUDIO_VERSION = 'small'
+    process.env.REPLICATE_AUDIO_FORMAT = 'wav'
+    expect(audioModel.replicate()).toBe('meta/musicgen-x')
+    expect(audioModel.replicateVersion()).toBe('small')
+    expect(audioModel.replicateFormat()).toBe('wav')
   })
 
   it('blank env values fall back to defaults', () => {

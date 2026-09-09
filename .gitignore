@@ -6,3 +6,8 @@ out/
 test-results/
 .claude-flow/
 .DS_Store
+tsconfig.tsbuildinfo
+.opencode/package-lock.json
+__pycache__/
+*.pyc
+playwright-report/

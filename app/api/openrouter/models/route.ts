@@ -1,11 +1,12 @@
 import { FALLBACK_OPENROUTER_MODELS, normalizeOpenRouterModels } from '@/lib/openrouterModels'
+import { pickOpenRouterModel } from '@/lib/openrouter'
 
 let cache: { models: string[]; expiresAt: number } | null = null
 
 export async function GET() {
   const now = Date.now()
   if (cache && cache.expiresAt > now) {
-    return Response.json({ models: cache.models, cached: true })
+    return Response.json({ models: cache.models, default: pickOpenRouterModel('auto'), cached: true })
   }
 
   try {
@@ -23,12 +24,12 @@ export async function GET() {
     const models = normalizeOpenRouterModels(payload)
     cache = { models, expiresAt: now + 60 * 60_000 }
     return Response.json(
-      { models, cached: false },
+      { models, default: pickOpenRouterModel('auto'), cached: false },
       { headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400' } },
     )
   } catch {
     return Response.json(
-      { models: FALLBACK_OPENROUTER_MODELS, cached: false, fallback: true },
+      { models: FALLBACK_OPENROUTER_MODELS, default: pickOpenRouterModel('auto'), cached: false, fallback: true },
       { headers: { 'Cache-Control': 'public, max-age=300' } },
     )
   }

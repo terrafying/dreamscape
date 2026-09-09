@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
 import { checkAuth } from '@/lib/auth'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_MEDIA } from '@/lib/rateLimit'
 import { generateImageSmart, fetchImageAsBase64 } from '@/lib/image-generation'
 
 export async function POST(req: Request) {
   const denied = checkAuth(req)
   if (denied) return denied
 
-  let body: { prompt?: string }
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+  const rate = checkRateLimit(req, 'hypermap-vista', RATE_MEDIA)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req, 20_000)
+  if (!parsed.ok) return parsed.response
+  const body = parsed.body as { prompt?: string }
 
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
   if (!prompt || prompt.length > 8000) {

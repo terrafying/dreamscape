@@ -3,6 +3,7 @@ import { OPENAI_OAUTH_HEADER, parseOpenAIOAuthHeader } from '@/lib/openaiOAuthSh
 import { buildAstroContext, getCurrentTransits } from '@/lib/astro'
 import { generateCacheKey, getCached, setCache } from '@/lib/cache'
 import { checkAuth } from '@/lib/auth'
+import { checkRateLimit, rateLimitedResponse, readJsonWithLimit, RATE_LLM } from '@/lib/rateLimit'
 import { buildSigilRecipe } from '@/lib/sigil'
 import type { BirthData, VisionExtraction } from '@/lib/types'
 
@@ -117,13 +118,21 @@ export async function POST(req: Request) {
   const denied = checkAuth(req)
   if (denied) return denied
 
-  const { transcript, date, birthData, provider, model } = (await req.json()) as {
+  const rate = checkRateLimit(req, 'visions-extract', RATE_LLM)
+  if (!rate.allowed) return rateLimitedResponse(rate.retryAfterSeconds)
+
+  const parsed = await readJsonWithLimit(req)
+  if (!parsed.ok) return parsed.response
+  const { transcript: rawTranscript, date, birthData, provider, model } = parsed.body as {
     transcript: string
     date: string
     birthData?: BirthData | null
     provider?: LLMProvider
     model?: string
   }
+
+  // Cap before prompt build + cache key: oversized input is a cost attack.
+  const transcript: string = String(rawTranscript ?? '').slice(0, 20_000)
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
